@@ -436,8 +436,7 @@ export function processLines(this: MarkdownParser, LLD0: LogicalLineData, LLD1: 
 	//console.log('Starting', LLD1)
 	this.curLLD = LLD0;
 	while(this.curLLD && this.curLLD !== LLD1) {
-		if(!PP.generator) {
-			PP.curParser = null;
+		if(!PP.generator && !PP.curParser) {
 			PP.generator = this.blockParserProvider.mainBlocks(this);
 			if(this.diagnostics)    console.log(`Making new generator`)
 		}

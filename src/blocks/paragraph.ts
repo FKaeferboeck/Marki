@@ -10,7 +10,7 @@ export interface Paragraph { };
 export const paragraph_traits: BlockTraits<"paragraph"> = {
     startsHere(LLD: LogicalLineData) { return 0; },
     continuesHere(LLD: LogicalLineData, B: BlockBase<"paragraph">): BlockContinuationType | undefined {
-        /* By the intent of the parsing algorithm we should look for SETEXT headers before looking for a paragraph and
+        /* By the philosophy of the parsing algorithm we should look for SETEXT headers before looking for a paragraph and
          * paragraphs shouldn't be aware that such a thing as a SETEXT header even exists.
          * However paragraphs are common and SETEXT headers are rare, so we would parse most markdown content twice, looking
          * for SETEXT headers that aren't there.

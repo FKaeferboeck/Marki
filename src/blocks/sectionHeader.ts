@@ -5,18 +5,18 @@ import { BlockTraits } from "../traits";
 
 export interface SectionHeader {
 	level: number;
-	customTag?: string;
+	//customTag?: string;
 }
 
 
 export const sectionHeader_traits: BlockTraits<"sectionHeader"> = {
-    startsHere(data: LogicalLineData, B) {
-        const rexres = /^(#+)(?::([^\s]+))?\s+/.exec(data.startPart);
-        if(!rexres)    return -1;
-        const headerLevel = rexres[1].length;
-        B.level = headerLevel;
-        if(rexres[2])
-            B.customTag = rexres[2];
+    startsHere(LLD: LogicalLineData, B) {
+        if(!(LLD.type === "single" || LLD.type === "text") || LLD.startIndent >= 4)
+            return -1;
+        const rexres = /^(#{1,6})(?:\s+|$)/.exec(LLD.startPart);
+        if(!rexres)
+            return -1;
+        B.level = rexres[1].length;
         return rexres[0].length;
     },
     continuesHere() { return "end"; }, // section headers are single-line

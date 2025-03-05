@@ -5,6 +5,8 @@ import { BlockType } from '../src/markdown-types';
 
 
 const blk = (type: BlockType, extent: number, extra?: Record<string, any>) => ({ type, extent, extra });
+const par = (extent: number = 1) => blk("paragraph",  extent);
+const spc = (extent: number = 1) => blk("emptySpace", extent);
 
 function resultMaker(input: { type: BlockType,  extent: number,  extra?: Record<string, any> }[]) {
     let i = 0;
@@ -41,9 +43,14 @@ function doTest(title: string, input: string, target_: { type: BlockType,  exten
 
 
 doTest('basic paragraphs', 'First paragraph\n\nSecond\n   paragraph\n\n\nThird',
-       [ blk("paragraph", 1),  blk("emptySpace", 1),  blk("paragraph", 2),  blk("emptySpace", 2),  blk("paragraph", 1) ]);
+       [ par(),  spc(),  par(2),  spc(2),  par() ]);
 
 
 doTest('setext header',
-    `Headline\nsecond line\n==========  \nA paragraph\n===X\n\nHeader 2\n   -`,
-    [ blk("sectionHeader_setext", 3, { level: 1 }),  blk("paragraph", 2),  blk("emptySpace", 1),  blk("sectionHeader_setext", 2, { level: 2 }) ]);
+    `Headline\nsecond line\n==========  \nA paragraph\n===X\n\nHeader 2\n   -\n===`,
+    [ blk("sectionHeader_setext", 3, { level: 1 }),  par(2),  spc(),  blk("sectionHeader_setext", 2, { level: 2 }),  par() ]);
+
+
+doTest('ATX header',
+    `paragraph\n# H1\n##p\n   ####\n###### H6 ###`,
+    [ par(),  blk("sectionHeader", 1, { level: 1 }),  par(),  blk("sectionHeader", 1, { level: 4 }), blk("sectionHeader", 1, { level: 6 }) ]);
