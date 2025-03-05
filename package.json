@@ -1,0 +1,29 @@
+{
+  "name": "marki",
+  "version": "1.0.0",
+  "description": "extensible Markdown parser with support for incremental changes",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "vitest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FKaeferboeck/Marki.git"
+  },
+  "keywords": [
+    "Markdown"
+  ],
+  "author": "Florian Käferböck",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/FKaeferboeck/Marki/issues"
+  },
+  "homepage": "https://github.com/FKaeferboeck/Marki#readme",
+  "dependencies": {
+    "vitest": "^3.0.5",
+    "vscode-languageserver": "^9.0.1"
+  }
+}
