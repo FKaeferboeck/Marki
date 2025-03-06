@@ -1,6 +1,6 @@
 import { BlockContainer, BlockParser, BlockParser_Container, BlockParser_Standard, EligibleParsers, MarkdownParser } from "../block-parser";
 import { BlockType, ExtensionBlockType, Block, LogicalLineData } from "../markdown-types";
-import { LineStructure } from "../parser";
+import { LineStructure, LogicalLineType } from "../parser";
 import { ContainerBlockTraits, BlockContinuationType } from "../traits";
 
 export interface BlockQuote {
@@ -18,16 +18,16 @@ export interface BlockQuote {
 	}
 	return P;*/
 
+const standardBlockLineTypes: Partial<Record<LogicalLineType | "single", boolean>> = { single: true,  text: true };
+export const standardBlockStart = (LLD: LogicalLineData) => (!!standardBlockLineTypes[LLD.type] && LLD.startIndent < 4);
+
 
 export const blockQuote_traits: ContainerBlockTraits<"blockQuote"> = {
     isContainer: true,
-    startsHere(data: LogicalLineData, B) {
-        // We only reach here if we already know it's not an indented code section
-        const rexres = /^>\s+/.exec(data.startPart);
-        if(!rexres)
+    startsHere(LLD: LogicalLineData, B) {
+        if(!(standardBlockStart(LLD) && LLD.startPart.startsWith('>')))
             return -1;
-        B.prefix = rexres[0]; // TODO!! prefix whitespace
-        return B.prefix.length;
+        return (/^>\s/.test(LLD.startPart) ? 2 : 1);
     },
     continuationPrefix: /^> /,
 

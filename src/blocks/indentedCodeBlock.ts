@@ -9,6 +9,7 @@ export interface IndentedCodeBlock {
 
 export const indentedCodeBlock_traits: BlockTraits<"indentedCodeBlock"> = {
     startsHere(LLD: LogicalLineData, B) {
+        return -1;
         //return (LLD.startIndent < 4 && LLD.startPart.startsWith('```') ? LLD.startIndent : -1);
         if(LLD.startIndent < 4)    return -1;
         return 4;

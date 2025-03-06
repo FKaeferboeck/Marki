@@ -1,7 +1,8 @@
 import { describe, expect, it, test } from 'vitest'
-import { lineDataAll, MarkdownParser } from '../src/block-parser';
+import { MarkdownParser } from '../src/block-parser';
 import { linify } from '../src/parser';
 import { BlockType } from '../src/markdown-types';
+import { lineDataAll } from '../src/util';
 
 
 const blk = (type: BlockType, extent: number, extra?: Record<string, any>) => ({ type, extent, extra });
@@ -46,11 +47,15 @@ doTest('basic paragraphs', 'First paragraph\n\nSecond\n   paragraph\n\n\nThird',
        [ par(),  spc(),  par(2),  spc(2),  par() ]);
 
 
-doTest('setext header',
+doTest('setext headings',
     `Headline\nsecond line\n==========  \nA paragraph\n===X\n\nHeader 2\n   -\n===`,
     [ blk("sectionHeader_setext", 3, { level: 1 }),  par(2),  spc(),  blk("sectionHeader_setext", 2, { level: 2 }),  par() ]);
 
 
-doTest('ATX header',
+doTest('ATX headings',
     `paragraph\n# H1\n##p\n   ####\n###### H6 ###`,
     [ par(),  blk("sectionHeader", 1, { level: 1 }),  par(),  blk("sectionHeader", 1, { level: 4 }), blk("sectionHeader", 1, { level: 6 }) ]);
+
+
+doTest('block quotes', '> Q1',
+    [ blk("blockQuote", 1) ], true);
