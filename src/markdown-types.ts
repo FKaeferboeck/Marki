@@ -74,7 +74,7 @@ export type BlockBase<K extends BlockType> = (K extends keyof BlockTypeMap ? Blo
 
 export type ContainerBlockBase<K extends BlockType> = BlockBase<K> & {
 	isContainer: true;
-	contents:    Block[];
+	blocks:      Block[];
 };
 
 

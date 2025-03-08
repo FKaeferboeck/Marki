@@ -28,7 +28,6 @@ export const standardBlockParserTraits: BlockParserTraitsList = {
 
 export interface BlockContainer {
 	addContentBlock(B: Block): void;
-	blocks: Block[];
 }
 
 
@@ -59,7 +58,7 @@ export class BlockParser_Standard<K extends BlockType = ExtensionBlockType, Trai
 		this.MDP = MDP;
 		this.type = traits.defaultBlockInstance.type;
 		this.traits = traits;
-		this.B = { ... traits.defaultBlockInstance };
+		this.B = structuredClone(traits.defaultBlockInstance); // make a deep copy because the block object contains arrays
 		this.in_end_space = false;
 		this.useSoftContinuations = useSoftContinuations;
 	}
@@ -127,13 +126,17 @@ export class BlockParser_Standard<K extends BlockType = ExtensionBlockType, Trai
 
 
 
+interface ContentLine {
+	LLD: LogicalLineData;
+}
+
 export class BlockParser_Container<K extends BlockType = ExtensionBlockType>
     extends BlockParser_Standard<K, ContainerBlockTraits<K>>
     implements BlockContainer
 {
     constructor(MDP: MarkdownParser, traits: ContainerBlockTraits<K>, useSoftContinuations: boolean = true) {
         super(MDP, traits, useSoftContinuations);
-        this.curContentParser = { curParser: null,  generator: MDP.blockParserProvider.mainBlocks(this) };
+        this.curContentParser = { container: this,  curParser: null,  generator: null };
     }
 
     beginsHere(LLD: LogicalLineData, curBlock: Block | undefined): number {
@@ -141,41 +144,69 @@ export class BlockParser_Container<K extends BlockType = ExtensionBlockType>
 		if(n0 < 0)
 			return n0;
 		const LLD_c = sliceLLD(LLD, n0);
-        this.curContentParser = this.MDP.processLine({ curParser: null,  generator: this.MDP.blockParserProvider.mainBlocks(this) }, LLD_c);
+		this.prevReadContent = LLD_c;
+        this.curContentParser = this.MDP.processLine({ container: this,  curParser: null,  generator: null }, LLD_c);
         if(!this.curContentParser.curParser)
             throw new Error(`Content of container ${this.type} not recognized as any block type!`);
 		return n0;
 	}
 
     continues(LLD: LogicalLineData): BlockContinuationType {
-        const cont = super.continues(LLD);
-        if(cont === "soft") {
+        let cont = super.continues(LLD);
+
+		if(typeof cont === "number") {
+			const LLD_c = sliceLLD(LLD, cont);
+			this.prevReadContent!.next = LLD_c;
+
+			//this.curContentParser = this.MDP.processLine(this.curContentParser, LLD_c);
+			let curLLD = LLD_c;
+			while(true) {
+				this.curContentParser = this.MDP.processLine(this.curContentParser, curLLD);
+				if(this.curContentParser.retry)
+					curLLD = this.curContentParser.retry;
+				else if(curLLD !== LLD_c) // this can only happen during backtracking
+					curLLD = curLLD.next!;
+				else
+					break;
+					//(this.diagnostics)    console.log(`Proceed ${curLLD.logl_idx}->${curLLD.next?.logl_idx}`)
+			}
+		}
+		else if(cont === "soft") {
             const cop = this.curContentParser;
-            if(!cop.curParser)
-                throw new Error(`Looking for continuation on a ${this.type} container block that doesn't have any content.`);
-            
             // only paragraph content can softly continue a container block
-            if(cop.curParser.type !== "paragraph")
+            if(cop.curParser?.type !== "paragraph")
                 return "end";
 
-            return cop.curParser.continues(LLD);
+			cont = cop.curParser.continues(LLD);
+			// The following behavior isn't fully clear from the CommonMark specification in my opinion, but we replicate what the CommonMark reference implementation does:
+			if(cont === "reject")
+				cont = "end";
+			this.prevReadContent!.next = { ... LLD };
         }
+	
+		this.prevReadContent = this.prevReadContent!.next;
         return cont;
     }
 
-    addContentBlock(B: Block) { this.blocks.push(B); }
-	blocks: Block[] = [];
+    addContentBlock(B: Block) { this.B.blocks.push(B); }
 
     acceptLine(LLD: LogicalLineData, bct: BlockContinuationType | "start") {
+		// an accepted soft continuation of a container block means an unprefixed soft continuation of the same line as content (which is a paragraph)
+		// contents of hard continuations have already been accepted during continues()
+		if(bct === "soft")
+			this.curContentParser.curParser?.acceptLine(LLD, "soft");
+		//console.log('Accept container line', bct)
         super.acceptLine(LLD, bct);
     }
 
     finish() {
         this.curContentParser.curParser?.finish();
         super.finish();
+		//console.log('Finished container content:', this.B.blocks)
 	}
 
-    private curContentParser: EligibleParsers;
+    private curContentParser: ParseState;
+	private prevReadContent: LogicalLineData | null = null;
 }
 
 
@@ -214,9 +245,11 @@ type BlockParserProviderCache = {
 };
 
 //export type EligibleParsers = Generator<BlockParser<Block>> | BlockParser<Block>;
-export interface EligibleParsers {
+export interface ParseState {
+	container: BlockContainer;
 	curParser: BlockParser<Block> | null;
 	generator: Generator<BlockParser<Block>> | null;
+	retry?:    LogicalLineData;
 }
 
 
@@ -238,7 +271,7 @@ export class MarkdownParser implements BlockContainer {
 
 	processContent(LLD: LogicalLineData) {
 		this.blocks = [];
-		const P = this.processLines(LLD, null, { curParser: null,  generator: this.blockParserProvider.mainBlocks(this) });
+		const P = this.processLines(LLD, null, { container: this,  curParser: null,  generator: null });
 		if(this.diagnostics)    console.log(`Coming out of parsing with open block`, P.curParser?.type);
 		if(P.curParser)
 			P.curParser.finish();
@@ -311,8 +344,6 @@ export class MarkdownParser implements BlockContainer {
 	
 	addContentBlock(B: Block) { this.blocks.push(B); }
 	blocks: Block[] = [];
-
-	curLLD: LogicalLineData | null = null;
 	diagnostics = false;
 };
 
@@ -320,32 +351,39 @@ export class MarkdownParser implements BlockContainer {
 
 /**********************************************************************************************************************/
 
-export function startBlock(this: MarkdownParser, generator: Generator<BlockParser<Block>>, LLD: LogicalLineData): EligibleParsers {
+export function startBlock(this: MarkdownParser, ctx: ParseState, LLD: LogicalLineData): ParseState {
+	if(!ctx.generator)
+		ctx.generator = this.blockParserProvider.mainBlocks(ctx.container);
+
 	let I: IteratorResult<BlockParser<Block>, any> | undefined;
-	while(generator && !(I = generator.next()).done) {
+	while(!(I = ctx.generator.next()).done) {
 		const PA = I.value;
 		//if(this.diagnostics)    console.log(`Trying "${PA.type}" for line ${LLD.logl_idx} -> ${PA.beginsHere(LLD, PA.B)}`);
 		if(PA.beginsHere(LLD, PA.B) >= 0) {
 			//const P1 = this.blockParserProvider.release(PA) as BlockParser<Block>;
 			PA.acceptLine(LLD, "start");
 			if(this.diagnostics)    console.log(`Processing line ${LLD.logl_idx} starting with [${LLD.startPart}] -> start ${PA.type}`);
-			return { curParser: PA,  generator };
+			ctx.curParser = PA;
+			return ctx;
 		}
 	}
 	if(this.diagnostics)    console.log(`Processing line ${LLD.logl_idx} starting with [${LLD.startPart}] -> no interruption`);
-	return { curParser: null,  generator: null }; // this is valid when the function is called to check for block interruptions
+	ctx.generator = null;
+	ctx.curParser = null;
+	return ctx;
 }
 
 
-export function processLine(this: MarkdownParser, PP: EligibleParsers, LLD: LogicalLineData): EligibleParsers & { retry?: true } {
-	const { curParser, generator } = PP;
+export function processLine(this: MarkdownParser, PP: ParseState, LLD: LogicalLineData): ParseState {
+	const { container, curParser, generator } = PP;
+	PP.retry = undefined;
 	//if(this.diagnostics)    console.log(`Processing line ${LLD.logl_idx}`)
 
 	if(!curParser) { // start a new block
-		const PP1 = this.startBlock(generator!, LLD);
-		if(!PP1.curParser)
-			throw new Error(`Line ${this.curLLD?.logl_idx} doesn't belong to any block, that's not possible!`)
-		return PP1;
+		this.startBlock(PP, LLD);
+		if(!PP.curParser)
+			throw new Error(`Line ${LLD.logl_idx} doesn't belong to any block, that's not possible!`)
+		return PP;
 	}
 
 	// continue an existing block
@@ -354,24 +392,26 @@ export function processLine(this: MarkdownParser, PP: EligibleParsers, LLD: Logi
 	switch(bct) {
 	case "end": // current block cannot continue in this line, i.e. it ends on its own
 		curParser.finish();
-		return { retry: true,  curParser: null,  generator: this.blockParserProvider.mainBlocks(curParser.parent) }; // start a new block
+		return { container,  retry: LLD,  curParser: null,  generator: null }; // will start a new block in the current line
 	case "last":
 		curParser.acceptLine(LLD, bct);
 		curParser.finish();
-		return { curParser: null,  generator: null };
+		return { container,  curParser: null,  generator: null }; // will start a new block in the next line
 	case "reject":
 		if(curParser.isInterruption)
 			throw new Error('Problem! Rejecting a block that interrupted another block is a bit too much in terms of backtracking, so we don\'t allow that.');
-		// do backtracking
-		this.curLLD = curParser.startLine!;
-		return { retry: true,  curParser: null,  generator };
+		// schedule backtracking:
+		return { container,  retry: curParser.startLine!,  curParser: null,  generator };
 	case "soft": // it's a soft continuation, which means it's possible that the next block begins here, interrupting the current one
 		{
-			const P1 = this.startBlock(this.blockParserProvider.interrupters(curParser), LLD).curParser;
+			const P1 = this.startBlock({ container,  curParser: null,  generator: this.blockParserProvider.interrupters(curParser) }, LLD).curParser;
 			if(P1) {
 				curParser.finish();
 				P1.acceptLine(LLD, "start");
-				return { curParser: P1,  generator: null };
+				PP.curParser = P1;
+				// since the generator would only be used if this block gets rejected, and we don't allow rejection on an interruption, we don't pass on the generator
+				PP.generator = null;
+				return PP;
 			}
 		}
 		// soft continuation wasn't interrupted, we can accept it
@@ -385,23 +425,21 @@ export function processLine(this: MarkdownParser, PP: EligibleParsers, LLD: Logi
 }
 
 
-export function processLines(this: MarkdownParser, LLD0: LogicalLineData, LLD1: LogicalLineData | null, PP: EligibleParsers) {
+
+export function processLines(this: MarkdownParser, LLD0: LogicalLineData, LLD1: LogicalLineData | null, PP: ParseState) {
 	//let P: BlockParser<Block> | null = null;
 	//console.log('Starting', LLD1)
-	this.curLLD = LLD0;
-	while(this.curLLD && this.curLLD !== LLD1) {
-		if(!PP.generator && !PP.curParser) {
-			PP.generator = this.blockParserProvider.mainBlocks(this);
-			if(this.diagnostics)    console.log(`Making new generator`)
+	let curLLD: LogicalLineData | null = LLD0;
+	//let i = 0;
+	while(curLLD && curLLD !== LLD1) {
+		PP = this.processLine(PP, curLLD);
+		if(PP.retry)
+			curLLD = PP.retry;
+		else {
+			if(this.diagnostics)    console.log(`Proceed ${curLLD.logl_idx}->${curLLD.next?.logl_idx}`)
+			curLLD = curLLD.next;
 		}
-		const PP1 = this.processLine(PP, this.curLLD);
-		if(!PP1.retry) {
-			if(this.diagnostics)    console.log(`Proceed ${this.curLLD.logl_idx}->${this.curLLD.next?.logl_idx}`)
-			this.curLLD = this.curLLD.next;
-		}
-		PP.generator = PP1.generator;
-		PP.curParser = PP1.curParser;
-		//console.log(LLD && (LLD !== LLD1), LLD1)
+		//if(++i > 10)    break;
 	}
 	if(this.diagnostics)    console.log(`Out!`)
 	return PP;

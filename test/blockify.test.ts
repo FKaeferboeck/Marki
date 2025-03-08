@@ -1,44 +1,59 @@
 import { describe, expect, it, test } from 'vitest'
 import { MarkdownParser } from '../src/block-parser';
 import { linify } from '../src/parser';
-import { BlockType } from '../src/markdown-types';
+import { Block, BlockType, ContainerBlockBase } from '../src/markdown-types';
 import { lineDataAll } from '../src/util';
 
+interface ResultMakerItem {
+    type:      BlockType;
+    extent:    number;
+    extra?:    Record<string, any>;
+    contents?: ResultMakerItem[];
+}
 
 const blk = (type: BlockType, extent: number, extra?: Record<string, any>) => ({ type, extent, extra });
 const par = (extent: number = 1) => blk("paragraph",  extent);
 const spc = (extent: number = 1) => blk("emptySpace", extent);
+const cnt = (type: BlockType, extent: number, contents: ResultMakerItem[], extra?: Record<string, any>) => ({ type, extent, contents, extra });
 
-function resultMaker(input: { type: BlockType,  extent: number,  extra?: Record<string, any> }[]) {
-    let i = 0;
+function resultMaker(input: ResultMakerItem[], i: number = 0) {
     return input.map(I => {
         const X = { type: I.type,  range: [ i, I.extent ], ... (I.extra || {}) };
+        if(I.contents)
+            (X as any).blocks = resultMaker(I.contents, i);
         i += I.extent;
         return X;
     });
 }
 
 
+const ignored_props = { type: true,  logical_line_start: true,  logical_line_extent: true,  contents: true };
+
+function blocks_check(blocks: Block[]) {
+    return blocks.map(B => {
+        const X = { type: B.type,  range: [ B.logical_line_start, B.logical_line_extent ] };
+        for(const k of Object.keys(B).filter(k => !ignored_props[k]))
+            X[k] = B[k];
+        if(("blocks" in B) && (B as ContainerBlockBase<BlockType>).blocks.length > 0)
+            (X as any).blocks = blocks_check((B as ContainerBlockBase<BlockType>).blocks);
+        return X;
+    });
+}
+
 const parser = new MarkdownParser();
 
-const ignored_props = { type: true,  logical_line_start: true,  logical_line_extent: true,  contents: true };
 
 function doTest(title: string, input: string, target_: { type: BlockType,  extent: number }[], verbose?: boolean) {
     test(title, () => {
         parser.diagnostics = verbose || false;
-        const LS           = linify(input);
-        const LLD          = lineDataAll(LS, 0);
-        const target       = resultMaker(target_);
-        const blocks       = parser.processContent(LLD);
-        const blocks_check = blocks.map(B => {
-            const X = { type: B.type,  range: [ B.logical_line_start, B.logical_line_extent ] };
-            for(const k of Object.keys(B).filter(k => !ignored_props[k]))
-                X[k] = B[k];
-            return X;
-        });
+        const LS      = linify(input);
+        const LLD     = lineDataAll(LS, 0);
+        const target  = resultMaker(target_);
+        const blocks  = parser.processContent(LLD);
+        const blocks_ = blocks_check(blocks);
         if(verbose)
             console.log(blocks)
-        expect(blocks_check).toMatchObject(target);
+        expect(blocks_).toMatchObject(target);
     });
 }
 
@@ -57,5 +72,12 @@ doTest('ATX headings',
     [ par(),  blk("sectionHeader", 1, { level: 1 }),  par(),  blk("sectionHeader", 1, { level: 4 }), blk("sectionHeader", 1, { level: 6 }) ]);
 
 
-doTest('block quotes', '> Q1',
-    [ blk("blockQuote", 1) ], true);
+doTest('block quotes', '> Q1a\n>Q1b\nQ1c\n\n>Q2a\nQ2b\n===\n\n>Q3a\n>===\n>Q3c\n>---\npara\n\n>Q4a\nQ4b\n>===',
+    [ cnt("blockQuote", 3, [ par(3) ]),
+      spc(),
+      cnt("blockQuote", 2, [ par(2) ]),
+      par(1), spc(),
+      cnt("blockQuote", 4, [ blk("sectionHeader_setext", 2, { level: 1 }),  blk("sectionHeader_setext", 2, { level: 2 }) ]),
+      par(1),  spc(),
+      cnt("blockQuote", 3, [ blk("sectionHeader_setext", 3, { level: 1 }) ]),
+    ]);
