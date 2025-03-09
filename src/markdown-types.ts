@@ -1,5 +1,5 @@
 import { BlockQuote } from "./blocks/blockQuote";
-import { HorizontalRule } from "./blocks/horizontalRule";
+import { ThematicBreak } from "./blocks/thematicBreak";
 import { IndentedCodeBlock } from "./blocks/indentedCodeBlock";
 import { Paragraph } from "./blocks/paragraph";
 import { SectionHeader } from "./blocks/sectionHeader";
@@ -54,7 +54,7 @@ export interface BlockTypeMap {
 	sectionHeader_setext: SectionHeader;
 	blockQuote:           BlockQuote;
 	indentedCodeBlock:    IndentedCodeBlock;
-	horizontalRule:       HorizontalRule;
+	thematicBreak:        ThematicBreak;
 	fenced:               FencedBlock;
 }
 

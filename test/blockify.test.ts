@@ -72,6 +72,14 @@ doTest('ATX headings',
     [ par(),  blk("sectionHeader", 1, { level: 1 }),  par(),  blk("sectionHeader", 1, { level: 4 }), blk("sectionHeader", 1, { level: 6 }) ]);
 
 
+doTest('thematic breaks',
+    'P1\n***\n   -  - - ---   \n__\n___\nP3\n----',
+    [ par(1),  blk("thematicBreak", 1, { ruleType: "*" }),  blk("thematicBreak", 1, { ruleType: "-" }),
+      par(1),  blk("thematicBreak", 1, { ruleType: "_" }),
+      blk("sectionHeader_setext", 2, { level: 2 })
+    ]);
+
+
 doTest('block quotes', '> Q1a\n>Q1b\nQ1c\n\n>Q2a\nQ2b\n===\n\n>Q3a\n>===\n>Q3c\n>---\npara\n\n>Q4a\nQ4b\n>===',
     [ cnt("blockQuote", 3, [ par(3) ]),
       spc(),

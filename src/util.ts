@@ -1,5 +1,5 @@
 import { LogicalLineData } from "./markdown-types";
-import { LineStructure } from "./parser";
+import { LineStructure, LogicalLineType } from "./parser";
 
 
 
@@ -60,3 +60,7 @@ export function lineDataAll(LS: LineStructure, logl_idx_start: number): LogicalL
     return lld0;
 }
 
+
+
+const standardBlockLineTypes: Partial<Record<LogicalLineType | "single", boolean>> = { single: true,  text: true };
+export const standardBlockStart = (LLD: LogicalLineData) => (!!standardBlockLineTypes[LLD.type] && LLD.startIndent < 4);

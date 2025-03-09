@@ -2,14 +2,11 @@ import { BlockContainer, BlockParser, BlockParser_Container, BlockParser_Standar
 import { BlockType, ExtensionBlockType, Block, LogicalLineData } from "../markdown-types";
 import { LineStructure, LogicalLineType } from "../parser";
 import { ContainerBlockTraits, BlockContinuationType } from "../traits";
+import { standardBlockStart } from "../util";
 
 export interface BlockQuote {
     prefix: string;
 };
-
-
-const standardBlockLineTypes: Partial<Record<LogicalLineType | "single", boolean>> = { single: true,  text: true };
-export const standardBlockStart = (LLD: LogicalLineData) => (!!standardBlockLineTypes[LLD.type] && LLD.startIndent < 4);
 
 
 export const blockQuote_traits: ContainerBlockTraits<"blockQuote"> = {

@@ -1,7 +1,7 @@
 import { blockQuote_traits } from './blocks/blockQuote';
 import { emptySpace_traits } from './blocks/emptySpace';
 import { fenced_traits } from './blocks/fenced';
-import { horizontalRule_traits } from './blocks/horizontalRule';
+import { thematicBreak_traits } from './blocks/thematicBreak';
 import { indentedCodeBlock_traits } from './blocks/indentedCodeBlock';
 import { paragraph_traits } from './blocks/paragraph';
 import { sectionHeader_traits } from './blocks/sectionHeader';
@@ -19,7 +19,7 @@ export const standardBlockParserTraits: BlockParserTraitsList = {
 	paragraph:            paragraph_traits,
 	sectionHeader:        sectionHeader_traits,
 	blockQuote:           blockQuote_traits,
-	horizontalRule:       horizontalRule_traits,
+	thematicBreak:        thematicBreak_traits,
 	sectionHeader_setext: sectionHeader_setext_traits,
 	indentedCodeBlock:    indentedCodeBlock_traits,
 	fenced:               fenced_traits
@@ -126,10 +126,6 @@ export class BlockParser_Standard<K extends BlockType = ExtensionBlockType, Trai
 
 
 
-interface ContentLine {
-	LLD: LogicalLineData;
-}
-
 export class BlockParser_Container<K extends BlockType = ExtensionBlockType>
     extends BlockParser_Standard<K, ContainerBlockTraits<K>>
     implements BlockContainer
@@ -157,18 +153,15 @@ export class BlockParser_Container<K extends BlockType = ExtensionBlockType>
 		if(typeof cont === "number") {
 			const LLD_c = sliceLLD(LLD, cont);
 			this.prevReadContent!.next = LLD_c;
-
-			//this.curContentParser = this.MDP.processLine(this.curContentParser, LLD_c);
 			let curLLD = LLD_c;
 			while(true) {
 				this.curContentParser = this.MDP.processLine(this.curContentParser, curLLD);
 				if(this.curContentParser.retry)
 					curLLD = this.curContentParser.retry;
-				else if(curLLD !== LLD_c) // this can only happen during backtracking
+				else if(curLLD !== LLD_c) // this can only happen during backtracking due to a rejected content block
 					curLLD = curLLD.next!;
 				else
 					break;
-					//(this.diagnostics)    console.log(`Proceed ${curLLD.logl_idx}->${curLLD.next?.logl_idx}`)
 			}
 		}
 		else if(cont === "soft") {
@@ -195,14 +188,12 @@ export class BlockParser_Container<K extends BlockType = ExtensionBlockType>
 		// contents of hard continuations have already been accepted during continues()
 		if(bct === "soft")
 			this.curContentParser.curParser?.acceptLine(LLD, "soft");
-		//console.log('Accept container line', bct)
         super.acceptLine(LLD, bct);
     }
 
     finish() {
         this.curContentParser.curParser?.finish();
         super.finish();
-		//console.log('Finished container content:', this.B.blocks)
 	}
 
     private curContentParser: ParseState;
@@ -295,6 +286,7 @@ export class MarkdownParser implements BlockContainer {
 
 	tryOrder: BlockType[] = [
 		"emptySpace",
+		"thematicBreak",
 		"indentedCodeBlock", // must be tried first so that the following block types can skip checking for too large indentations
 		"sectionHeader",
 		"fenced",
@@ -303,6 +295,7 @@ export class MarkdownParser implements BlockContainer {
 		"sectionHeader_setext" // this only get used if a paragraph is rejected due to encountering "=======" (SETEXT header suffix)
 	];
 	interrupters: BlockType[] = [
+		"thematicBreak",
 		"indentedCodeBlock",
 		"sectionHeader",
 		"fenced", // also in CommonMark mode
