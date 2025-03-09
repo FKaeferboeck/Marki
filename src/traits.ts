@@ -16,12 +16,12 @@ export interface BlockTraits<T extends BlockType = ExtensionBlockType> {
        If it can begin here it shoudl return a number describing the offset where the actual content of the block (after a prefix) starts,
        e.g. 2 for a blockquote starting after "> ".
        If the prefix contains additional data (e.g. the level of an atx header) the method can parse that data into the provided block object. */
-    startsHere(data: LogicalLineData, B: BlockBase<T>): number;
+    startsHere(this: BlockParser<BlockBase<T>>, data: LogicalLineData, B: BlockBase<T>): number;
 
     /* returning undefined means the function doesn't make a decision whether to continue the block here,
      * and leaves it to the subsequent standard algorithm instead.
      */
-    continuesHere?(data: LogicalLineData, B: BlockBase<T>): BlockContinuationType | undefined;
+    continuesHere?(this: BlockParser<BlockBase<T>>, data: LogicalLineData, B: BlockBase<T>): BlockContinuationType | undefined;
 
     continuationPrefix?: RegExp| ((LLD: LogicalLineData, B: BlockBase<T>) => number);
     

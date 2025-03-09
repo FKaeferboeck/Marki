@@ -41,8 +41,9 @@ export interface BlockParser<BT extends Block> {
 
 	acceptLine(LLD: LogicalLineData, bct: BlockContinuationType | "start"): void;
 
-	finish(): void; // store the finished block with its surrounding container
+	finish(): LogicalLineData; // store the finished block with its surrounding container, return the last line that was accepted
 
+	setCheckpoint(LLD: LogicalLineData): void;
 	MDP: MarkdownParser;
 	parent: BlockContainer | undefined;
 	B: BT;
@@ -66,11 +67,10 @@ export class BlockParser_Standard<K extends BlockType = ExtensionBlockType, Trai
 	static textLines = { text: true,  single: true };
 
 	beginsHere(LLD: LogicalLineData, curBlock: Block | undefined): number {
-		//console.log(`Startin ${this.type} here?`);
 		if(!BlockParser_Standard.textLines[LLD.type])
 			return -1;
 
-		const starts = this.traits.startsHere(LLD, this.B);
+		const starts = this.traits.startsHere.call(this, LLD, this.B);
 		if(starts < 0)    return -1;
 		this.B.logical_line_start  = LLD.logl_idx;
 		this.B.logical_line_extent = 1;
@@ -80,7 +80,7 @@ export class BlockParser_Standard<K extends BlockType = ExtensionBlockType, Trai
 
 	continues(LLD: LogicalLineData): BlockContinuationType {
 		if (this.traits.continuesHere) {
-			const x = this.traits.continuesHere(LLD, this.B);
+			const x = this.traits.continuesHere.call(this, LLD, this.B);
 			if(typeof x !== "undefined")
 				return x;
 		}
@@ -104,23 +104,30 @@ export class BlockParser_Standard<K extends BlockType = ExtensionBlockType, Trai
 	acceptLine(LLD: LogicalLineData, bct: BlockContinuationType | "start") {
 		if(bct === "start")
 			this.startLine = LLD;
+		if(this.checkpoint && LLD.logl_idx > this.checkpoint.logl_idx)
+			return;
+		this.lastLine = LLD;
 		this.B.logical_line_extent = LLD.logl_idx - this.B.logical_line_start + 1;
 	}
 
-	finish() {
+	finish(): LogicalLineData {
 		//if(this.MDP.diagnostics)    console.log('add content to', this.parent)
 		if(this.parent)
 			this.parent.addContentBlock(this.B);
 		//container.addContentBlock(this.B);
+		return this.lastLine!;
 	}
 
+	setCheckpoint(LLD: LogicalLineData) { this.checkpoint = LLD; }
 	MDP: MarkdownParser;
 	parent: BlockContainer | undefined;
-	traits: Traits;//BlockTraits<K>;
-	B: Traits["defaultBlockInstance"];//BlockBase<K>;
+	traits: Traits;
+	B: Traits["defaultBlockInstance"];
 	in_end_space: boolean;
 	isInterruption: boolean = false;
-	startLine: LogicalLineData | undefined;
+	startLine:  LogicalLineData | undefined;
+	lastLine:   LogicalLineData | undefined;
+	checkpoint: LogicalLineData | undefined;
 	readonly useSoftContinuations: boolean;
 }
 
@@ -191,9 +198,9 @@ export class BlockParser_Container<K extends BlockType = ExtensionBlockType>
         super.acceptLine(LLD, bct);
     }
 
-    finish() {
+    finish(): LogicalLineData {
         this.curContentParser.curParser?.finish();
-        super.finish();
+        return super.finish();
 	}
 
     private curContentParser: ParseState;
@@ -227,7 +234,6 @@ export class BlockParser_EmptySpace extends BlockParser_Standard<"emptySpace"> {
 
 
 interface BlockParserProviderItem<K extends BlockType> {
-	//type: K;
 	parent: MarkdownParser;
 	parser: BlockParser<BlockBase<K>> | undefined;
 }
@@ -262,10 +268,12 @@ export class MarkdownParser implements BlockContainer {
 
 	processContent(LLD: LogicalLineData) {
 		this.blocks = [];
-		const P = this.processLines(LLD, null, { container: this,  curParser: null,  generator: null });
-		if(this.diagnostics)    console.log(`Coming out of parsing with open block`, P.curParser?.type);
-		if(P.curParser)
-			P.curParser.finish();
+		let LLD0: LogicalLineData | null = LLD;
+		while(LLD0) {
+			const P = this.processLines(LLD0, null, { container: this,  curParser: null,  generator: null });
+			if(this.diagnostics)    console.log(`Coming out of parsing with open block`, P.curParser?.type);
+			LLD0 = (P.curParser?.finish()?.next || null);
+		}
 		
 		return this.blocks;
 	}
@@ -286,8 +294,8 @@ export class MarkdownParser implements BlockContainer {
 
 	tryOrder: BlockType[] = [
 		"emptySpace",
-		"thematicBreak",
 		"indentedCodeBlock", // must be tried first so that the following block types can skip checking for too large indentations
+		"thematicBreak",
 		"sectionHeader",
 		"fenced",
 		"blockQuote",
@@ -296,7 +304,6 @@ export class MarkdownParser implements BlockContainer {
 	];
 	interrupters: BlockType[] = [
 		"thematicBreak",
-		"indentedCodeBlock",
 		"sectionHeader",
 		"fenced", // also in CommonMark mode
 		"blockQuote"
@@ -323,7 +330,6 @@ export class MarkdownParser implements BlockContainer {
 				if(!PP.parser)
 					PP.parser = p.makeParser(key) as any;
 				const P = PP.parser as BlockParser<Block>;
-				//console.log('Yielding', key)
 				if(P.type !== t0) {
 					P.parent = BC; // where will a finished block be stored — either the central MarkdownParser instance or a container block
 					P.isInterruption = (s === "interrupters");
@@ -353,7 +359,6 @@ export function startBlock(this: MarkdownParser, ctx: ParseState, LLD: LogicalLi
 		const PA = I.value;
 		//if(this.diagnostics)    console.log(`Trying "${PA.type}" for line ${LLD.logl_idx} -> ${PA.beginsHere(LLD, PA.B)}`);
 		if(PA.beginsHere(LLD, PA.B) >= 0) {
-			//const P1 = this.blockParserProvider.release(PA) as BlockParser<Block>;
 			PA.acceptLine(LLD, "start");
 			if(this.diagnostics)    console.log(`Processing line ${LLD.logl_idx} starting with [${LLD.startPart}] -> start ${PA.type}`);
 			ctx.curParser = PA;
@@ -384,8 +389,10 @@ export function processLine(this: MarkdownParser, PP: ParseState, LLD: LogicalLi
 	if(this.diagnostics)    console.log(`Processing line ${LLD.logl_idx} starting with [${LLD.startPart}]`, PP.curParser?.type, `-> ${bct}`)
 	switch(bct) {
 	case "end": // current block cannot continue in this line, i.e. it ends on its own
-		curParser.finish();
-		return { container,  retry: LLD,  curParser: null,  generator: null }; // will start a new block in the current line
+		{
+			const LLD_last = curParser.finish();
+			return { container,  retry: LLD_last.next!,  curParser: null,  generator: null }; // will start a new block in the current line
+		}
 	case "last":
 		curParser.acceptLine(LLD, bct);
 		curParser.finish();
@@ -420,10 +427,7 @@ export function processLine(this: MarkdownParser, PP: ParseState, LLD: LogicalLi
 
 
 export function processLines(this: MarkdownParser, LLD0: LogicalLineData, LLD1: LogicalLineData | null, PP: ParseState) {
-	//let P: BlockParser<Block> | null = null;
-	//console.log('Starting', LLD1)
 	let curLLD: LogicalLineData | null = LLD0;
-	//let i = 0;
 	while(curLLD && curLLD !== LLD1) {
 		PP = this.processLine(PP, curLLD);
 		if(PP.retry)
@@ -432,7 +436,6 @@ export function processLines(this: MarkdownParser, LLD0: LogicalLineData, LLD1: 
 			if(this.diagnostics)    console.log(`Proceed ${curLLD.logl_idx}->${curLLD.next?.logl_idx}`)
 			curLLD = curLLD.next;
 		}
-		//if(++i > 10)    break;
 	}
 	if(this.diagnostics)    console.log(`Out!`)
 	return PP;

@@ -62,6 +62,14 @@ doTest('basic paragraphs', 'First paragraph\n\nSecond\n   paragraph\n\n\nThird',
        [ par(),  spc(),  par(2),  spc(2),  par() ]);
 
 
+doTest('indented code blocks',
+    `    C1a\n\n    C1c\nP1a\n    P1b\n\n    C2a\n\nP2a\n\n    C3\n`,
+    [ blk("indentedCodeBlock", 3),  par(2),  spc(),
+      blk("indentedCodeBlock", 1),  spc(),  par(),  spc(),
+      blk("indentedCodeBlock", 1),  spc()
+    ]);
+
+
 doTest('setext headings',
     `Headline\nsecond line\n==========  \nA paragraph\n===X\n\nHeader 2\n   -\n===`,
     [ blk("sectionHeader_setext", 3, { level: 1 }),  par(2),  spc(),  blk("sectionHeader_setext", 2, { level: 2 }),  par() ]);

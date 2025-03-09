@@ -2,22 +2,23 @@ import { BlockParser_Standard } from "../block-parser";
 import { LogicalLineData } from "../markdown-types";
 import { BlockTraits } from "../traits";
 
-export interface IndentedCodeBlock {
-    indention: string;
-};
+export interface IndentedCodeBlock { };
 
 
 export const indentedCodeBlock_traits: BlockTraits<"indentedCodeBlock"> = {
-    startsHere(LLD: LogicalLineData, B) {
-        return -1;
-        //return (LLD.startIndent < 4 && LLD.startPart.startsWith('```') ? LLD.startIndent : -1);
+    startsHere(LLD: LogicalLineData) {
         if(LLD.startIndent < 4)    return -1;
+        this.setCheckpoint(LLD);
         return 4;
     },
-    continuesHere(LLD, B) {
-        if(LLD.startIndent < 4)
-            return "end";
-        return 4;
+    continuesHere(LLD) {
+        if(LLD.startIndent >= 4) {
+            this.setCheckpoint(LLD);   
+            return 4;
+        }
+        if(LLD.type === "empty" || LLD.type === "emptyish")
+            return 4;
+        return "end";
     },
 
     allowSoftContinuations: false,
@@ -28,7 +29,6 @@ export const indentedCodeBlock_traits: BlockTraits<"indentedCodeBlock"> = {
         type: "indentedCodeBlock",
         logical_line_start: -1,
         logical_line_extent: 0,
-        contents: [],
-        indention: ''
+        contents: []
     }
 };
