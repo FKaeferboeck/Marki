@@ -21,7 +21,11 @@ export interface LogicalLineData {
 
 export interface EmptySpace { };
 
-export interface ListItem { };
+export interface ListItem {
+	marker:         "*" | "-" | "+" | "." | ")";
+	marker_number?: number;
+	indent:         number;
+};
 
 export interface List {
 	listType: "Ordered" | "Bullet";
@@ -29,9 +33,10 @@ export interface List {
 }
 
 export interface FencedBlock {
-	fence_type:  "`" | "~";
+	fence_type:   "`" | "~";
 	fence_length: number; // will be 3 most commonly
-	indentation: number;
+	indentation:  number;
+	info_string:  string;
 };
 
 export interface Remark {

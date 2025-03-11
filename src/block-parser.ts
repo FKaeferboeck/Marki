@@ -10,6 +10,7 @@ import { Block, BlockBase, BlockType, BlockTypeMap, ContainerBlockBase, Extensio
 import { TextPart, LineStructure, lineType, LogicalLine, LinePart, LogicalLineType } from './parser';
 import { BlockParserTraitsList, BlockContinuationType, BlockTraits, ContainerBlockTraits } from './traits';
 import { sliceLLD } from './util';
+import { listItem_traits } from './blocks/listItem';
 
 
 
@@ -22,7 +23,8 @@ export const standardBlockParserTraits: BlockParserTraitsList = {
 	thematicBreak:        thematicBreak_traits,
 	sectionHeader_setext: sectionHeader_setext_traits,
 	indentedCodeBlock:    indentedCodeBlock_traits,
-	fenced:               fenced_traits
+	fenced:               fenced_traits,
+	listItem:             listItem_traits
 };
 
 
@@ -39,11 +41,12 @@ export interface BlockParser<BT extends Block> {
 	// assuming this line doesn't contain a block start that interrupts the block parsed herein, does that block continue in this logical line?
 	continues(LLD: LogicalLineData): BlockContinuationType;
 
-	acceptLine(LLD: LogicalLineData, bct: BlockContinuationType | "start"): void;
+	acceptLine(LLD: LogicalLineData, bct: BlockContinuationType | "start", prefix_length: number): void;
 
 	finish(): LogicalLineData; // store the finished block with its surrounding container, return the last line that was accepted
 
 	setCheckpoint(LLD: LogicalLineData): void;
+	getCheckpoint(): LogicalLineData | null;
 	MDP: MarkdownParser;
 	parent: BlockContainer | undefined;
 	B: BT;
@@ -60,7 +63,6 @@ export class BlockParser_Standard<K extends BlockType = ExtensionBlockType, Trai
 		this.type = traits.defaultBlockInstance.type;
 		this.traits = traits;
 		this.B = structuredClone(traits.defaultBlockInstance); // make a deep copy because the block object contains arrays
-		this.in_end_space = false;
 		this.useSoftContinuations = useSoftContinuations;
 	}
 
@@ -101,13 +103,17 @@ export class BlockParser_Standard<K extends BlockType = ExtensionBlockType, Trai
 		return (this.traits.allowSoftContinuations ? "soft" : "end");
 	}
 
-	acceptLine(LLD: LogicalLineData, bct: BlockContinuationType | "start") {
+	acceptLine(LLD: LogicalLineData, bct: BlockContinuationType | "start", prefix_length: number) {
+		if(this.traits.acceptLineHook && !this.traits.acceptLineHook.call(this, LLD, bct))
+			return;
 		if(bct === "start")
 			this.startLine = LLD;
 		if(this.checkpoint && LLD.logl_idx > this.checkpoint.logl_idx)
 			return;
 		this.lastLine = LLD;
 		this.B.logical_line_extent = LLD.logl_idx - this.B.logical_line_start + 1;
+		if(bct !== "last" || this.traits.lastIsContent)
+			this.B.contents.push(sliceLLD(LLD, prefix_length));
 	}
 
 	finish(): LogicalLineData {
@@ -115,18 +121,19 @@ export class BlockParser_Standard<K extends BlockType = ExtensionBlockType, Trai
 		if(this.parent)
 			this.parent.addContentBlock(this.B);
 		//container.addContentBlock(this.B);
+		if(this.MDP.diagnostics)    console.log(`Finish [${this.type}], to continue in line ${(this.lastLine?.logl_idx || 0) + 1}`)
 		return this.lastLine!;
 	}
 
 	setCheckpoint(LLD: LogicalLineData) { this.checkpoint = LLD; }
+	getCheckpoint(): LogicalLineData | null { return this.checkpoint || null; }
 	MDP: MarkdownParser;
 	parent: BlockContainer | undefined;
 	traits: Traits;
 	B: Traits["defaultBlockInstance"];
-	in_end_space: boolean;
 	isInterruption: boolean = false;
 	startLine:  LogicalLineData | undefined;
-	lastLine:   LogicalLineData | undefined;
+	lastLine:   LogicalLineData | undefined; // the line most recently added to the block through acceptLine()
 	checkpoint: LogicalLineData | undefined;
 	readonly useSoftContinuations: boolean;
 }
@@ -194,8 +201,8 @@ export class BlockParser_Container<K extends BlockType = ExtensionBlockType>
 		// an accepted soft continuation of a container block means an unprefixed soft continuation of the same line as content (which is a paragraph)
 		// contents of hard continuations have already been accepted during continues()
 		if(bct === "soft")
-			this.curContentParser.curParser?.acceptLine(LLD, "soft");
-        super.acceptLine(LLD, bct);
+			this.curContentParser.curParser?.acceptLine(LLD, "soft", 0);
+        super.acceptLine(LLD, bct, typeof bct === "number" ? bct : 0);
     }
 
     finish(): LogicalLineData {
@@ -299,6 +306,7 @@ export class MarkdownParser implements BlockContainer {
 		"sectionHeader",
 		"fenced",
 		"blockQuote",
+		"listItem",
 		"paragraph",
 		"sectionHeader_setext" // this only get used if a paragraph is rejected due to encountering "=======" (SETEXT header suffix)
 	];
@@ -357,9 +365,11 @@ export function startBlock(this: MarkdownParser, ctx: ParseState, LLD: LogicalLi
 	let I: IteratorResult<BlockParser<Block>, any> | undefined;
 	while(!(I = ctx.generator.next()).done) {
 		const PA = I.value;
-		//if(this.diagnostics)    console.log(`Trying "${PA.type}" for line ${LLD.logl_idx} -> ${PA.beginsHere(LLD, PA.B)}`);
-		if(PA.beginsHere(LLD, PA.B) >= 0) {
-			PA.acceptLine(LLD, "start");
+		
+		const n = PA.beginsHere(LLD, PA.B);
+		//if(this.diagnostics)    console.log(`Trying "${PA.type}" for line ${LLD.logl_idx} -> ${n}`);
+		if(n >= 0) {
+			PA.acceptLine(LLD, "start", n);
 			if(this.diagnostics)    console.log(`Processing line ${LLD.logl_idx} starting with [${LLD.startPart}] -> start ${PA.type}`);
 			ctx.curParser = PA;
 			return ctx;
@@ -394,7 +404,7 @@ export function processLine(this: MarkdownParser, PP: ParseState, LLD: LogicalLi
 			return { container,  retry: LLD_last.next!,  curParser: null,  generator: null }; // will start a new block in the current line
 		}
 	case "last":
-		curParser.acceptLine(LLD, bct);
+		curParser.acceptLine(LLD, bct, 0);
 		curParser.finish();
 		return { container,  curParser: null,  generator: null }; // will start a new block in the next line
 	case "reject":
@@ -407,7 +417,7 @@ export function processLine(this: MarkdownParser, PP: ParseState, LLD: LogicalLi
 			const P1 = this.startBlock({ container,  curParser: null,  generator: this.blockParserProvider.interrupters(curParser) }, LLD).curParser;
 			if(P1) {
 				curParser.finish();
-				P1.acceptLine(LLD, "start");
+				P1.acceptLine(LLD, "start", 0); // TODO!! Prefix length
 				PP.curParser = P1;
 				// since the generator would only be used if this block gets rejected, and we don't allow rejection on an interruption, we don't pass on the generator
 				PP.generator = null;
@@ -415,11 +425,11 @@ export function processLine(this: MarkdownParser, PP: ParseState, LLD: LogicalLi
 			}
 		}
 		// soft continuation wasn't interrupted, we can accept it
-		curParser.acceptLine(LLD, bct);
+		curParser.acceptLine(LLD, bct, 0);
 		if(this.diagnostics)    console.log(`Not interrupted -> accept line ${LLD.logl_idx} as ${PP.curParser?.type}`)
 		return PP;
 	default: // hard accept
-		curParser.acceptLine(LLD, bct);
+		curParser.acceptLine(LLD, bct, bct);
 		return PP;
 	}
 }
@@ -430,6 +440,7 @@ export function processLines(this: MarkdownParser, LLD0: LogicalLineData, LLD1: 
 	let curLLD: LogicalLineData | null = LLD0;
 	while(curLLD && curLLD !== LLD1) {
 		PP = this.processLine(PP, curLLD);
+		//if(this.diagnostics)    console.log(PP.retry)
 		if(PP.retry)
 			curLLD = PP.retry;
 		else {

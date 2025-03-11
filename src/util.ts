@@ -17,8 +17,8 @@ function measureIndent(s: string, i0: number = 0) {
 
 
 export function sliceLLD(LLD: LogicalLineData, begin: number): LogicalLineData {
-    if(begin < 0 || LLD.startPart.length < begin)
-        throw new Error('Cannot slice LLD');
+    /*if(begin < 0 || LLD.startPart.length < begin)
+        throw new Error('Cannot slice LLD');*/
     const p0 = LLD.startPart.slice(begin);
     const parts = [ ... LLD.parts ];
     if(p0.length > 0)

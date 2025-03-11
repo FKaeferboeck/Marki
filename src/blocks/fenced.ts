@@ -1,30 +1,30 @@
 import { BlockParser_Standard } from "../block-parser";
-import { LogicalLineData } from "../markdown-types";
+import { FencedBlock, LogicalLineData } from "../markdown-types";
 import { BlockTraits } from "../traits";
-
-export interface IndentedCodeBlock {
-    indention: string;
-};
+import { standardBlockStart } from "../util";
 
 
 export const fenced_traits: BlockTraits<"fenced"> = {
-    startsHere(LLD: LogicalLineData, B) {
-        const rexres = /^(`{3,}|~{3,})(\s|$)/.exec(LLD.startPart);
+    startsHere(LLD, B) {
+        if(!standardBlockStart(LLD))
+            return -1;
+        const rexres = /^(?:`{3,}|~{3,})/.exec(LLD.startPart);
         if(!rexres)
             return -1;
-        
-        if(rexres[0].length > 3) {
-            // TODO!! Handle the info string
-        }
-        B.fence_type   = rexres[1].charAt(0) as "`" | "~";
-        B.fence_length = rexres[1].length;
+
+        B.fence_type   = LLD.startPart.charAt(0) as FencedBlock["fence_type"];
+        B.fence_length = rexres[0].length;
+        B.info_string  = LLD.startPart.slice(B.fence_length).trim();
         return 0;
     },
+
     continuesHere(LLD, B) {
-        const rex = new RegExp(`^${B.fence_type}{${B.fence_length},}\s*$`);
-        if(LLD.startIndent < 4 && rex.test(LLD.startPart))
-            return "last";
-        return 0;
+        if(LLD.type == "single" && LLD.startIndent < 4) {
+            const rex = new RegExp(`^${B.fence_type}{${B.fence_length},}\s*$`);
+            if(rex.test(LLD.startPart))
+                return "last";
+        }
+        return B.indentation;
     },
 
     allowSoftContinuations: false,
@@ -38,6 +38,7 @@ export const fenced_traits: BlockTraits<"fenced"> = {
         contents: [],
         fence_type:   "`",
         fence_length: 3,
-        indentation:  0
+        indentation:  0,
+        info_string:  ''
     }
 };

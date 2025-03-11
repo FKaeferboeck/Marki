@@ -17,6 +17,7 @@ export const sectionHeader_traits: BlockTraits<"sectionHeader"> = {
         if(!rexres)
             return -1;
         B.level = rexres[1].length;
+        //console.log(`[${rexres[1]}] => ${B.level}`)
         return rexres[0].length;
     },
     continuesHere() { return "end"; }, // section headers are single-line

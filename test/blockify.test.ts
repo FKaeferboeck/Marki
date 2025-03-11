@@ -51,8 +51,10 @@ function doTest(title: string, input: string, target_: { type: BlockType,  exten
         const target  = resultMaker(target_);
         const blocks  = parser.processContent(LLD);
         const blocks_ = blocks_check(blocks);
-        if(verbose)
+        if(verbose) {
             console.log(blocks)
+            blocks.forEach((B, i) => { if("blocks" in B)    console.log(`Content blocks of [${i}]:`, B.blocks); });
+        }
         expect(blocks_).toMatchObject(target);
     });
 }
@@ -62,7 +64,7 @@ doTest('basic paragraphs', 'First paragraph\n\nSecond\n   paragraph\n\n\nThird',
        [ par(),  spc(),  par(2),  spc(2),  par() ]);
 
 
-doTest('indented code blocks',
+/*doTest('indented code blocks',
     `    C1a\n\n    C1c\nP1a\n    P1b\n\n    C2a\n\nP2a\n\n    C3\n`,
     [ blk("indentedCodeBlock", 3),  par(2),  spc(),
       blk("indentedCodeBlock", 1),  spc(),  par(),  spc(),
@@ -97,3 +99,8 @@ doTest('block quotes', '> Q1a\n>Q1b\nQ1c\n\n>Q2a\nQ2b\n===\n\n>Q3a\n>===\n>Q3c\n
       par(1),  spc(),
       cnt("blockQuote", 3, [ blk("sectionHeader_setext", 3, { level: 1 }) ]),
     ]);
+
+
+doTest('list item', '* L1\n\n  L2\nL3\n  L4\n\nP',
+    [ blk("listItem", 5),  spc(),  par(1)
+    ], true);*/

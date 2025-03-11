@@ -23,11 +23,14 @@ export interface BlockTraits<T extends BlockType = ExtensionBlockType> {
      */
     continuesHere?(this: BlockParser<BlockBase<T>>, data: LogicalLineData, B: BlockBase<T>): BlockContinuationType | undefined;
 
+    acceptLineHook?(this: BlockParser<BlockBase<T>>, LLD: LogicalLineData, bct: BlockContinuationType | "start") : boolean;
+
     continuationPrefix?: RegExp| ((LLD: LogicalLineData, B: BlockBase<T>) => number);
     
     allowSoftContinuations: boolean;
     canBeSoftContinuation?: boolean; // default true
     allowCommentLines: boolean;
+    lastIsContent?: boolean; // if a line is continuation type "last" it will still be added to the block content - default false
     creator: (MDP: MarkdownParser) => BlockParser<BlockBase<T>>; //BlockParserClass<T>;
     defaultBlockInstance: BlockBase<T>;
 }
@@ -37,7 +40,7 @@ export interface BlockTraits<T extends BlockType = ExtensionBlockType> {
 export interface ContainerBlockTraits<T extends BlockType> extends BlockTraits<T> {
     isContainer: true;
 
-    startsHere(data: LogicalLineData, B: ContainerBlockBase<T>): number;
+    startsHere(this: BlockParser_Container<T>, data: LogicalLineData, B: ContainerBlockBase<T>): number;
 
     creator: (MDP: MarkdownParser) => BlockParser_Container<T>; //BlockParser<ContainerBlockBase<T>>; //BlockParserClass<T>;
     defaultBlockInstance: ContainerBlockBase<T>;
