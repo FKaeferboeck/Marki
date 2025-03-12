@@ -108,12 +108,31 @@ export class BlockParser_Standard<K extends BlockType = ExtensionBlockType, Trai
 			return;
 		if(bct === "start")
 			this.startLine = LLD;
+		//if(this.MDP.diagnostics)    console.log('acceptLine into', this.type, LLD, prefix_length, sliceLLD(LLD, prefix_length))
+
+		// We prepare the content part of the line for acceptance, even if we don't accept it right away due to checkpoint (and perhaps never will)
+		// This way when the next checkpoint arrives we have the pending content lines in the linked list.
+		if(bct !== "last" || this.traits.lastIsContent) {
+			let LLD_content = sliceLLD(LLD, prefix_length);
+			if(this.traits.postprocessContentLine)
+				LLD_content = this.traits.postprocessContentLine.call(this, LLD_content, bct);
+			if(this.lastPreparedContent)
+				this.lastPreparedContent.next = LLD_content;
+			this.lastPreparedContent = LLD_content;
+		}
+
 		if(this.checkpoint && LLD.logl_idx > this.checkpoint.logl_idx)
 			return;
 		this.lastLine = LLD;
 		this.B.logical_line_extent = LLD.logl_idx - this.B.logical_line_start + 1;
-		if(bct !== "last" || this.traits.lastIsContent)
-			this.B.contents.push(sliceLLD(LLD, prefix_length));
+		if(bct !== "last" || this.traits.lastIsContent) {
+			// flush pending content lines to the block contents array
+			const n = this.B.contents.length;
+			let LLD_content = (n > 0 ? (this.B.contents[n - 1] as LogicalLineData).next : this.lastPreparedContent!)
+			for(;  LLD_content;  LLD_content = LLD_content.next) {
+				this.B.contents.push(LLD_content);
+			}
+		}
 	}
 
 	finish(): LogicalLineData {
@@ -135,6 +154,7 @@ export class BlockParser_Standard<K extends BlockType = ExtensionBlockType, Trai
 	startLine:  LogicalLineData | undefined;
 	lastLine:   LogicalLineData | undefined; // the line most recently added to the block through acceptLine()
 	checkpoint: LogicalLineData | undefined;
+	lastPreparedContent: LogicalLineData | undefined;
 	readonly useSoftContinuations: boolean;
 }
 
@@ -417,7 +437,7 @@ export function processLine(this: MarkdownParser, PP: ParseState, LLD: LogicalLi
 			const P1 = this.startBlock({ container,  curParser: null,  generator: this.blockParserProvider.interrupters(curParser) }, LLD).curParser;
 			if(P1) {
 				curParser.finish();
-				P1.acceptLine(LLD, "start", 0); // TODO!! Prefix length
+				//P1.acceptLine(LLD, "start", 0); // TODO!! Prefix length
 				PP.curParser = P1;
 				// since the generator would only be used if this block gets rejected, and we don't allow rejection on an interruption, we don't pass on the generator
 				PP.generator = null;

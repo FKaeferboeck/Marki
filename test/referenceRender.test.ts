@@ -18,6 +18,8 @@ function doTest(title: string, input: string[], verbose?: boolean) {
         input.forEach(s => {
             const LS        = linify(s);
             const LLD       = lineDataAll(LS, 0);
+            parser.diagnostics = verbose || false;
+            //console.log(parser.diagnostics, verbose)
             const blocks    = parser.processContent(LLD);
             const my_result = referenceRender(blocks);
 
@@ -54,7 +56,46 @@ doTest('thematic breaks', [
 
 
 doTest('ATX headings', [
-    `# foo\n## foo\n### foo\n#### foo\n##### foo\n###### foo`
+    `# foo\n## foo\n### foo\n#### foo\n##### foo\n###### foo`,
+    `####### foo`, // More than six # characters is not a heading
+    `#5 bolt\n\n#hashtag`, // space after # required
+    //`\\## foo`, // This is not a heading, because the first # is escaped
+    //`# foo *bar* \\*baz\\*`, // Contents are parsed as inlines
+    `#                  foo                     `, // Leading and trailing spaces or tabs are ignored in parsing inline content
+    ` ### foo\n  ## foo\n   # foo`, // Up to three spaces of indentation are allowed
+    `    # foo`,      // Four spaces of indentation is too many
+    `foo\n    # bar`, // 
+    `## foo ##\n  ###   bar    ###`, // A closing sequence of # characters is optional
+    `# foo ##################################\n##### foo ##`, // It need not be the same length as the opening sequence
+    `### foo ###     `, // Spaces or tabs are allowed after the closing sequence
+    `### foo ### b`,
+    `# foo#`, // closing sequence must be preceded by a space or tab
+    //`### foo \\###\n## foo #\\##\n# foo \\#`, // Backslash-escaped # characters do not count as part of the closing sequence
+    `****\n## foo\n****`, // ATX headings need not be separated from surrounding content by blank lines, and they can interrupt paragraphs
+    `Foo bar\n# baz\nBar foo`,
+    `## \n#\n### ###` // ATX headings can be empty
+]);
+
+
+doTest('setext headings', [
+    //`Foo *bar*\n=========\n\nFoo *bar*\n---------`,
+    //`Foo *bar\nbaz*\n====`, // The content of the header may span more than one line
+    //`  Foo *bar\nbaz*\t\n====`, // surrounding space
+    `Foo\n-------------------------\n\nFoo\n=`, // The underlining can be any length
+    `   Foo\n---\n\n  Foo\n-----\n\n  Foo\n  ===`, // The heading content can be preceded by up to three spaces of indentation, and need not line up with the underlining
+    `    Foo\n    ---\n\n    Foo\n---`, // Four spaces of indentation is too many
+    `Foo\n= =\n\nFoo\n--- -`, // The setext heading underline cannot contain internal spaces or tabs
+    //`Foo  \n-----`, // Trailing spaces or tabs in the content line do not cause a hard line break
+    `Foo\\\n----`, // Nor does a backslash at the end
+    //`\`Foo\n----\n\`\n\n<a title="a lot\n---\nof dashes"/>`, // indicators of block structure take precedence over indicators of inline structure
+    `> Foo\n---`, // The setext heading underline cannot be a lazy continuation line in a list item or block quote
+    ``, // 
+    ``, // 
+    ``, // 
+    ``, // 
+    ``, // 
+    ``, // 
+    ``, // 
 ]);
 
 
@@ -68,44 +109,3 @@ doTest('basic paragraphs', [
     //`aaa     \nbbb     `
 ]);
 
-
-/*doTest('indented code blocks',
-    `    C1a\n\n    C1c\nP1a\n    P1b\n\n    C2a\n\nP2a\n\n    C3\n`,
-    [ blk("indentedCodeBlock", 3),  par(2),  spc(),
-      blk("indentedCodeBlock", 1),  spc(),  par(),  spc(),
-      blk("indentedCodeBlock", 1),  spc()
-    ]);
-
-
-doTest('setext headings',
-    `Headline\nsecond line\n==========  \nA paragraph\n===X\n\nHeader 2\n   -\n===`,
-    [ blk("sectionHeader_setext", 3, { level: 1 }),  par(2),  spc(),  blk("sectionHeader_setext", 2, { level: 2 }),  par() ]);
-
-
-doTest('ATX headings',
-    `paragraph\n# H1\n##p\n   ####\n###### H6 ###`,
-    [ par(),  blk("sectionHeader", 1, { level: 1 }),  par(),  blk("sectionHeader", 1, { level: 4 }), blk("sectionHeader", 1, { level: 6 }) ]);
-
-
-doTest('thematic breaks',
-    'P1\n***\n   -  - - ---   \n__\n___\nP3\n----',
-    [ par(1),  blk("thematicBreak", 1, { ruleType: "*" }),  blk("thematicBreak", 1, { ruleType: "-" }),
-      par(1),  blk("thematicBreak", 1, { ruleType: "_" }),
-      blk("sectionHeader_setext", 2, { level: 2 })
-    ]);
-
-
-doTest('block quotes', '> Q1a\n>Q1b\nQ1c\n\n>Q2a\nQ2b\n===\n\n>Q3a\n>===\n>Q3c\n>---\npara\n\n>Q4a\nQ4b\n>===',
-    [ cnt("blockQuote", 3, [ par(3) ]),
-      spc(),
-      cnt("blockQuote", 2, [ par(2) ]),
-      par(1), spc(),
-      cnt("blockQuote", 4, [ blk("sectionHeader_setext", 2, { level: 1 }),  blk("sectionHeader_setext", 2, { level: 2 }) ]),
-      par(1),  spc(),
-      cnt("blockQuote", 3, [ blk("sectionHeader_setext", 3, { level: 1 }) ]),
-    ]);
-
-
-doTest('list item', '* L1\n\n  L2\nL3\n  L4\n\nP',
-    [ blk("listItem", 5),  spc(),  par(1)
-    ], true);*/

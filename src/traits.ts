@@ -25,6 +25,9 @@ export interface BlockTraits<T extends BlockType = ExtensionBlockType> {
 
     acceptLineHook?(this: BlockParser<BlockBase<T>>, LLD: LogicalLineData, bct: BlockContinuationType | "start") : boolean;
 
+    /* in case content lines need to be transformed in some way when adding them to the block content */
+    postprocessContentLine?(this: BlockParser<BlockBase<T>>, LLD: LogicalLineData, bct: BlockContinuationType | "start") : LogicalLineData;
+
     continuationPrefix?: RegExp| ((LLD: LogicalLineData, B: BlockBase<T>) => number);
     
     allowSoftContinuations: boolean;

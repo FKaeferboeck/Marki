@@ -19,7 +19,7 @@ function measureIndent(s: string, i0: number = 0) {
 export function sliceLLD(LLD: LogicalLineData, begin: number): LogicalLineData {
     /*if(begin < 0 || LLD.startPart.length < begin)
         throw new Error('Cannot slice LLD');*/
-    const p0 = LLD.startPart.slice(begin);
+    const p0 = (' '.repeat(LLD.startIndent) + LLD.startPart).slice(begin);
     const parts = [ ... LLD.parts ];
     if(p0.length > 0)
         parts[0].content = p0;

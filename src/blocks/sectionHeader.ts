@@ -17,10 +17,14 @@ export const sectionHeader_traits: BlockTraits<"sectionHeader"> = {
         if(!rexres)
             return -1;
         B.level = rexres[1].length;
-        //console.log(`[${rexres[1]}] => ${B.level}`)
-        return rexres[0].length;
+        return rexres[0].length + LLD.startIndent;
     },
     continuesHere() { return "end"; }, // section headers are single-line
+
+    postprocessContentLine(LLD) {
+        LLD.startPart = LLD.startPart.replace(/(?:\s+#+|^#+)?\s*$/, ''); // handle trailing space and closing sequences
+        return LLD;
+    },
 
     allowSoftContinuations: false,
     allowCommentLines: false,
