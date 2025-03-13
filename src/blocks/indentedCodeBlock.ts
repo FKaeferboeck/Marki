@@ -12,13 +12,14 @@ export const indentedCodeBlock_traits: BlockTraits<"indentedCodeBlock"> = {
         return 4;
     },
     continuesHere(LLD) {
-        if(LLD.startIndent >= 4) {
-            this.setCheckpoint(LLD);   
-            return 4;
-        }
         if(LLD.type === "empty" || LLD.type === "emptyish")
             return 4;
-        return "end";
+
+        if(LLD.startIndent < 4)
+            return "end";
+
+        this.setCheckpoint(LLD);   
+        return 4;
     },
 
     allowSoftContinuations: false,

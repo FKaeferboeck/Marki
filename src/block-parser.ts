@@ -301,7 +301,7 @@ export class MarkdownParser implements BlockContainer {
 		let LLD0: LogicalLineData | null = LLD;
 		while(LLD0) {
 			const P = this.processLines(LLD0, null, { container: this,  curParser: null,  generator: null });
-			if(this.diagnostics)    console.log(`Coming out of parsing with open block`, P.curParser?.type);
+			if(this.diagnostics)    console.log(`Coming out of parsing with open block`, P.curParser?.type, P.curParser?.B.contents, P.curParser?.getCheckpoint());
 			LLD0 = (P.curParser?.finish()?.next || null);
 		}
 		
