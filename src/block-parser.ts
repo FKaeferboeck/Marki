@@ -30,6 +30,7 @@ export const standardBlockParserTraits: BlockParserTraitsList = {
 
 export interface BlockContainer {
 	addContentBlock(B: Block): void;
+	blockContainerType: "containerBlock" | "MarkdownParser";
 }
 
 
@@ -39,7 +40,7 @@ export interface BlockParser<BT extends Block> {
 	beginsHere(LLD: LogicalLineData, curBlock: Block | undefined): number;
 
 	// assuming this line doesn't contain a block start that interrupts the block parsed herein, does that block continue in this logical line?
-	continues(LLD: LogicalLineData): BlockContinuationType;
+	continues(LLD: LogicalLineData, isSoftContainerContinuation?: boolean): BlockContinuationType;
 
 	acceptLine(LLD: LogicalLineData, bct: BlockContinuationType | "start", prefix_length: number): void;
 
@@ -80,9 +81,9 @@ export class BlockParser_Standard<K extends BlockType = ExtensionBlockType, Trai
 		return starts;
 	}
 
-	continues(LLD: LogicalLineData): BlockContinuationType {
+	continues(LLD: LogicalLineData, isSoftContainerContinuation?: boolean): BlockContinuationType {
 		if (this.traits.continuesHere) {
-			const x = this.traits.continuesHere.call(this, LLD, this.B);
+			const x = this.traits.continuesHere.call(this, LLD, isSoftContainerContinuation);
 			if(typeof x !== "undefined")
 				return x;
 		}
@@ -204,7 +205,7 @@ export class BlockParser_Container<K extends BlockType = ExtensionBlockType>
             if(cop.curParser?.type !== "paragraph")
                 return "end";
 
-			cont = cop.curParser.continues(LLD);
+			cont = cop.curParser.continues(LLD, true);
 			// The following behavior isn't fully clear from the CommonMark specification in my opinion, but we replicate what the CommonMark reference implementation does:
 			if(cont === "reject")
 				cont = "end";
@@ -232,6 +233,7 @@ export class BlockParser_Container<K extends BlockType = ExtensionBlockType>
 
     private curContentParser: ParseState;
 	private prevReadContent: LogicalLineData | null = null;
+	blockContainerType = "containerBlock" as const;
 }
 
 
@@ -371,6 +373,7 @@ export class MarkdownParser implements BlockContainer {
 	
 	addContentBlock(B: Block) { this.blocks.push(B); }
 	blocks: Block[] = [];
+	blockContainerType = "MarkdownParser" as const;
 	diagnostics = false;
 };
 

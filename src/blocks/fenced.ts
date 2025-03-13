@@ -18,13 +18,13 @@ export const fenced_traits: BlockTraits<"fenced"> = {
         return 0;
     },
 
-    continuesHere(LLD, B) {
+    continuesHere(LLD) {
         if(LLD.type == "single" && LLD.startIndent < 4) {
-            const rex = new RegExp(`^${B.fence_type}{${B.fence_length},}\s*$`);
+            const rex = new RegExp(`^${this.B.fence_type}{${this.B.fence_length},}\s*$`);
             if(rex.test(LLD.startPart))
                 return "last";
         }
-        return B.indentation;
+        return this.B.indentation;
     },
 
     allowSoftContinuations: false,

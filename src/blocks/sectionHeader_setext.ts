@@ -14,10 +14,10 @@ export const sectionHeader_setext_traits: BlockTraits<"sectionHeader_setext"> = 
     startsHere(data: LogicalLineData, B) {
         return 0; // because this will only be called when all other possibilities have been excluded
     },
-    continuesHere(LLD, B) {
+    continuesHere(LLD) {
         const n = setext_end_line(LLD);
         if(n < 0)    return "soft";
-        B.level = n;
+        this.B.level = n;
         return "last";
     },
 

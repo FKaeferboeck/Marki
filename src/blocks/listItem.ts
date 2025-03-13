@@ -21,13 +21,13 @@ export const listItem_traits: ContainerBlockTraits<"listItem"> = {
         return B.indent;
     },
     
-    continuesHere(LLD, B) {
-        if(LLD.startIndent >= B.indent) {
+    continuesHere(LLD) {
+        if(LLD.startIndent >= this.B.indent) {
             this.setCheckpoint(LLD);
-            return B.indent;
+            return this.B.indent;
         }
         if(LLD.type === "empty")
-            return B.indent;
+            return this.B.indent;
 
         return (LLD === this.getCheckpoint()?.next ? "soft" : "end");
     },

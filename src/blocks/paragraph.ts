@@ -9,14 +9,14 @@ export interface Paragraph { };
 
 export const paragraph_traits: BlockTraits<"paragraph"> = {
     startsHere(LLD: LogicalLineData) { return 0; },
-    continuesHere(LLD: LogicalLineData, B: BlockBase<"paragraph">): BlockContinuationType | undefined {
+    continuesHere(LLD: LogicalLineData, isSoftContainerContinuation?: boolean): BlockContinuationType | undefined {
         /* By the philosophy of the parsing algorithm we should look for SETEXT headers before looking for a paragraph and
          * paragraphs shouldn't be aware that such a thing as a SETEXT header even exists.
          * However paragraphs are common and SETEXT headers are rare, so we would parse most markdown content twice, looking
          * for SETEXT headers that aren't there.
          * So as a small optimization we scan for paragraphs first and reject them if it would be a SETEXT header instead.
          */
-        if(setext_end_line(LLD) > 0)
+        if(!isSoftContainerContinuation && setext_end_line(LLD) > 0)
             return "reject";
         return undefined;
     },

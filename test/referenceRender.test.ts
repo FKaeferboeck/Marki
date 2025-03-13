@@ -88,14 +88,20 @@ doTest('setext headings', [
     //`Foo  \n-----`, // Trailing spaces or tabs in the content line do not cause a hard line break
     `Foo\\\n----`, // Nor does a backslash at the end
     //`\`Foo\n----\n\`\n\n<a title="a lot\n---\nof dashes"/>`, // indicators of block structure take precedence over indicators of inline structure
-    `> Foo\n---`, // The setext heading underline cannot be a lazy continuation line in a list item or block quote
-    ``, // 
-    ``, // 
-    ``, // 
-    ``, // 
-    ``, // 
-    ``, // 
-    ``, // 
+    `> Foo\n---`,      // The setext heading underline cannot be a lazy continuation line in a list item or block quote
+    `> foo\nbar\n===`,
+    //`- Foo\n---`,
+    `Foo\nBar\n---`, // multiline heading content
+    `---\nFoo\n---\nBar\n---\nBaz`, //  a blank line is not required before or after setext headings
+    `\n====`, // Setext headings cannot be empty
+    `---\n---`,
+    //`- foo\n-----`,
+    `    foo\n---`,
+    `> foo\n-----`,
+    `Foo\n\nbar\n---\nbaz`, // 103
+    `Foo\nbar\n\n---\n\nbaz`, // 104
+    `Foo\nbar\n\n* * *\nbaz`, // 105
+    //`Foo\nbar\n\\---\nbaz` // 106
 ]);
 
 

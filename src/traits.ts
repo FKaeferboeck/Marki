@@ -21,7 +21,7 @@ export interface BlockTraits<T extends BlockType = ExtensionBlockType> {
     /* returning undefined means the function doesn't make a decision whether to continue the block here,
      * and leaves it to the subsequent standard algorithm instead.
      */
-    continuesHere?(this: BlockParser<BlockBase<T>>, data: LogicalLineData, B: BlockBase<T>): BlockContinuationType | undefined;
+    continuesHere?(this: BlockParser<BlockBase<T>>, data: LogicalLineData, isSoftContainerContinuation?: boolean): BlockContinuationType | undefined;
 
     acceptLineHook?(this: BlockParser<BlockBase<T>>, LLD: LogicalLineData, bct: BlockContinuationType | "start") : boolean;
 
