@@ -105,6 +105,22 @@ doTest('setext headings', [
 ]);
 
 
+doTest('indented code blocks', [
+    `    a simple\n      indented code block`, // 107
+    //`  - foo\n\n    bar`, // item list takes precedence
+    //`1.  foo\n\n    - bar`, // 109
+    //`    <a/>\n    *hi*\n\n    - one`, // The contents of a code block are literal text, and do not get parsed as Markdown
+    `    chunk1\n\n    chunk2\n  \n \n \n    chunk3`, // Here we have three chunks separated by blank lines
+    `    chunk1\n      \n      chunk2`, // Any initial spaces or tabs beyond four spaces of indentation will be included in the content, even in interior blank lines
+    `Foo\n    bar`, // An indented code block cannot interrupt a paragraph
+    `    foo\nbar`, // any non-blank line with fewer than four spaces of indentation ends the code block immediately
+    `# Heading\n    foo\nHeading\n------\n    foo\n----`, // And indented code can occur immediately before and after other kinds of blocks
+    `        foo\n    bar`, // The first line can be preceded by more than four spaces of indentation
+    `\n    \n    foo\n    `, // Blank lines preceding or following an indented code block are not included in it
+    `    foo  ` // Trailing spaces or tabs are included in the code block’s content
+]);
+
+
 doTest('basic paragraphs', [
     `aaa\n\nbbb`,
     `aaa\nbbb\n\nccc\nddd`,

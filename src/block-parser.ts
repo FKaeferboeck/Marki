@@ -132,6 +132,7 @@ export class BlockParser_Standard<K extends BlockType = ExtensionBlockType, Trai
 			let LLD_content = (n > 0 ? (this.B.contents[n - 1] as LogicalLineData).next : this.lastPreparedContent!)
 			for(;  LLD_content;  LLD_content = LLD_content.next) {
 				this.B.contents.push(LLD_content);
+				if(this.MDP.diagnostics)    console.log('Adding content', LLD_content)
 			}
 		}
 	}

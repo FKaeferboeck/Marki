@@ -1,11 +1,14 @@
 import { Block, BlockBase, LogicalLineData } from "../markdown-types";
 
 
-function renderBlockContent(B: Block) {
+function renderBlockContent(B: Block, literal: boolean = false) {
     if("blocks" in B)
         return (B.blocks as Block[]).map(renderBlock).join('\n');
     const C = B.contents as LogicalLineData[];
-    return C.map(LLD => LLD.startPart).join('\n');
+    if(literal)
+        return C.map(LLD => ' '.repeat(LLD.startIndent) + LLD.startPart).join('\n');
+    else
+        return C.map(LLD => LLD.startPart).join('\n');
 }
 
 
@@ -18,7 +21,7 @@ function renderBlock(B: Block) {
     case "paragraph":
         return `<p>${renderBlockContent(B)}</p>`;
     case "indentedCodeBlock":
-        return `<pre><code>${renderBlockContent(B)}\n</code></pre>`;
+        return `<pre><code>${renderBlockContent(B, true)}\n</code></pre>`;
     case "blockQuote":
         return `<blockquote>\n${renderBlockContent(B)}\n</blockquote>`
     case "sectionHeader_setext":
