@@ -199,7 +199,7 @@ doTest('block quotes', [
     '> bar\nbaz', // However, because of laziness, a blank line is needed between a block quote and a following paragraph
     '> bar\n\nbaz', // 248
     '> bar\n>\nbaz', // 249
-    //'> > > foo\nbar', // any number of initial >s may be omitted on a continuation line of a nested block quote
-    //'>>> foo\n> bar\n>>baz', // 251
+    '> > > foo\nbar', // any number of initial >s may be omitted on a continuation line of a nested block quote
+    '>>> foo\n> bar\n>>baz', // 251
     '>     code\n\n>    not code' // 252
 ])

@@ -53,6 +53,7 @@ export interface BlockParser<BT extends Block> {
 	B: BT;
 	isInterruption: boolean;
 	startLine: LogicalLineData | undefined;
+	blockContainerType: BlockContainer["blockContainerType"] | "none";
 }
 
 
@@ -157,6 +158,7 @@ export class BlockParser_Standard<K extends BlockType = ExtensionBlockType, Trai
 	lastLine:   LogicalLineData | undefined; // the line most recently added to the block through acceptLine()
 	checkpoint: LogicalLineData | undefined;
 	lastPreparedContent: LogicalLineData | undefined;
+	blockContainerType: BlockContainer["blockContainerType"] | "none" = "none";
 	readonly useSoftContinuations: boolean;
 }
 
@@ -203,14 +205,19 @@ export class BlockParser_Container<K extends BlockType = ExtensionBlockType>
 			}
 		}
 		else if(cont === "soft") {
-            const cop = this.curContentParser;
-            // only paragraph content can softly continue a container block
-            if(cop.curParser?.type !== "paragraph")
-                return "end";
+			const P = this.curContentParser.curParser;
+			if(!P)
+				throw new Error('Continuing line of a block container but there is no current content parser');
 
-			cont = cop.curParser.continues(LLD, true);
+			// only paragraph content can softly continue a container block
+			// if there's nested block containers the innermost content is the one that counts, so we delegate the decision to the inner container
+			if(P.blockContainerType == "none" && P.type !== "paragraph")
+				return "end";
+
+			cont = P.continues(LLD, true);
 			if(cont === "soft")
 				LLD.isSoftContainerContinuation = true;
+			
 			// The following behavior isn't fully clear from the CommonMark specification in my opinion, but we replicate what the CommonMark reference implementation does:
 			if(cont === "reject")
 				cont = "end";
