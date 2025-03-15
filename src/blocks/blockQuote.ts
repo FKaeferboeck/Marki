@@ -11,7 +11,7 @@ export interface BlockQuote {
 
 export const blockQuote_traits: ContainerBlockTraits<"blockQuote"> = {
     isContainer: true,
-    startsHere(LLD: LogicalLineData, B) {
+    startsHere(LLD: LogicalLineData) {
         if(!(standardBlockStart(LLD) && LLD.startPart.startsWith('>')))
             return -1;
         return (/^>\s/.test(LLD.startPart) ? 2 : 1) + LLD.startIndent;

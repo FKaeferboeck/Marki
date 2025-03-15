@@ -37,7 +37,7 @@ export interface BlockContainer {
 export interface BlockParser<BT extends Block> {
 	type: BlockType;
 	// Does a block of this type begin in that logical line, and can it interrupt the given currently open block?
-	beginsHere(LLD: LogicalLineData, curBlock: Block | undefined): number;
+	beginsHere(LLD: LogicalLineData, interrupting?: BlockType | undefined): number;
 
 	// assuming this line doesn't contain a block start that interrupts the block parsed herein, does that block continue in this logical line?
 	continues(LLD: LogicalLineData, isSoftContainerContinuation?: boolean): BlockContinuationType;
@@ -70,11 +70,11 @@ export class BlockParser_Standard<K extends BlockType = ExtensionBlockType, Trai
 
 	static textLines = { text: true,  single: true };
 
-	beginsHere(LLD: LogicalLineData, curBlock: Block | undefined): number {
+	beginsHere(LLD: LogicalLineData, interrupting?: BlockType | undefined): number {
 		if(!BlockParser_Standard.textLines[LLD.type])
 			return -1;
 
-		const starts = this.traits.startsHere.call(this, LLD, this.B);
+		const starts = this.traits.startsHere.call(this, LLD, this.B, interrupting);
 		if(starts < 0)    return -1;
 		this.B.logical_line_start  = LLD.logl_idx;
 		this.B.logical_line_extent = 1;
@@ -140,6 +140,8 @@ export class BlockParser_Standard<K extends BlockType = ExtensionBlockType, Trai
 
 	finish(): LogicalLineData {
 		//if(this.MDP.diagnostics)    console.log('add content to', this.parent)
+		if(this.traits.finalizeBlockHook)
+			this.traits.finalizeBlockHook.call(this);
 		if(this.parent)
 			this.parent.addContentBlock(this.B);
 		//container.addContentBlock(this.B);
@@ -173,8 +175,8 @@ export class BlockParser_Container<K extends BlockType = ExtensionBlockType>
         this.curContentParser = { container: this,  curParser: null,  generator: null };
     }
 
-    beginsHere(LLD: LogicalLineData, curBlock: Block | undefined): number {
-        const n0 = super.beginsHere(LLD, curBlock);
+    beginsHere(LLD: LogicalLineData, interrupting?: BlockType | undefined): number {
+        const n0 = super.beginsHere(LLD, interrupting);
 		if(n0 < 0)
 			return n0;
 		const LLD_c = sliceLLD(LLD, n0);
@@ -217,7 +219,7 @@ export class BlockParser_Container<K extends BlockType = ExtensionBlockType>
 			cont = P.continues(LLD, true);
 			if(cont === "soft")
 				LLD.isSoftContainerContinuation = true;
-			
+
 			// The following behavior isn't fully clear from the CommonMark specification in my opinion, but we replicate what the CommonMark reference implementation does:
 			if(cont === "reject")
 				cont = "end";
@@ -243,6 +245,10 @@ export class BlockParser_Container<K extends BlockType = ExtensionBlockType>
         return super.finish();
 	}
 
+	curContentType() {
+		return this.curContentParser.curParser?.type;
+	}
+
     private curContentParser: ParseState;
 	private prevReadContent: LogicalLineData | null = null;
 	blockContainerType = "containerBlock" as const;
@@ -256,7 +262,7 @@ export class BlockParser_EmptySpace extends BlockParser_Standard<"emptySpace"> {
         super(MDP, traits, useSoftContinuations);
 	}
 
-    beginsHere(LLD: LogicalLineData, curBlock: Block | undefined): number {
+    beginsHere(LLD: LogicalLineData): number {
         if(!BlockParser_EmptySpace.empties[LLD.type])
             return -1;
         this.B.logical_line_start  = LLD.logl_idx;
@@ -348,7 +354,8 @@ export class MarkdownParser implements BlockContainer {
 		"thematicBreak",
 		"sectionHeader",
 		"fenced", // also in CommonMark mode
-		"blockQuote"
+		"blockQuote",
+		"listItem"
 	];
 
 	blockParserProvider = {
@@ -366,13 +373,14 @@ export class MarkdownParser implements BlockContainer {
 		*run(s: "tryOrder" | "interrupters", t0: BlockType | undefined, BC: BlockContainer | undefined): Generator<BlockParser<Block>> {
 			const p = (this.MDP as MarkdownParser);
 			const L = p[s];
+			const allowSeltInterrupt = (t0 && p.traitsList[t0]?.canSelfInterrupt);
 			for(let i = 0, iN = L.length;  i < iN;  ++i) {
 				const key = L[i];
 				const PP = this.cache[key] || (this.cache[key] = { main: p,  parser: undefined });
 				if(!PP.parser)
 					PP.parser = p.makeParser(key) as any;
 				const P = PP.parser as BlockParser<Block>;
-				if(P.type !== t0) {
+				if(P.type !== t0 || allowSeltInterrupt) {
 					P.parent = BC; // where will a finished block be stored — either the central MarkdownParser instance or a container block
 					P.isInterruption = (s === "interrupters");
 					yield P;
@@ -393,7 +401,7 @@ export class MarkdownParser implements BlockContainer {
 
 /**********************************************************************************************************************/
 
-export function startBlock(this: MarkdownParser, ctx: ParseState, LLD: LogicalLineData): ParseState {
+export function startBlock(this: MarkdownParser, ctx: ParseState, LLD: LogicalLineData, interrupting?: BlockType): ParseState {
 	if(!ctx.generator)
 		ctx.generator = this.blockParserProvider.mainBlocks(ctx.container);
 
@@ -401,7 +409,7 @@ export function startBlock(this: MarkdownParser, ctx: ParseState, LLD: LogicalLi
 	while(!(I = ctx.generator.next()).done) {
 		const PA = I.value;
 		
-		const n = PA.beginsHere(LLD, PA.B);
+		const n = PA.beginsHere(LLD, interrupting);
 		//if(this.diagnostics)    console.log(`Trying "${PA.type}" for line ${LLD.logl_idx} -> ${n}`);
 		if(n >= 0) {
 			PA.acceptLine(LLD, "start", n);
@@ -449,7 +457,7 @@ export function processLine(this: MarkdownParser, PP: ParseState, LLD: LogicalLi
 		return { container,  retry: curParser.startLine!,  curParser: null,  generator };
 	case "soft": // it's a soft continuation, which means it's possible that the next block begins here, interrupting the current one
 		{
-			const P1 = this.startBlock({ container,  curParser: null,  generator: this.blockParserProvider.interrupters(curParser) }, LLD).curParser;
+			const P1 = this.startBlock({ container,  curParser: null,  generator: this.blockParserProvider.interrupters(curParser) }, LLD, curParser.type).curParser;
 			if(P1) {
 				curParser.finish();
 				//P1.acceptLine(LLD, "start", 0); // TODO!! Prefix length

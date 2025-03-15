@@ -26,6 +26,7 @@ export interface ListItem {
 	marker:         "*" | "-" | "+" | "." | ")";
 	marker_number?: number;
 	indent:         number;
+	isLooseItem:    boolean;
 };
 
 export interface List {

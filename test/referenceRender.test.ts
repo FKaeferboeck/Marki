@@ -26,7 +26,7 @@ function doTest(title: string, input: string[], verbose?: boolean) {
             const parsed = commonmark_reader.parse(s);
             const commonmark_result = commonmark_writer.render(parsed) as string;
             if(verbose)
-                console.log('Target:', [ commonmark_result ]);
+                console.log('CommonMark:', [ commonmark_result ]);
 
             expect(my_result).toEqual(commonmark_result);
             //expect(my_result.length).toEqual(commonmark_result.length);
@@ -203,3 +203,47 @@ doTest('block quotes', [
     '>>> foo\n> bar\n>>baz', // 251
     '>     code\n\n>    not code' // 252
 ])
+
+
+doTest('list items', [
+    'A paragraph\nwith two lines.\n\n    indented code\n\n> A block quote.', // 253
+    '1.  A paragraph\n    with two lines.\n\n        indented code\n\n    > A block quote.', // 254
+    '- one\n\n two', // 255
+    '- one\n\n  two', // 256
+    ' -    one\n\n     two', // 257
+    ' -    one\n\n      two', // 258
+    '   > > 1.  one\n>>\n>>     two', // 259 nested lists
+    '>>- one\n>>\n  >  > two', // 260
+    '-one\n\n2.two', // 261
+    '- foo\n\n\n  bar', // 262
+    '1.  foo\n\n    ```\n    bar\n    ```\n\n    baz\n\n    > bam', // 263 A list item may contain any kind of block
+    '- Foo\n\n      bar\n\n\n      baz', // 264 A list item that contains an indented code block will preserve empty lines within the code block verbatim
+    '123456789. ok', // 265 ordered list start numbers must be nine digits or less
+    '1234567890. not ok', // 266
+    '0. ok', // 267
+    '003. ok', // 268
+    '-1. not ok', // 269 A start number may not be negative
+    '- foo\n\n      bar', // 270
+    '  10.  foo\n\n           bar', // 271
+    '    indented code\n\nparagraph\n\n    more code', // 272
+    '1.     indented code\n\n   paragraph\n\n       more code', // 273
+    '1.      indented code\n\n   paragraph\n\n       more code', // 274 Note that an additional space of indentation is interpreted as space inside the code block
+    '   foo\n\nbar', // 275
+    '-    foo\n\n  bar', // 276
+    '-  foo\n\n   bar', // 277
+    '-\n  foo\n-\n  ```\n  bar\n  ```\n\n-\n    baz', // 278
+    '-   \n  foo', // 279
+    '-\n\n  foo', // 280 A list item can begin with at most one blank line
+    '- foo\n-\n- bar', // 281 Here is an empty bullet list item
+    '- foo\n-   \n- bar', // 282 It does not matter whether there are spaces or tabs following the list marker
+    '1. foo\n2.\n3. bar', // 283 Here is an empty ordered list item
+    '*', // 284 A list may start or end with an empty list item
+    'foo\n*\n\nfoo\n1.', // 285 However, an empty list item cannot interrupt a paragraph
+    ' 1.  A paragraph\n     with two lines.\n\n         indented code\n\n     > A block quote.', // 286
+    '  1.  A paragraph\n      with two lines.\n\n          indented code\n\n      > A block quote.', // 287
+    '   1.  A paragraph\n       with two lines.\n\n           indented code\n\n       > A block quote.', // 288
+    '    1.  A paragraph\n        with two lines.\n\n            indented code\n\n        > A block quote.', // 289 Four spaces indent gives a code block
+    //'  1.  A paragraph\nwith two lines.\n\n          indented code\n\n      > A block quote.', // 290
+    '', // 
+    '', // 
+]);

@@ -16,7 +16,7 @@ export interface BlockTraits<T extends BlockType = ExtensionBlockType> {
        If it can begin here it shoudl return a number describing the offset where the actual content of the block (after a prefix) starts,
        e.g. 2 for a blockquote starting after "> ".
        If the prefix contains additional data (e.g. the level of an atx header) the method can parse that data into the provided block object. */
-    startsHere(this: BlockParser<BlockBase<T>>, data: LogicalLineData, B: BlockBase<T>): number;
+    startsHere(this: BlockParser<BlockBase<T>>, data: LogicalLineData, B: BlockBase<T>, interrupting?: BlockType | undefined): number;
 
     /* returning undefined means the function doesn't make a decision whether to continue the block here,
      * and leaves it to the subsequent standard algorithm instead.
@@ -24,6 +24,7 @@ export interface BlockTraits<T extends BlockType = ExtensionBlockType> {
     continuesHere?(this: BlockParser<BlockBase<T>>, data: LogicalLineData, isSoftContainerContinuation?: boolean): BlockContinuationType | undefined;
 
     acceptLineHook?(this: BlockParser<BlockBase<T>>, LLD: LogicalLineData, bct: BlockContinuationType | "start") : boolean;
+    finalizeBlockHook?(this: BlockParser<BlockBase<T>>);
 
     /* in case content lines need to be transformed in some way when adding them to the block content */
     postprocessContentLine?(this: BlockParser<BlockBase<T>>, LLD: LogicalLineData, bct: BlockContinuationType | "start") : LogicalLineData;
@@ -34,6 +35,7 @@ export interface BlockTraits<T extends BlockType = ExtensionBlockType> {
     canBeSoftContinuation?: boolean; // default true
     allowCommentLines: boolean;
     lastIsContent?: boolean; // if a line is continuation type "last" it will still be added to the block content - default false
+    canSelfInterrupt?: boolean; // list items do that
     creator: (MDP: MarkdownParser) => BlockParser<BlockBase<T>>; //BlockParserClass<T>;
     defaultBlockInstance: BlockBase<T>;
 }
@@ -43,7 +45,7 @@ export interface BlockTraits<T extends BlockType = ExtensionBlockType> {
 export interface ContainerBlockTraits<T extends BlockType> extends BlockTraits<T> {
     isContainer: true;
 
-    startsHere(this: BlockParser_Container<T>, data: LogicalLineData, B: ContainerBlockBase<T>): number;
+    startsHere(this: BlockParser_Container<T>, data: LogicalLineData, B: ContainerBlockBase<T>, interrupting?: BlockType | undefined): number;
 
     creator: (MDP: MarkdownParser) => BlockParser_Container<T>; //BlockParser<ContainerBlockBase<T>>; //BlockParserClass<T>;
     defaultBlockInstance: ContainerBlockBase<T>;
