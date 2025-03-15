@@ -15,6 +15,11 @@ export const fenced_traits: BlockTraits<"fenced"> = {
         B.fence_type   = LLD.startPart.charAt(0) as FencedBlock["fence_type"];
         B.fence_length = rexres[0].length;
         B.info_string  = LLD.startPart.slice(B.fence_length).trim();
+        B.indentation  = LLD.startIndent; // space before the fence -> will be trimmed from content lines too
+
+        if(B.fence_type === "`" && B.info_string.includes('`'))
+            return -1;
+
         return 0;
     },
 
@@ -24,7 +29,11 @@ export const fenced_traits: BlockTraits<"fenced"> = {
             if(rex.test(LLD.startPart))
                 return "last";
         }
-        return this.B.indentation;
+        return Math.min(LLD.startIndent, this.B.indentation);
+    },
+
+    acceptLineHook(_LLD: LogicalLineData, bct) {
+        return (bct !== "start");
     },
 
     allowSoftContinuations: false,

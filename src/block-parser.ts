@@ -9,7 +9,7 @@ import { sectionHeader_setext_traits } from './blocks/sectionHeader_setext';
 import { Block, BlockBase, BlockType, BlockTypeMap, ContainerBlockBase, ExtensionBlockType, LogicalLineData } from './markdown-types';
 import { TextPart, LineStructure, lineType, LogicalLine, LinePart, LogicalLineType } from './parser';
 import { BlockParserTraitsList, BlockContinuationType, BlockTraits, ContainerBlockTraits } from './traits';
-import { sliceLLD } from './util';
+import { LLDinfo, sliceLLD } from './util';
 import { listItem_traits } from './blocks/listItem';
 
 
@@ -191,6 +191,8 @@ export class BlockParser_Container<K extends BlockType = ExtensionBlockType>
 			this.prevReadContent!.next = LLD_c;
 			let curLLD = LLD_c;
 			while(true) {
+				if(this.MDP.diagnostics)
+					console.log(`========== Parsing content line ${LLDinfo(curLLD)} of ${this.type}`);
 				this.curContentParser = this.MDP.processLine(this.curContentParser, curLLD);
 				if(this.curContentParser.retry)
 					curLLD = this.curContentParser.retry;
@@ -207,6 +209,8 @@ export class BlockParser_Container<K extends BlockType = ExtensionBlockType>
                 return "end";
 
 			cont = cop.curParser.continues(LLD, true);
+			if(cont === "soft")
+				LLD.isSoftContainerContinuation = true;
 			// The following behavior isn't fully clear from the CommonMark specification in my opinion, but we replicate what the CommonMark reference implementation does:
 			if(cont === "reject")
 				cont = "end";
@@ -394,12 +398,12 @@ export function startBlock(this: MarkdownParser, ctx: ParseState, LLD: LogicalLi
 		//if(this.diagnostics)    console.log(`Trying "${PA.type}" for line ${LLD.logl_idx} -> ${n}`);
 		if(n >= 0) {
 			PA.acceptLine(LLD, "start", n);
-			if(this.diagnostics)    console.log(`Processing line ${LLD.logl_idx} starting with [${LLD.startPart}] -> start ${PA.type}`);
+			if(this.diagnostics)    console.log(`Processing line ${LLDinfo(LLD)} -> start ${PA.type}`);
 			ctx.curParser = PA;
 			return ctx;
 		}
 	}
-	if(this.diagnostics)    console.log(`Processing line ${LLD.logl_idx} starting with [${LLD.startPart}] -> no interruption`);
+	if(this.diagnostics)    console.log(`Processing line ${LLDinfo(LLD)} -> no interruption`);
 	ctx.generator = null;
 	ctx.curParser = null;
 	return ctx;
@@ -420,7 +424,7 @@ export function processLine(this: MarkdownParser, PP: ParseState, LLD: LogicalLi
 
 	// continue an existing block
 	const bct = curParser.continues(LLD);
-	if(this.diagnostics)    console.log(`Processing line ${LLD.logl_idx} starting with [${LLD.startPart}]`, PP.curParser?.type, `-> ${bct}`)
+	if(this.diagnostics)    console.log(`Processing line ${LLDinfo(LLD)}`, PP.curParser?.type, `-> ${bct}`)
 	switch(bct) {
 	case "end": // current block cannot continue in this line, i.e. it ends on its own
 		{

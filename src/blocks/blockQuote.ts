@@ -14,9 +14,18 @@ export const blockQuote_traits: ContainerBlockTraits<"blockQuote"> = {
     startsHere(LLD: LogicalLineData, B) {
         if(!(standardBlockStart(LLD) && LLD.startPart.startsWith('>')))
             return -1;
-        return (/^>\s/.test(LLD.startPart) ? 2 : 1);
+        return (/^>\s/.test(LLD.startPart) ? 2 : 1) + LLD.startIndent;
     },
-    continuationPrefix: /^>\s?/,
+
+    continuesHere(LLD) {
+        if(LLD.startIndent >= 4) // indented code blocks do not interrups block quotes
+            return "soft";
+        const rexres = /^>\s?/.exec(LLD.startPart);
+        if(!rexres)
+            return "soft";
+        return rexres[0].length + LLD.startIndent;
+    },
+    
 
     allowSoftContinuations: true,
     allowCommentLines: true,

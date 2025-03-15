@@ -10,12 +10,13 @@ export type ExtensionNamespace = string;
 export type ExtensionBlockType = `ext_${ExtensionNamespace}_${string}`;
 
 export interface LogicalLineData {
-	logl_idx:    number;
-	parts:       LinePart[];
-	startIndent: number;
-	startPart:   string; // after the indent
-	type:        LogicalLineType | "single";
-	next:        LogicalLineData | null;
+	logl_idx:                      number;
+	parts:                         LinePart[];
+	startIndent:                   number;
+	startPart:                     string; // after the indent
+	type:                          LogicalLineType | "single";
+	next:                          LogicalLineData | null;
+	isSoftContainerContinuation? : boolean;
 }
 
 

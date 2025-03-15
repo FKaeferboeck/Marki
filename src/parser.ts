@@ -30,7 +30,7 @@ const htmlMarkup = { XML_Comment: true,  HTML_Tag: true,  TextPart: false } as c
 function isHTML_Markup(P: LinePart | null | undefined): P is HTML_Markup { return (P ? htmlMarkup[P.type] : false); }
 
 
-export type LogicalLineType = "empty" | "emptyish" | "comment" | "text";
+export type LogicalLineType = "empty" | "emptyish" | "comment" | "text" | "single";
 
 export interface LogicalLine {
 	start:  number; // part index where this logical line begins

@@ -18,6 +18,8 @@ export const paragraph_traits: BlockTraits<"paragraph"> = {
          */
         if(!isSoftContainerContinuation && setext_end_line(LLD) > 0)
             return "reject";
+        /*if(LLD.type === "empty")
+            return "end";*/
         return undefined;
     },
 

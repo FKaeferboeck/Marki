@@ -1,5 +1,5 @@
 import { LogicalLineData } from "./markdown-types";
-import { LineStructure, LogicalLineType } from "./parser";
+import { LinePart, LineStructure, lineType, LogicalLineType } from "./parser";
 
 
 
@@ -12,6 +12,20 @@ function measureIndent(s: string, i0: number = 0) {
         default:      return n;
         }
     return n;
+}
+
+
+export function lineTypeLP(L: LinePart[]): LogicalLineType {
+    if(L.length === 0)    return "empty";
+    if(L.length === 1) {
+        const P = L[0];
+        if(P.type === "XML_Comment")    return "comment";
+        if(P.content.length === 0)    return "empty";
+        if(P.content.trimEnd().length === 0)    return "emptyish";
+        return "single";
+    }
+    // now there are multiple parts, which means that at least some of them are comments -> can only be all comment or mixed content
+    return (L.some(P => P.type !== "XML_Comment" && P.content.trimEnd().length !== 0) ? "text" : "comment");
 }
 
 
@@ -31,7 +45,7 @@ export function sliceLLD(LLD: LogicalLineData, begin: number): LogicalLineData {
         parts:       parts,
         startPart:   p0.trimStart(),
         startIndent: measureIndent(p0),
-        type:        (LLD.type === "text" ? "single" : LLD.type),
+        type:        lineTypeLP(parts), //(LLD.type === "text" ? "single" : LLD.type),
         next:        null
     };
 }
@@ -64,3 +78,8 @@ export function lineDataAll(LS: LineStructure, logl_idx_start: number): LogicalL
 
 const standardBlockLineTypes: Partial<Record<LogicalLineType | "single", boolean>> = { single: true,  text: true };
 export const standardBlockStart = (LLD: LogicalLineData) => (!!standardBlockLineTypes[LLD.type] && LLD.startIndent < 4);
+
+
+export function LLDinfo(LLD: LogicalLineData) {
+    return `[${LLD.logl_idx}:${LLD.startIndent ? `(${LLD.startIndent})+` : ''}${LLD.startPart}]`;
+}
