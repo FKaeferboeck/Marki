@@ -31,8 +31,6 @@ export function lineTypeLP(L: LinePart[]): LogicalLineType {
 
 
 export function sliceLLD(LLD: LogicalLineData, begin: number): LogicalLineData {
-    /*if(begin < 0 || LLD.startPart.length < begin)
-        throw new Error('Cannot slice LLD');*/
     const p0 = (' '.repeat(LLD.startIndent) + LLD.startPart).slice(begin);
     const parts = [ ... LLD.parts ];
     if(p0.length > 0)
@@ -40,14 +38,18 @@ export function sliceLLD(LLD: LogicalLineData, begin: number): LogicalLineData {
     else
         parts.splice(0, 1);
 
-    return {
+    const LLD_c: LogicalLineData = {
         logl_idx:    LLD.logl_idx,
         parts:       parts,
         startPart:   p0.trimStart(),
         startIndent: measureIndent(p0),
-        type:        lineTypeLP(parts), //(LLD.type === "text" ? "single" : LLD.type),
+        type:        lineTypeLP(parts),
         next:        null
     };
+    LLD.contentSlice = LLD_c;
+    if(LLD.isSoftContainerContinuation)
+        LLD_c.isSoftContainerContinuation = true;
+    return LLD_c;
 }
 
 
@@ -80,6 +82,8 @@ const standardBlockLineTypes: Partial<Record<LogicalLineType | "single", boolean
 export const standardBlockStart = (LLD: LogicalLineData) => (!!standardBlockLineTypes[LLD.type] && LLD.startIndent < 4);
 
 
-export function LLDinfo(LLD: LogicalLineData) {
-    return `[${LLD.logl_idx}:${LLD.startIndent ? `(${LLD.startIndent})+` : ''}${LLD.startPart}]`;
+export function LLDinfo(LLD: LogicalLineData | null | undefined) {
+    if(!LLD)
+        return '[EOF]';
+    return `[${LLD.logl_idx}:${LLD.startIndent ? `(${LLD.startIndent})+` : ''}${LLD.startPart}${LLD.isSoftContainerContinuation ? '\\SCC' : ''}]`;
 }

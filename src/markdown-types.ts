@@ -16,6 +16,7 @@ export interface LogicalLineData {
 	startPart:                     string; // after the indent
 	type:                          LogicalLineType | "single";
 	next:                          LogicalLineData | null;
+	contentSlice?:                 LogicalLineData;
 	isSoftContainerContinuation? : boolean;
 }
 
