@@ -8,17 +8,26 @@ function singleParagraphContent(B: Block[]) {
 }
 
 
-function renderBlockContent(B: Block, mode?: "literal" | "inlist") {
+function renderBlockContent(B: Block, buf: string[] | null, mode?: "literal" | "inlist" | "blockquote") {
+    const add = (s: string) => {
+        if(!buf)    return s;
+        if(s)    buf.push(s);
+        return s;
+    };
+
     if("blocks" in B) {
         const B1 = (B.blocks as Block[]);
-        if(mode !== "inlist")
-            return referenceRender(B1, false, false);
-            //return B1.map(renderBlock).filter(S => S).join('\n');
+        if(mode !== "inlist") {
+            let s = referenceRender(B1, false, false);
+            if(mode === "blockquote")
+                s = s.trim();
+            return add(s);
+        }
         const B_P = singleParagraphContent(B1);
         //console.log('list content', B1, B_P, B_P ? `Single[${renderBlockContent(B_P)}]` : 'nonSingle')
         if(B_P)
-            return renderBlockContent(B_P);
-        return '\n' + referenceRender(B1, false, true);
+            return renderBlockContent(B_P, buf);
+        return add('\n' + referenceRender(B1, false, true));
         //return '\n' + B1.map(renderBlock).filter(S => S).join('\n') + '\n';
     }
     const C = B.contents as LogicalLineData[];
@@ -27,7 +36,7 @@ function renderBlockContent(B: Block, mode?: "literal" | "inlist") {
         s = C.map(LLD => ' '.repeat(LLD.startIndent) + LLD.startPart + '\n').join('');
     else
         s = C.map(LLD => LLD.startPart).join('\n');
-    return s.replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+    return add(s.replaceAll('<', '&lt;').replaceAll('>', '&gt;'));
 }
 
 
@@ -55,29 +64,29 @@ function renderBlock(B: Block, buf: string[]) {
     case "thematicBreak":
         return add(`<hr />`);
     case "paragraph":
-        return add(`<p>${renderBlockContent(B)}</p>`);
+        return add(`<p>${renderBlockContent(B, null).trim()}</p>`);
     case "indentedCodeBlock":
-        return add(`<pre><code>${renderBlockContent(B, "literal")}</code></pre>`);
+        return add(`<pre><code>${renderBlockContent(B, null, "literal")}</code></pre>`);
     case "fenced":
-        return add(`<pre>${fencedOpener(B as BlockBase<"fenced">)}${renderBlockContent(B, "literal")}</code></pre>`);
+        return add(`<pre>${fencedOpener(B as BlockBase<"fenced">)}${renderBlockContent(B, null, "literal")}</code></pre>`);
     case "blockQuote":
         add(`<blockquote>`);
-        add(renderBlockContent(B));
+        renderBlockContent(B, buf, "blockquote");
         add(`</blockquote>`);
         return;
     case "sectionHeader_setext":
         {
             const L = (B as BlockBase<"sectionHeader_setext">).level;
-            return add(`<h${L}>${renderBlockContent(B)}</h${L}>`);
+            return add(`<h${L}>${renderBlockContent(B, null)}</h${L}>`);
         }
     case "sectionHeader":
         {
             const L = (B as BlockBase<"sectionHeader">).level;
-            return add(`<h${L}>${renderBlockContent(B)}</h${L}>`);
+            return add(`<h${L}>${renderBlockContent(B, null)}</h${L}>`);
         }
     case "listItem":
         add(`<li>`);
-        add(renderBlockContent(B));
+        renderBlockContent(B, buf);
         add(`</li>`);
     case "emptySpace":
         return;
@@ -107,7 +116,7 @@ function renderList(L: List, buf: string[]) {
         else if(L.loose)
             renderBlock(B, buf);
         else
-            buf.push(`<li>${renderBlockContent(B, "inlist")}</li>`);
+            buf.push(`<li>${renderBlockContent(B, null, "inlist")}</li>`);
     }
     buf.push(`</${listType(L.marker)}>`);
 }

@@ -119,7 +119,9 @@ export class BlockParser_Standard<K extends BlockType = ExtensionBlockType, Trai
 
 		// We prepare the content part of the line for acceptance, even if we don't accept it right away due to checkpoint (and perhaps never will)
 		// This way when the next checkpoint arrives we have the pending content lines in the linked list.
-		if(bct !== "last" || this.traits.lastIsContent)
+		// continuing lines inside block containers are already enqueued during continues().
+		if((this.blockContainerType !== "containerBlock" /*|| bct === "start"*/) &&
+		   !(bct === "last" && !this.traits.lastIsContent))
 			this.enqueueContentSlice(LLD, prefix_length, bct);
 
 		if(this.checkpoint && LLD.logl_idx > this.checkpoint.logl_idx)
@@ -162,6 +164,11 @@ export class BlockParser_Standard<K extends BlockType = ExtensionBlockType, Trai
 	readonly useSoftContinuations: boolean;
 
 	protected enqueueContentSlice(LLD: LogicalLineData, slice_length: number, bct?: BlockContinuationType | "start") {
+		// because a block container might try to double enqueue a line
+		if((this.lastEnqueuedContent?.logl_idx || -1) >= LLD.logl_idx)
+			//return this.lastEnqueuedContent.contentSlice!;
+			throw new Error(`Trying to double enqueue cline ${LLDinfo(LLD)}`);
+
 		let LLD_C = sliceLLD(LLD, slice_length);
 		if(typeof bct !== "undefined" && this.traits.postprocessContentLine)
 			LLD_C = this.traits.postprocessContentLine.call(this, LLD_C, bct);
@@ -169,6 +176,7 @@ export class BlockParser_Standard<K extends BlockType = ExtensionBlockType, Trai
 		if(this.lastEnqueuedContent)
 			this.lastEnqueuedContent.next = LLD_C;
 		this.lastEnqueuedContent = LLD_C;
+		if(this.MDP.diagnostics)    console.log(`      Enqueuing ${LLDinfo(LLD)}>${LLDinfo(LLD_C)} in <${this.type}>`)
 		return LLD_C;
 	}
 }
@@ -198,9 +206,15 @@ export class BlockParser_Container<K extends BlockType = ExtensionBlockType>
     continues(LLD: LogicalLineData): BlockContinuationType {
         let cont = super.continues(LLD);
 		if(this.MDP.diagnostics && cont !== "soft")    console.log(`  block container <${this.type}> continues at line ${LLD.logl_idx}? ${cont}`);
+		if(cont === "end")
+			return cont;
+			
+		/* The following line will sometimes cause a line to be enqueued that in the end isn't used because the block ends,
+		 * but that doesn't hurt. It keept the code simpler. */
+		const LLD_c = this.enqueueContentSlice(LLD, typeof cont === "number" ? cont : 0);
 
 		if(typeof cont === "number") {
-			const LLD_c = this.enqueueContentSlice(LLD, cont);
+			//const LLD_c = this.enqueueContentSlice(LLD, cont);
 			let curLLD = LLD_c;
 			while(true) {
 				if(this.MDP.diagnostics)    console.log(`      = Parsing content slice ${LLDinfo(curLLD)} inside ${this.type}`);
@@ -228,7 +242,7 @@ export class BlockParser_Container<K extends BlockType = ExtensionBlockType>
 				return "end";
 			}
 
-			const LLD_c = this.enqueueContentSlice(LLD, 0);
+			//const LLD_c = this.enqueueContentSlice(LLD, 0);
 			cont = P.continues(LLD_c, true);
 
 			// The following behavior isn't fully clear from the CommonMark specification in my opinion, but we replicate what the CommonMark reference implementation does:

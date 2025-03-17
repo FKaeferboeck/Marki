@@ -11,10 +11,9 @@ const parser = new MarkdownParser();
 var commonmark_writer = new commonmark.HtmlRenderer();*/
 
 const markdownInput =
-`> (b)
-bar
-===
-> ---`;
+`>
+> foo
+>  `;
 
 
 parser.diagnostics = true;
@@ -23,6 +22,7 @@ const LLD       = lineDataAll(LS, 0);
 
 //console.log(parser.diagnostics, verbose)
 const blocks    = parser.processContent(LLD);
+console.log(blocks);
 const my_result = referenceRender(blocks, true);
 
 //const parsed = commonmark_reader.parse(markdownInput);

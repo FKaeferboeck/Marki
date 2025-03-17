@@ -36,7 +36,7 @@ function doTest(title: string, input: string[], verbose?: boolean) {
 
 
 doTest('thematic breaks', [
-    /*`***\n---\n___`,
+    `***\n---\n___`,
     `+++`, // wrong character
     `===`, //
     `--\n**\n__`, // not enough characters
@@ -47,14 +47,14 @@ doTest('thematic breaks', [
     ` - - -`, // Spaces and tabs are allowed between the characters
     ` **  * ** * ** * **`,
     `-     -      -      -`,
-    `- - - -    `, // Spaces and tabs are allowed at the end*/
+    `- - - -    `, // Spaces and tabs are allowed at the end
     `_ _ _ _ a\n\na------\n\n---a---`, // However, no other characters may occur in the line
     //` *-*`, // It is required that all of the characters other than spaces or tabs be the same. So, this is not a thematic break
-    //`- foo\n***\n- bar`, // Thematic breaks do not need blank lines before or after
-    /*`Foo\n***\nbar`, // Thematic breaks can interrupt a paragraph
-    `Foo\n---\nbar`, // setext heading takes precedence*/
-    //`* Foo\n* * *\n* Bar`, // thematic break takes precedence over list item
-    //`- Foo\n- * * *` // thematic break inside list
+    `- foo\n***\n- bar`, // Thematic breaks do not need blank lines before or after
+    `Foo\n***\nbar`, // Thematic breaks can interrupt a paragraph
+    `Foo\n---\nbar`, // setext heading takes precedence
+    `* Foo\n* * *\n* Bar`, // thematic break takes precedence over list item
+    `- Foo\n- * * *` // thematic break inside list
 ])
 
 
@@ -81,7 +81,7 @@ doTest('ATX headings', [
 
 
 doTest('setext headings', [
-    /*//`Foo *bar*\n=========\n\nFoo *bar*\n---------`, // 83
+    //`Foo *bar*\n=========\n\nFoo *bar*\n---------`, // 83
     //`Foo *bar\nbaz*\n====`, // 84 The content of the header may span more than one line
     //`  Foo *bar\nbaz*\t\n====`, // 85 surrounding space
     `Foo\n-------------------------\n\nFoo\n=`, // 86 The underlining can be any length
@@ -93,32 +93,32 @@ doTest('setext headings', [
     //`\`Foo\n----\n\`\n\n<a title="a lot\n---\nof dashes"/>`, // 92 indicators of block structure take precedence over indicators of inline structure
     `> Foo\n---`, // 93 The setext heading underline cannot be a lazy continuation line in a list item or block quote
     `> 94foo\nbar\n===`, // 94
-    //`- Foo\n---`, // 95
+    `- Foo\n---`, // 95
     `Foo\nBar\n---`, // 96 multiline heading content
     `---\nFoo\n---\nBar\n---\nBaz`, // 97 a blank line is not required before or after setext headings
     `\n====`, // 98 Setext headings cannot be empty
     `---\n---`, // 99
-    //`- foo\n-----`, // 100
+    `- foo\n-----`, // 100
     `    101foo\n---`, // 101
     `> 102foo\n-----`,
     `103Foo\n\nbar\n---\nbaz`, // 103
     `103Foo\nbar\n\n---\n\nbaz`, // 104
-    `105Foo\nbar\n\n* * *\nbaz`, // 105*/
+    `105Foo\nbar\n\n* * *\nbaz`, // 105
     //`Foo\nbar\n\\---\nbaz` // 106
 
     /* A couple of extreme examples I added needed to add: A paragraph that serves as a lazy continuation to a block quote later gets rejected in favor of a setext header.
        However we don't want to cancel the continuation because the reference implementation doesn't. */
-    //`> (a)\nbar\n> ===`,
+    `> (a)\nbar\n> ===`,
     /* Even worse: We first have a lazy "===" which gets accepted as paragraph content; but when we reject the paragraph over the "---" in the next line and reparse it as a setext header
        it would end with that "===" — but the reference implementation doesn't want us to. So we have to remember that this line used to be, and continues to be, a lazy continuation. */ 
     `> (b)\nbar\n===\n> ---`
-], true);
+]);
 
 
 doTest('indented code blocks', [
     `    a simple\n      indented code block`, // 107
-    //`  - foo\n\n    bar`, // item list takes precedence
-    //`1.  foo\n\n    - bar`, // 109
+    `  - foo\n\n    bar`, // item list takes precedence
+    `1.  foo\n\n    - bar`, // 109
     //`    <a/>\n    *hi*\n\n    - one`, // The contents of a code block are literal text, and do not get parsed as Markdown
     `    chunk1\n\n    chunk2\n  \n \n \n    chunk3`, // Here we have three chunks separated by blank lines
     `    chunk1\n      \n      chunk2`, // Any initial spaces or tabs beyond four spaces of indentation will be included in the content, even in interior blank lines
@@ -127,7 +127,7 @@ doTest('indented code blocks', [
     `# Heading\n    foo\nHeading\n------\n    foo\n----`, // And indented code can occur immediately before and after other kinds of blocks
     `        foo\n    bar`, // The first line can be preceded by more than four spaces of indentation
     `\n    \n    foo\n    `, // Blank lines preceding or following an indented code block are not included in it
-    `    foo  ` // Trailing spaces or tabs are included in the code block’s content
+    `    foo  ` // 118 Trailing spaces or tabs are included in the code block’s content
 ]);
 
 
@@ -184,13 +184,13 @@ doTest('block quotes', [
     '> bar\nbaz\n> foo', // A block quote can contain some lazy and some non-lazy continuation lines
     '> foo\n> ---', // Laziness only applies to lines that would have been continuations of paragraphs
     '> foo\n---', // 234 ... without changing the meaning
-    //'> - foo\n- bar', // 235
+    '> - foo\n- bar', // 235
     '>     foo\n    bar', // 236 can't omit the > in front of subsequent lines of an indented or fenced code block
     '> ```\nfoo\n```', // 237
     '> foo\n    - bar', // 238
-    //'>', // A block quote can be empty
-    //'>\n>  \n> ', // 240
-    //'>\n> foo\n>  ', // A block quote can have initial or final blank lines
+    '>', // A block quote can be empty
+    '>\n>  \n> ', // 240
+    '>\n> foo\n>  ', // 241 A block quote can have initial or final blank lines
     '> foo\n\n> bar', // A blank line always separates block quotes
     '> foo\n> bar', // 243
     '> foo\n>\n> bar', // block quote with two paragraphs
@@ -206,7 +206,7 @@ doTest('block quotes', [
 
 
 doTest('list items', [
-    /*'A paragraph\nwith two lines.\n\n    indented code\n\n> A block quote.', // 253
+    'A paragraph\nwith two lines.\n\n    indented code\n\n> A block quote.', // 253
     '1.  A paragraph\n    with two lines.\n\n        indented code\n\n    > A block quote.', // 254
     '- one\n\n two', // 255
     '- one\n\n  two', // 256
@@ -242,7 +242,7 @@ doTest('list items', [
     ' 1.  A paragraph\n     with two lines.\n\n         indented code\n\n     > A block quote.', // 286
     '  1.  A paragraph\n      with two lines.\n\n          indented code\n\n      > A block quote.', // 287
     '   1.  A paragraph\n       with two lines.\n\n           indented code\n\n       > A block quote.', // 288
-    '    1.  A paragraph\n        with two lines.\n\n            indented code\n\n        > A block quote.', // 289 Four spaces indent gives a code block*/
+    '    1.  A paragraph\n        with two lines.\n\n            indented code\n\n        > A block quote.', // 289 Four spaces indent gives a code block
     '  1.  A paragraph\nwith two lines.\n\n          indented code\n\n      > A block quote.', // 290
     /*'', // 
     '', // */
