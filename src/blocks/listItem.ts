@@ -1,8 +1,7 @@
-import { BlockContainer, BlockParser, BlockParser_Container, BlockParser_Standard, ParseState, MarkdownParser } from "../block-parser";
-import { BlockType, ExtensionBlockType, Block, LogicalLineData, ListItem, ContainerBlockBase } from "../markdown-types";
-import { LineStructure, LogicalLineType } from "../parser";
-import { ContainerBlockTraits, BlockContinuationType } from "../traits";
-import { LLDinfo, standardBlockStart } from "../util";
+import { BlockParser_Container } from "../block-parser.js";
+import { LogicalLineData, ListItem, ContainerBlockBase } from "../markdown-types.js";
+import { ContainerBlockTraits } from "../traits.js";
+import { standardBlockStart } from "../util.js";
 
 
 export const listItem_traits: ContainerBlockTraits<"listItem"> = {

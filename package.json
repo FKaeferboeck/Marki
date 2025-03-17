@@ -1,12 +1,14 @@
 {
   "name": "marki",
   "version": "1.0.0",
+  "type": "module",
   "description": "extensible Markdown parser with support for incremental changes",
   "main": "index.js",
   "directories": {
     "test": "test"
   },
   "scripts": {
+    "tsc": "tsc",
     "test": "vitest"
   },
   "repository": {
@@ -24,6 +26,8 @@
   "homepage": "https://github.com/FKaeferboeck/Marki#readme",
   "dependencies": {
     "commonmark": "^0.31.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.2",
     "vitest": "^3.0.5",
     "vscode-languageserver": "^9.0.1"
   }

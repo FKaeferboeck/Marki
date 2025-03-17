@@ -1,6 +1,6 @@
-import { BlockParser, MarkdownParser } from "./block-parser";
-import { BlockParser_Container } from "./blocks/blockQuote";
-import { BlockType, ExtensionBlockType, BlockBase, ContainerBlockBase, LogicalLineData } from "./markdown-types";
+import { BlockParser, MarkdownParser } from "./block-parser.js";
+import { BlockParser_Container } from "./blocks/blockQuote.js";
+import { BlockType, ExtensionBlockType, BlockBase, ContainerBlockBase, LogicalLineData } from "./markdown-types.js";
 
 
 export type BlockContinuationType = number    // block definitely continues in this line (e.g. because of the prefix)
@@ -24,7 +24,7 @@ export interface BlockTraits<T extends BlockType = ExtensionBlockType> {
     continuesHere?(this: BlockParser<BlockBase<T>>, data: LogicalLineData, isSoftContainerContinuation?: boolean): BlockContinuationType | undefined;
 
     acceptLineHook?(this: BlockParser<BlockBase<T>>, LLD: LogicalLineData, bct: BlockContinuationType | "start") : boolean;
-    finalizeBlockHook?(this: BlockParser<BlockBase<T>>);
+    finalizeBlockHook?(this: BlockParser<BlockBase<T>>): void;
 
     /* in case content lines need to be transformed in some way when adding them to the block content */
     postprocessContentLine?(this: BlockParser<BlockBase<T>>, LLD: LogicalLineData, bct: BlockContinuationType | "start") : LogicalLineData;

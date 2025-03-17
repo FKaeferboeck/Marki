@@ -1,5 +1,5 @@
-import { LogicalLineData } from "./markdown-types";
-import { LinePart, LineStructure, lineType, LogicalLineType } from "./parser";
+import { LogicalLineData } from "./markdown-types.js";
+import { LinePart, LineStructure, LogicalLineType } from "./parser.js";
 
 
 

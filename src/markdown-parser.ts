@@ -1,9 +1,10 @@
-import { BlockParserTraits, BlockParserTraitsList, standardBlockParserTraits } from "./block-parser";
-import { ExtensionBlockType } from "./markdown-types";
+import { standardBlockParserTraits } from "./block-parser.js";
+import { ExtensionBlockType } from "./markdown-types.js";
+import { BlockParserTraitsList } from "./traits.js";
 
 
 
-export class MarkdownParser {
+/*export class MarkdownParser {
     constructor() {
         this.blockParserTraits = standardBlockParserTraits;
     }
@@ -15,4 +16,4 @@ export class MarkdownParser {
 
 
     private blockParserTraits: BlockParserTraitsList;
-}
+}*/

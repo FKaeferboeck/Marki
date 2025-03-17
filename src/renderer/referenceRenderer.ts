@@ -1,4 +1,4 @@
-import { Block, BlockBase, ContainerBlockBase, LogicalLineData } from "../markdown-types";
+import { Block, BlockBase, ContainerBlockBase, LogicalLineData } from "../markdown-types.js";
 
 
 function singleParagraphContent(B: Block[]) {

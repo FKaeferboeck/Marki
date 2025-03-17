@@ -1,17 +1,16 @@
-import { blockQuote_traits } from './blocks/blockQuote';
-import { emptySpace_traits } from './blocks/emptySpace';
-import { fenced_traits } from './blocks/fenced';
-import { thematicBreak_traits } from './blocks/thematicBreak';
-import { indentedCodeBlock_traits } from './blocks/indentedCodeBlock';
-import { paragraph_traits } from './blocks/paragraph';
-import { sectionHeader_traits } from './blocks/sectionHeader';
-import { sectionHeader_setext_traits } from './blocks/sectionHeader_setext';
-import { Block, BlockBase, BlockType, BlockTypeMap, ContainerBlockBase, ExtensionBlockType, LogicalLineData } from './markdown-types';
-import { TextPart, LineStructure, lineType, LogicalLine, LinePart, LogicalLineType } from './parser';
-import { BlockParserTraitsList, BlockContinuationType, BlockTraits, ContainerBlockTraits } from './traits';
-import { LLDinfo, sliceLLD } from './util';
-import { listItem_traits } from './blocks/listItem';
-
+import { blockQuote_traits } from './blocks/blockQuote.js';
+import { emptySpace_traits } from './blocks/emptySpace.js';
+import { fenced_traits } from './blocks/fenced.js';
+import { thematicBreak_traits } from './blocks/thematicBreak.js';
+import { indentedCodeBlock_traits } from './blocks/indentedCodeBlock.js';
+import { paragraph_traits } from './blocks/paragraph.js';
+import { sectionHeader_traits } from './blocks/sectionHeader.js';
+import { sectionHeader_setext_traits } from './blocks/sectionHeader_setext.js';
+import { Block, BlockBase, BlockType, BlockTypeMap, ContainerBlockBase, ExtensionBlockType, LogicalLineData } from './markdown-types.js';
+import { TextPart, LineStructure, lineType, LogicalLine, LinePart, LogicalLineType } from './parser.js';
+import { BlockParserTraitsList, BlockContinuationType, BlockTraits, ContainerBlockTraits } from './traits.js';
+import { LLDinfo, sliceLLD } from './util.js';
+import { listItem_traits } from './blocks/listItem.js';
 
 
 
@@ -68,7 +67,7 @@ export class BlockParser_Standard<K extends BlockType = ExtensionBlockType, Trai
 		this.useSoftContinuations = useSoftContinuations;
 	}
 
-	static textLines = { text: true,  single: true };
+	static textLines: Partial<Record<LogicalLineType, boolean>> = { text: true,  single: true };
 
 	beginsHere(LLD: LogicalLineData, interrupting?: BlockType | undefined): number {
 		if(!BlockParser_Standard.textLines[LLD.type])
@@ -164,7 +163,7 @@ export class BlockParser_Standard<K extends BlockType = ExtensionBlockType, Trai
 
 	protected enqueueContentSlice(LLD: LogicalLineData, slice_length: number, bct?: BlockContinuationType | "start") {
 		let LLD_C = sliceLLD(LLD, slice_length);
-		if(typeof bct !== undefined && this.traits.postprocessContentLine)
+		if(typeof bct !== "undefined" && this.traits.postprocessContentLine)
 			LLD_C = this.traits.postprocessContentLine.call(this, LLD_C, bct);
 
 		if(this.lastEnqueuedContent)
@@ -297,7 +296,7 @@ interface BlockParserProviderItem<K extends BlockType> {
 	parser: BlockParser<BlockBase<K>> | undefined;
 }
 type BlockParserProviderCache = {
-	[K in BlockType]: BlockParserProviderItem<K>;
+	[K in BlockType]: BlockParserProviderItem<K> | undefined;
 };
 
 //export type EligibleParsers = Generator<BlockParser<Block>> | BlockParser<Block>;
@@ -388,7 +387,7 @@ export class MarkdownParser implements BlockContainer {
 			const allowSeltInterrupt = (t0 && p.traitsList[t0]?.canSelfInterrupt);
 			for(let i = 0, iN = L.length;  i < iN;  ++i) {
 				const key = L[i];
-				const PP = this.cache[key] || (this.cache[key] = { main: p,  parser: undefined });
+				const PP = this.cache[key] || (this.cache[key] = { parent: p,  parser: undefined });
 				if(!PP.parser)
 					PP.parser = p.makeParser(key) as any;
 				const P = PP.parser as BlockParser<Block>;

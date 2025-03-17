@@ -1,9 +1,9 @@
-import { BlockQuote } from "./blocks/blockQuote";
-import { ThematicBreak } from "./blocks/thematicBreak";
-import { IndentedCodeBlock } from "./blocks/indentedCodeBlock";
-import { Paragraph } from "./blocks/paragraph";
-import { SectionHeader } from "./blocks/sectionHeader";
-import { LinePart, LogicalLineType } from "./parser";
+import { BlockQuote } from "./blocks/blockQuote.js";
+import { ThematicBreak } from "./blocks/thematicBreak.js";
+import { IndentedCodeBlock } from "./blocks/indentedCodeBlock.js";
+import { Paragraph } from "./blocks/paragraph.js";
+import { SectionHeader } from "./blocks/sectionHeader.js";
+import { LinePart, LogicalLineType } from "./parser.js";
 
 export type ExtensionNamespace = string;
 

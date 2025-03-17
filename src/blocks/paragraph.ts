@@ -1,7 +1,7 @@
-import { BlockParser_Standard } from "../block-parser";
-import { BlockBase, LogicalLineData } from "../markdown-types";
-import { BlockTraits, BlockContinuationType } from "../traits";
-import { setext_end_line } from "./sectionHeader_setext";
+import { BlockParser_Standard } from "../block-parser.js";
+import { LogicalLineData } from "../markdown-types.js";
+import { BlockTraits, BlockContinuationType } from "../traits.js";
+import { setext_end_line } from "./sectionHeader_setext.js";
 
 
 export interface Paragraph { };

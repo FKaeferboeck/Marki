@@ -1,6 +1,6 @@
-import { BlockParser_EmptySpace } from "../block-parser";
-import { LogicalLineData } from "../markdown-types";
-import { BlockTraits } from "../traits";
+import { BlockParser_EmptySpace } from "../block-parser.js";
+import { LogicalLineData } from "../markdown-types.js";
+import { BlockTraits } from "../traits.js";
 
 
 export const emptySpace_traits = {
