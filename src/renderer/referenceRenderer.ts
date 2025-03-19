@@ -1,14 +1,16 @@
-import { Block, BlockBase, ContainerBlockBase, LogicalLineData } from "../markdown-types.js";
+import { collectLists } from "../blocks/listItem.js";
+import { AnyBlock, BlockBase, BlockType, BlockBase_Container, LogicalLineData, Block, List } from "../markdown-types.js";
 
 
-function singleParagraphContent(B: Block[]) {
+function singleParagraphContent(B: AnyBlock[]) {
     //return (B.length === 0 || B.some((b, i) => b.type !== (i ? "emptySpace" : "paragraph")) ? undefined : B[0]);
     const para = B.find(b => b.type === "paragraph");
     return (para && !B.some(b => !(b === para || b.type === "emptySpace")) ? para : undefined);
 }
 
 
-function renderBlockContent(B: Block, buf: string[] | null, mode?: "literal" | "inlist" | "blockquote") {
+
+function renderBlockContent(B: AnyBlock, buf: string[] | null, mode?: "literal" | "tightListItem" | "blockquote") {
     const add = (s: string) => {
         if(!buf)    return s;
         if(s)    buf.push(s);
@@ -16,20 +18,35 @@ function renderBlockContent(B: Block, buf: string[] | null, mode?: "literal" | "
     };
 
     if("blocks" in B) {
-        const B1 = (B.blocks as Block[]);
-        if(mode !== "inlist") {
-            let s = referenceRender(B1, false, false);
-            if(mode === "blockquote")
-                s = s.trim();
-            return add(s);
+        const blocks = (B.blocks as AnyBlock[]);
+        if(mode === "tightListItem") {
+            const buf1: string[] = [];
+            let type0: BlockType | undefined, type1: BlockType | undefined;
+            for(const b of blocks) {
+                if(b.type === "emptySpace")
+                    continue;
+                type0 ||= b.type;
+                type1 = b.type;
+                if(b.type === "paragraph")
+                    renderBlockContent(b, buf1);
+                else
+                    renderBlock(b, buf1);
+            }
+            return (!type0 || type0 === "paragraph" ? '' : '\n') + buf1.join('\n') + (!type1 || type1 === "paragraph" ? '' : '\n');
         }
-        const B_P = singleParagraphContent(B1);
+
+        let s = referenceRender(blocks, false, false);
+        if(mode === "blockquote")
+            s = s.trim();
+        return add(s);
+        /*const B_P = singleParagraphContent(blocks);
         //console.log('list content', B1, B_P, B_P ? `Single[${renderBlockContent(B_P)}]` : 'nonSingle')
         if(B_P)
             return renderBlockContent(B_P, buf);
-        return add('\n' + referenceRender(B1, false, true));
+        return add('\n' + referenceRender(blocks, false, true));*/
         //return '\n' + B1.map(renderBlock).filter(S => S).join('\n') + '\n';
     }
+
     const C = B.contents as LogicalLineData[];
     let s = '';
     if(mode === "literal")
@@ -40,7 +57,7 @@ function renderBlockContent(B: Block, buf: string[] | null, mode?: "literal" | "
 }
 
 
-function fencedOpener(B: BlockBase<"fenced">) {
+function fencedOpener(B: Block<"fenced">) {
     const firstWord = /^\S+/.exec(B.info_string)?.[0];
     if (!firstWord)
         return `<code>`;
@@ -48,17 +65,25 @@ function fencedOpener(B: BlockBase<"fenced">) {
 }
 
 
-function listType(marker: BlockBase<"listItem">["marker"] | undefined) {
+function listType(marker: Block<"listItem">["marker"] | undefined) {
     return (marker === "." || marker === ")" ? "ol" : "ul");
 }
 
-function listMarker(B: Block) {
-    const B1 = B as BlockBase<"listItem">;
-    return (B.type === "listItem" ? B1.marker : undefined);
+function listMarker(B: Block<"listItem">) {
+    return (B.type === "listItem" ? B.marker : undefined);
 }
 
 
-function renderBlock(B: Block, buf: string[]) {
+function posInList(B: Block<"listItem">) {
+    if(!B.parentList || B.parentList.contents.length === 0)
+        throw new Error('Missing list');
+    const C = B.parentList.contents;
+    return { isFirst: B === C[0],
+             isLast:  B === C[C.length - 1] };
+}
+
+
+function renderBlock(B: AnyBlock, buf: string[]) {
     const add = (s: string) => { buf.push(s); };
     switch(B.type) {
     case "thematicBreak":
@@ -68,26 +93,47 @@ function renderBlock(B: Block, buf: string[]) {
     case "indentedCodeBlock":
         return add(`<pre><code>${renderBlockContent(B, null, "literal")}</code></pre>`);
     case "fenced":
-        return add(`<pre>${fencedOpener(B as BlockBase<"fenced">)}${renderBlockContent(B, null, "literal")}</code></pre>`);
+        return add(`<pre>${fencedOpener(B)}${renderBlockContent(B, null, "literal")}</code></pre>`);
     case "blockQuote":
         add(`<blockquote>`);
         renderBlockContent(B, buf, "blockquote");
         add(`</blockquote>`);
         return;
     case "sectionHeader_setext":
-        {
-            const L = (B as BlockBase<"sectionHeader_setext">).level;
-            return add(`<h${L}>${renderBlockContent(B, null)}</h${L}>`);
-        }
+        return add(`<h${B.level}>${renderBlockContent(B, null)}</h${B.level}>`);
     case "sectionHeader":
-        {
-            const L = (B as BlockBase<"sectionHeader">).level;
-            return add(`<h${L}>${renderBlockContent(B, null)}</h${L}>`);
-        }
+        return add(`<h${B.level}>${renderBlockContent(B, null)}</h${B.level}>`);
     case "listItem":
-        add(`<li>`);
-        renderBlockContent(B, buf);
-        add(`</li>`);
+        {
+            const pos = posInList(B);
+            const L = B.parentList!;
+
+            // render start of list
+            if(pos.isFirst) {
+                const B0 = L.contents[0];
+                let start = '';
+                if(typeof B0.marker_number === "number" && B0.marker_number !== 1)
+                    start = ` start="${B0.marker_number}"`;
+                buf.push(`<${L.listType === "Ordered" ? 'ol' : 'ul'}${start}>`); // start new list (<ul> or <ol>)
+            }
+
+            // render <li> element
+            if(B.blocks.length === 1 && B.blocks[0].type === "emptySpace")
+                buf.push(`<li></li>`);
+            else if(L.isLoose) {
+                //renderBlock(B, buf);
+                buf.push(`<li>`);
+                for(const B1 of B.blocks)
+                    renderBlock(B1, buf);
+                buf.push(`</li>`);
+            } else
+                buf.push(`<li>${renderBlockContent(B, null, "tightListItem")}</li>`);
+
+            // render end of list
+            if(pos.isLast)
+                buf.push(`</${L.listType === "Ordered" ? 'ol' : 'ul'}>`);
+        }
+        return;
     case "emptySpace":
         return;
     default:
@@ -96,67 +142,11 @@ function renderBlock(B: Block, buf: string[]) {
 }
 
 
-interface List {
-    marker: BlockBase<"listItem">["marker"];
-    loose:  boolean;
-    items:  ContainerBlockBase<"listItem">[];
-}
-
-
-function renderList(L: List, buf: string[]) {
-    //console.log('Rendering list', L)
-    const B0 = L.items[0];
-    let start = '';
-    if(typeof B0.marker_number === "number" && B0.marker_number !== 1)
-        start = ` start="${B0.marker_number}"`;
-    buf.push(`<${listType(L.marker)}${start}>`); // start new
-    for(const B of L.items) {
-        if(B.blocks.length === 1 && B.blocks[0].type === "emptySpace")
-            buf.push(`<li></li>`);
-        else if(L.loose)
-            renderBlock(B, buf);
-        else
-            buf.push(`<li>${renderBlockContent(B, null, "inlist")}</li>`);
-    }
-    buf.push(`</${listType(L.marker)}>`);
-}
-
-
-function renderBlocks(Bs: Block[], buf: string[]) {
-    for(let i = 0, iN = Bs.length;  i < iN;  ++i) {
-        const B = Bs[i];
-        if(B.type === "emptySpace")
-            continue;
-
-        const marker = listMarker(B);
-        if(marker) {
-            // it is a list block -> we need to find out if it is loose or tight before we can render it
-            const L: List = { marker,  loose: false,  items: [ B as ContainerBlockBase<"listItem"> ] };
-            let space = false;
-            for(let i1 = i + 1;  i1 < iN;  ++i1) {
-                const B1 = Bs[i1];
-                if(B1.type === "emptySpace") {
-                    space = true;
-                } else if(listMarker(B1) === marker) {
-                    L.loose ||= space || (B1 as ContainerBlockBase<"listItem">).isLooseItem;
-                    space = false;
-                    L.items.push(B1 as ContainerBlockBase<"listItem">);
-                    i = i1;
-                } else
-                    break; // end of list
-            }
-            renderList(L, buf);
-            continue;
-        }
-
-        renderBlock(B, buf);
-    }
-}
-
-
-export function referenceRender(content: Block[], verbose?: boolean, appendSpace: boolean = true) {
+export function referenceRender(content: AnyBlock[], verbose?: boolean, appendSpace: boolean = true) {
     const S: string[] = [];
-    renderBlocks(content, S);
+    
+    for(const B of content)
+        renderBlock(B, S);
 
     if(verbose)
         console.log('rendered blocks:', S);

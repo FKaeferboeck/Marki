@@ -1,10 +1,10 @@
 import { BlockParser_Container } from "../block-parser.js";
-import { LogicalLineData, ListItem, ContainerBlockBase } from "../markdown-types.js";
-import { ContainerBlockTraits } from "../traits.js";
-import { standardBlockStart } from "../util.js";
+import { LogicalLineData, ListItem, BlockBase_Container, AnyBlock, List, isContainer } from "../markdown-types.js";
+import { BlockTraits_Container } from "../traits.js";
+import { LLDinfo, standardBlockStart } from "../util.js";
 
 
-export const listItem_traits: ContainerBlockTraits<"listItem"> = {
+export const listItem_traits: BlockTraits_Container<"listItem"> = {
     isContainer: true,
     startsHere(LLD: LogicalLineData, B, interrupting?) {
         if(!standardBlockStart(LLD))
@@ -13,8 +13,11 @@ export const listItem_traits: ContainerBlockTraits<"listItem"> = {
         if(!rexres)
             return -1;
         B.marker = rexres[1].slice(-1) as ListItem["marker"];
-        if(B.marker === "." || B.marker === ")")
+        if(B.marker === "." || B.marker === ")") {
             B.marker_number = +rexres[1].slice(0, -1);
+            if(interrupting === "paragraph" && B.marker_number !== 1)
+                return -1; // orderedlist items may only interrupt a paragraph if they have the starting number 1 (CommonMark just-so rule)
+        }
 
         let space = Math.max(rexres[2].length, 1);
         if(rexres[0].length === LLD.startPart.length) {
@@ -53,14 +56,14 @@ export const listItem_traits: ContainerBlockTraits<"listItem"> = {
     },
 
     finalizeBlockHook() {
-        this.B.isLooseItem = isLooseItem(this.B as ContainerBlockBase<"listItem">);
+        this.B.isLooseItem = isLooseItem(this.B as BlockBase_Container<"listItem">);
     },
 
     allowSoftContinuations: true,
     allowCommentLines: true,
     canSelfInterrupt: true,
     
-    creator(MDP) { return new BlockParser_Container<"listItem">(MDP, this as ContainerBlockTraits<"listItem">); },
+    creator(MDP) { return new BlockParser_Container<"listItem">(MDP, this as BlockTraits_Container<"listItem">); },
     defaultBlockInstance: {
         type: "listItem",
         isContainer: true,
@@ -70,15 +73,16 @@ export const listItem_traits: ContainerBlockTraits<"listItem"> = {
         blocks: [],
         marker: "*",
         indent: 0,
-        isLooseItem: false
+        isLooseItem: false,
+        parentList:  undefined
     }
 };
 
 
-function isLooseItem(B: ContainerBlockBase<"listItem">) {
+function isLooseItem(B: BlockBase_Container<"listItem">) {
     const blocks = B.blocks;
     let i = 0, iN = B.blocks.length;
-    while(i < iN && blocks[i].type === "emptySpace")    ++i;
+    while(i < iN && blocks[i].type === "emptySpace")    ++i; // skip leading space
     let inSpace = false;
     for(;  i < iN;  ++i) {
         if(blocks[i].type === "emptySpace")
@@ -87,4 +91,47 @@ function isLooseItem(B: ContainerBlockBase<"listItem">) {
             return true;
     }
     return false;
+}
+
+
+
+export function collectLists(Bs: AnyBlock[], diagnostics = false) {
+    if(diagnostics)    console.log('Collect lists!');
+    let spaced = false;
+    let L: List | undefined;
+    for(const B of Bs) {
+        if(B.type === "listItem") {
+            if(L && L.contents[0].marker !== B.marker) {
+                if(diagnostics)    console.log(`L) Marker difference "${L.contents[0].marker}" -> "${B.marker}"`);
+                L = undefined;
+            }
+            if(!L)
+                L = {
+                    listType: (B.marker === "." || B.marker === ")" ? "Ordered" : "Bullet"),
+                    contents: [],
+                    isLoose:  false
+                };
+            L.contents.push(B);
+            if(diagnostics)    console.log(`L) list item at ${LLDinfo(B.contents[0] as LogicalLineData)} is ${B.isLooseItem ? 'loose' : 'tight'}, spaced? ${spaced}`);
+            L.isLoose ||= B.isLooseItem || spaced;
+            B.parentList = L;
+            spaced = false;
+        }
+        else if(B.type === "emptySpace") {
+            if(L)
+                spaced = true;
+        } else {
+            if(L && diagnostics)
+                console.log(`L) Ending list at ${LLDinfo(B.contents[0] as LogicalLineData)} -> is ${L.isLoose ? 'loose' : 'tight'}`);
+            L = undefined;
+            spaced = false;
+        }
+
+        if(isContainer(B))
+            collectLists(B.blocks, diagnostics);
+    }
+    if(L && diagnostics) {
+        const C1 = L.contents[L.contents.length - 1];
+        console.log(`L) Ending list at element ${LLDinfo(C1.blocks[0].contents[0] as LogicalLineData)} -> list is ${L.isLoose ? 'loose' : 'tight'}`);
+    }
 }

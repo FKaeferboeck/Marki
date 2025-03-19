@@ -28,11 +28,14 @@ export interface ListItem {
 	marker_number?: number;
 	indent:         number;
 	isLooseItem:    boolean;
-};
+	parentList:     List | undefined;
+}
 
 export interface List {
-	listType: "Ordered" | "Bullet";
-	contents: ListItem[];
+	listType:  "Ordered" | "Bullet";
+	contents:  Block<"listItem">[];
+	startIdx?: number;
+	isLoose:   boolean;
 }
 
 export interface FencedBlock {
@@ -40,50 +43,54 @@ export interface FencedBlock {
 	fence_length: number; // will be 3 most commonly
 	indentation:  number;
 	info_string:  string;
-};
-
-export interface Remark {
-	header?: string;
-}
-
-export interface SDS_ConceptElement {
-	fenced: boolean;
 }
 
 
-export interface BlockTypeMap {
+export interface BlockTypeMap_Leaf {
 	emptySpace:        EmptySpace;
 	paragraph:         Paragraph;
 	sectionHeader:     SectionHeader; // atx header
-	listItem:          ListItem;
-	list:              List;
-	sdsConceptElement: SDS_ConceptElement;
 
 	sectionHeader_setext: SectionHeader;
-	blockQuote:           BlockQuote;
 	indentedCodeBlock:    IndentedCodeBlock;
 	thematicBreak:        ThematicBreak;
 	fenced:               FencedBlock;
 }
 
-export type BlockType = keyof BlockTypeMap | ExtensionBlockType;
+export interface BlockTypeMap_Container {
+	blockQuote: BlockQuote;
+	listItem:   ListItem;
+}
 
-/*interface BlockBase<K extends BlockType>  {
-	type: K;
-	data: BlockTypeMap[K];
-}*/
-export type BlockBase<K extends BlockType> = (K extends keyof BlockTypeMap ? BlockTypeMap[K] : { }) & {
+export type BlockType_Leaf      = keyof BlockTypeMap_Leaf;
+export type BlockType_Container = keyof BlockTypeMap_Container;
+export type BlockType = BlockType_Leaf | BlockType_Container | ExtensionBlockType;
+
+
+export type BlockBase<K extends BlockType> = {
 	type: K;
 	logical_line_start:  number;
 	logical_line_extent: number;
-	contents: any[];
+	contents:            any[];
 };
 
 
-export type ContainerBlockBase<K extends BlockType> = BlockBase<K> & {
+
+export interface BlockBase_Container_additions {
 	isContainer: true;
-	blocks:      Block[];
-};
+	blocks:      AnyBlock[];
+}
+
+export type BlockBase_Leaf     <K extends BlockType_Leaf>      = BlockBase<K> & BlockTypeMap_Leaf[K];
+export type BlockBase_Container<K extends BlockType_Container> = BlockBase<K> & BlockTypeMap_Container[K] & BlockBase_Container_additions;
+
+export type Block<K extends BlockType> = (K extends BlockType_Container ? BlockBase_Container<K> :
+	                                      K extends BlockType_Leaf      ? BlockBase_Leaf<K> : BlockBase<K>);
 
 
-export type Block = BlockBase<BlockType>;
+export type AnyBlock = BlockType extends infer U ? (U extends BlockType_Leaf      ? BlockBase_Leaf<U> :
+	                                                U extends BlockType_Container ? BlockBase_Container<U> : never) : never;
+
+export type AnyContainerBlock = BlockType_Container extends infer U ? (U extends BlockType_Container ? BlockBase_Container<U> : never) : never;
+
+export const isContainer = (B: AnyBlock): B is AnyContainerBlock => ("isContainer" in B);

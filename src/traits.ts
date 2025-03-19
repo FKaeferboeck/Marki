@@ -1,6 +1,6 @@
 import { BlockParser, MarkdownParser } from "./block-parser.js";
 import { BlockParser_Container } from "./blocks/blockQuote.js";
-import { BlockType, ExtensionBlockType, BlockBase, ContainerBlockBase, LogicalLineData } from "./markdown-types.js";
+import { BlockType, ExtensionBlockType, BlockBase, BlockBase_Container, LogicalLineData, BlockType_Container, Block } from "./markdown-types.js";
 
 
 export type BlockContinuationType = number    // block definitely continues in this line (e.g. because of the prefix)
@@ -16,49 +16,43 @@ export interface BlockTraits<T extends BlockType = ExtensionBlockType> {
        If it can begin here it shoudl return a number describing the offset where the actual content of the block (after a prefix) starts,
        e.g. 2 for a blockquote starting after "> ".
        If the prefix contains additional data (e.g. the level of an atx header) the method can parse that data into the provided block object. */
-    startsHere(this: BlockParser<BlockBase<T>>, data: LogicalLineData, B: BlockBase<T>, interrupting?: BlockType | undefined): number;
+    startsHere(this: BlockParser<T>, data: LogicalLineData, B: Block<T>, interrupting?: BlockType | undefined): number;
 
     /* returning undefined means the function doesn't make a decision whether to continue the block here,
      * and leaves it to the subsequent standard algorithm instead.
      */
-    continuesHere?(this: BlockParser<BlockBase<T>>, data: LogicalLineData, isSoftContainerContinuation?: boolean): BlockContinuationType | undefined;
+    continuesHere?(this: BlockParser<T>, data: LogicalLineData, isSoftContainerContinuation?: boolean): BlockContinuationType | undefined;
 
-    acceptLineHook?(this: BlockParser<BlockBase<T>>, LLD: LogicalLineData, bct: BlockContinuationType | "start") : boolean;
-    finalizeBlockHook?(this: BlockParser<BlockBase<T>>): void;
+    acceptLineHook?(this: BlockParser<T>, LLD: LogicalLineData, bct: BlockContinuationType | "start") : boolean;
+    finalizeBlockHook?(this: BlockParser<T>): void;
 
     /* in case content lines need to be transformed in some way when adding them to the block content */
-    postprocessContentLine?(this: BlockParser<BlockBase<T>>, LLD: LogicalLineData, bct: BlockContinuationType | "start") : LogicalLineData;
+    postprocessContentLine?(this: BlockParser<T>, LLD: LogicalLineData, bct: BlockContinuationType | "start") : LogicalLineData;
 
-    continuationPrefix?: RegExp| ((LLD: LogicalLineData, B: BlockBase<T>) => number);
+    continuationPrefix?: RegExp| ((LLD: LogicalLineData, B: Block<T>) => number);
     
     allowSoftContinuations: boolean;
     canBeSoftContinuation?: boolean; // default true
     allowCommentLines: boolean;
     lastIsContent?: boolean; // if a line is continuation type "last" it will still be added to the block content - default false
     canSelfInterrupt?: boolean; // list items do that
-    creator: (MDP: MarkdownParser) => BlockParser<BlockBase<T>>; //BlockParserClass<T>;
-    defaultBlockInstance: BlockBase<T>;
+    creator: (MDP: MarkdownParser) => BlockParser<T>;
+    defaultBlockInstance: Block<T>;
 }
 
 
 
-export interface ContainerBlockTraits<T extends BlockType> extends BlockTraits<T> {
+export interface BlockTraits_Container<T extends BlockType_Container> extends BlockTraits<T> {
     isContainer: true;
 
-    startsHere(this: BlockParser_Container<T>, data: LogicalLineData, B: ContainerBlockBase<T>, interrupting?: BlockType | undefined): number;
+    //startsHere(this: BlockParser_Container<T>, data: LogicalLineData, B: BlockBase_Container<T>, interrupting?: BlockType | undefined): number;
 
-    creator: (MDP: MarkdownParser) => BlockParser_Container<T>; //BlockParser<ContainerBlockBase<T>>; //BlockParserClass<T>;
-    defaultBlockInstance: ContainerBlockBase<T>;
+    creator: (MDP: MarkdownParser) => BlockParser_Container<T>;
+    defaultBlockInstance: Block<T>;
 }
 
 
 
 export type BlockParserTraitsList = Partial<{
-    [K in BlockType]: BlockTraits<K> | ContainerBlockTraits<K>;
+    [K in BlockType]: (K extends BlockType_Container ? BlockTraits_Container<K> : BlockTraits<K>);
 }>;
-
-
-/*type BlockParserClass<K extends BlockType> = {
-	new (traits: BlockParserTraits<K>, LS: LineStructure): BlockParser<BlockBase<K>>;
-	prototype: BlockParser<BlockBase<K>>;
-}*/

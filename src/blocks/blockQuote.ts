@@ -1,6 +1,6 @@
 import { BlockParser_Container } from "../block-parser.js";
 import { LogicalLineData } from "../markdown-types.js";
-import { ContainerBlockTraits } from "../traits.js";
+import { BlockTraits_Container } from "../traits.js";
 import { standardBlockStart } from "../util.js";
 
 export interface BlockQuote {
@@ -8,7 +8,7 @@ export interface BlockQuote {
 };
 
 
-export const blockQuote_traits: ContainerBlockTraits<"blockQuote"> = {
+export const blockQuote_traits: BlockTraits_Container<"blockQuote"> = {
     isContainer: true,
     startsHere(LLD: LogicalLineData) {
         if(!(standardBlockStart(LLD) && LLD.startPart.startsWith('>')))
@@ -29,7 +29,7 @@ export const blockQuote_traits: ContainerBlockTraits<"blockQuote"> = {
     allowSoftContinuations: true,
     allowCommentLines: true,
     
-    creator(MDP) { return new BlockParser_Container<"blockQuote">(MDP, this as ContainerBlockTraits<"blockQuote">); },
+    creator(MDP) { return new BlockParser_Container<"blockQuote">(MDP, this as BlockTraits_Container<"blockQuote">); },
     defaultBlockInstance: {
         type: "blockQuote",
         isContainer: true,

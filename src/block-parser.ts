@@ -6,9 +6,9 @@ import { indentedCodeBlock_traits } from './blocks/indentedCodeBlock.js';
 import { paragraph_traits } from './blocks/paragraph.js';
 import { sectionHeader_traits } from './blocks/sectionHeader.js';
 import { sectionHeader_setext_traits } from './blocks/sectionHeader_setext.js';
-import { Block, BlockBase, BlockType, BlockTypeMap, ContainerBlockBase, ExtensionBlockType, LogicalLineData } from './markdown-types.js';
-import { TextPart, LineStructure, lineType, LogicalLine, LinePart, LogicalLineType } from './parser.js';
-import { BlockParserTraitsList, BlockContinuationType, BlockTraits, ContainerBlockTraits } from './traits.js';
+import { AnyBlock, Block, BlockBase, BlockType, BlockType_Container, BlockType_Leaf, ExtensionBlockType, LogicalLineData } from './markdown-types.js';
+import { LineStructure, LogicalLineType } from './parser.js';
+import { BlockParserTraitsList, BlockContinuationType, BlockTraits, BlockTraits_Container } from './traits.js';
 import { LLDinfo, sliceLLD } from './util.js';
 import { listItem_traits } from './blocks/listItem.js';
 
@@ -28,13 +28,13 @@ export const standardBlockParserTraits: BlockParserTraitsList = {
 
 
 export interface BlockContainer {
-	addContentBlock(B: Block): void;
+	addContentBlock<K extends BlockType>(B: BlockBase<K>): void;
 	blockContainerType: "containerBlock" | "MarkdownParser";
 }
 
 
-export interface BlockParser<BT extends Block> {
-	type: BlockType;
+export interface BlockParser<K extends BlockType = BlockType> {
+	type: K;
 	// Does a block of this type begin in that logical line, and can it interrupt the given currently open block?
 	beginsHere(LLD: LogicalLineData, interrupting?: BlockType | undefined): number;
 
@@ -49,19 +49,19 @@ export interface BlockParser<BT extends Block> {
 	getCheckpoint(): LogicalLineData | null;
 	MDP: MarkdownParser;
 	parent: BlockContainer | undefined;
-	B: BT;
+	B: Block<K>;
 	isInterruption: boolean;
 	startLine: LogicalLineData | undefined;
 	blockContainerType: BlockContainer["blockContainerType"] | "none";
 }
 
 
-export class BlockParser_Standard<K extends BlockType = ExtensionBlockType, Traits extends BlockTraits<K> = BlockTraits<K>> implements BlockParser<BlockBase<K>> {
-	type: BlockType;
+export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits extends BlockTraits<K> = BlockTraits<K>> implements BlockParser<K> {
+	type: K;
 
 	constructor(MDP: MarkdownParser, traits: Traits, useSoftContinuations: boolean = true) {
 		this.MDP = MDP;
-		this.type = traits.defaultBlockInstance.type;
+		this.type = traits.defaultBlockInstance.type as K;
 		this.traits = traits;
 		this.B = structuredClone(traits.defaultBlockInstance); // make a deep copy because the block object contains arrays
 		this.useSoftContinuations = useSoftContinuations;
@@ -183,11 +183,11 @@ export class BlockParser_Standard<K extends BlockType = ExtensionBlockType, Trai
 
 
 
-export class BlockParser_Container<K extends BlockType = ExtensionBlockType>
-    extends BlockParser_Standard<K, ContainerBlockTraits<K>>
+export class BlockParser_Container<K extends BlockType_Container = BlockType_Container>
+    extends BlockParser_Standard<K, BlockTraits_Container<K>>
     implements BlockContainer
 {
-    constructor(MDP: MarkdownParser, traits: ContainerBlockTraits<K>, useSoftContinuations: boolean = true) {
+    constructor(MDP: MarkdownParser, traits: BlockTraits_Container<K>, useSoftContinuations: boolean = true) {
         super(MDP, traits, useSoftContinuations);
         this.curContentParser = { container: this,  curParser: null,  generator: null };
     }
@@ -214,7 +214,6 @@ export class BlockParser_Container<K extends BlockType = ExtensionBlockType>
 		const LLD_c = this.enqueueContentSlice(LLD, typeof cont === "number" ? cont : 0);
 
 		if(typeof cont === "number") {
-			//const LLD_c = this.enqueueContentSlice(LLD, cont);
 			let curLLD = LLD_c;
 			while(true) {
 				if(this.MDP.diagnostics)    console.log(`      = Parsing content slice ${LLDinfo(curLLD)} inside ${this.type}`);
@@ -231,8 +230,10 @@ export class BlockParser_Container<K extends BlockType = ExtensionBlockType>
 		}
 		else if(cont === "soft") {
 			const P = this.curContentParser.curParser;
-			if(!P)
-				throw new Error('Continuing line of a block container but there is no current content parser');
+			if(!P) {
+				if(this.MDP.diagnostics)    console.log(`      Softly continuing line of a <${this.type}> but there is no current content parser -> container ends too`);
+				return "end";
+			}
 			
 
 			// only paragraph content can softly continue a container block
@@ -242,21 +243,17 @@ export class BlockParser_Container<K extends BlockType = ExtensionBlockType>
 				return "end";
 			}
 
-			//const LLD_c = this.enqueueContentSlice(LLD, 0);
 			cont = P.continues(LLD_c, true);
 
 			// The following behavior isn't fully clear from the CommonMark specification in my opinion, but we replicate what the CommonMark reference implementation does:
 			if(cont === "reject")
 				cont = "end";
-			//const LLD_c = this.enqueueContentSlice(LLD, 0);
-			/*if(cont === "soft")
-				LLD_c.isSoftContainerContinuation = true;*/
 			if(this.MDP.diagnostics)    console.log(`  block container <${this.type}> softly continues at line ${LLD.logl_idx} with content <${P.type}>? -> ${cont}`);
         }
         return cont;
     }
 
-    addContentBlock(B: Block) { this.B.blocks.push(B); }
+    addContentBlock<K extends BlockType>(B: BlockBase<K>) { this.B.blocks.push(B as AnyBlock); }
 
     acceptLine(LLD: LogicalLineData, bct: BlockContinuationType | "start") {
 		// an accepted soft continuation of a container block means an unprefixed soft continuation of the same line as content (which is a paragraph)
@@ -307,25 +304,24 @@ export class BlockParser_EmptySpace extends BlockParser_Standard<"emptySpace"> {
 
 interface BlockParserProviderItem<K extends BlockType> {
 	parent: MarkdownParser;
-	parser: BlockParser<BlockBase<K>> | undefined;
+	parser: BlockParser<K> | undefined;
 }
 type BlockParserProviderCache = {
 	[K in BlockType]: BlockParserProviderItem<K> | undefined;
 };
 
-//export type EligibleParsers = Generator<BlockParser<Block>> | BlockParser<Block>;
 export interface ParseState {
 	container: BlockContainer;
-	curParser: BlockParser<Block> | null;
-	generator: Generator<BlockParser<Block>> | null;
+	curParser: BlockParser | null;
+	generator: Generator<BlockParser> | null;
 	retry?:    LogicalLineData;
 }
 
 
 export type TakeBlockResult = {
-	finished_block: Block;
+	finished_block: AnyBlock;
 	lineAfter:      LogicalLineData | null;
-	ended_by?:      BlockParser<Block> | "eof";
+	ended_by?:      BlockParser | "eof";
 };
 
 
@@ -385,17 +381,17 @@ export class MarkdownParser implements BlockContainer {
 
 	blockParserProvider = {
 		cache: { } as BlockParserProviderCache,
-		release(P: BlockParser<Block>) {
+		release(P: BlockParser) {
 			if(this.cache[P.type]?.parser !== P)
 				throw new Error(`Trying to release a block parser for "${P.type}" that isn't in the cache`);
 			this.cache[P.type] = undefined;
 			return P;
 		},
 
-		*interrupters(interruptee: BlockParser<Block>): Generator<BlockParser<Block>> { yield* this.run("interrupters", interruptee.type, interruptee.parent || this.MDP); },
-		*mainBlocks  (BC?: BlockContainer):             Generator<BlockParser<Block>> { yield* this.run("tryOrder",     undefined, BC || this.MDP); },
+		*interrupters(interruptee: BlockParser): Generator<BlockParser> { yield* this.run("interrupters", interruptee.type, interruptee.parent || this.MDP); },
+		*mainBlocks  (BC?: BlockContainer):      Generator<BlockParser> { yield* this.run("tryOrder",     undefined, BC || this.MDP); },
 
-		*run(s: "tryOrder" | "interrupters", t0: BlockType | undefined, BC: BlockContainer | undefined): Generator<BlockParser<Block>> {
+		*run(s: "tryOrder" | "interrupters", t0: BlockType | undefined, BC: BlockContainer | undefined): Generator<BlockParser> {
 			const p = (this.MDP as MarkdownParser);
 			const L = p[s];
 			const allowSeltInterrupt = (t0 && p.traitsList[t0]?.canSelfInterrupt);
@@ -404,7 +400,7 @@ export class MarkdownParser implements BlockContainer {
 				const PP = this.cache[key] || (this.cache[key] = { parent: p,  parser: undefined });
 				if(!PP.parser)
 					PP.parser = p.makeParser(key) as any;
-				const P = PP.parser as BlockParser<Block>;
+				const P = PP.parser as BlockParser;
 				if(P.type !== t0 || allowSeltInterrupt) {
 					P.parent = BC; // where will a finished block be stored — either the central MarkdownParser instance or a container block
 					P.isInterruption = (s === "interrupters");
@@ -416,8 +412,8 @@ export class MarkdownParser implements BlockContainer {
 	}
 
 	
-	addContentBlock(B: Block) { this.blocks.push(B); }
-	blocks: Block[] = [];
+	addContentBlock<K extends BlockType>(B: BlockBase<K>) { this.blocks.push(B as AnyBlock); }
+	blocks: AnyBlock[] = [];
 	blockContainerType = "MarkdownParser" as const;
 	diagnostics = false;
 };
@@ -430,7 +426,7 @@ export function startBlock(this: MarkdownParser, ctx: ParseState, LLD: LogicalLi
 	if(!ctx.generator)
 		ctx.generator = this.blockParserProvider.mainBlocks(ctx.container);
 
-	let I: IteratorResult<BlockParser<Block>, any> | undefined;
+	let I: IteratorResult<BlockParser, any> | undefined;
 	while(!(I = ctx.generator.next()).done) {
 		const PA = I.value;
 		

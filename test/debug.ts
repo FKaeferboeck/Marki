@@ -11,10 +11,11 @@ const parser = new MarkdownParser();
 var commonmark_writer = new commonmark.HtmlRenderer();*/
 
 const markdownInput =
-`>
-> foo
->  `;
+`- foo
+  - bar
+    - baz
 
+      bim`;
 
 parser.diagnostics = true;
 const LS        = linify(markdownInput);
