@@ -21,6 +21,14 @@ export interface LogicalLineData {
 }
 
 
+export interface InlinePos {
+	LLD:      LogicalLineData;
+    //line_idx: number;
+    part_idx: number;
+    char_idx: number;
+}
+
+
 export interface EmptySpace { };
 
 export interface ListItem {
@@ -94,3 +102,23 @@ export type AnyBlock = BlockType extends infer U ? (U extends BlockType_Leaf    
 export type AnyContainerBlock = BlockType_Container extends infer U ? (U extends BlockType_Container ? BlockBase_Container<U> : never) : never;
 
 export const isContainer = (B: AnyBlock): B is AnyContainerBlock => ("isContainer" in B);
+
+
+
+/**********************************************************************************************************************/
+
+export interface InlineElementMap {
+	codeSpan: { content: string; };
+}
+
+export type ExtensionInlineElementType = `ext_${ExtensionNamespace}_${string}`;
+export type InlineElementType = keyof InlineElementMap | ExtensionInlineElementType;
+
+
+export interface InlineElementBase<K extends InlineElementType> {
+	type: K;
+}
+
+export type InlineElement<K extends InlineElementType> = (K extends keyof InlineElementMap ? InlineElementMap[K] & InlineElementBase<K> : never);
+
+export type AnyInline = string | (InlineElementType extends infer U ? (U extends keyof InlineElementMap ? InlineElement<U> : never) : never);

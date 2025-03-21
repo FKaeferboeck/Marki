@@ -1,8 +1,8 @@
 import { describe, expect, it, test } from 'vitest'
-import { MarkdownParser } from '../src/block-parser';
 import { linify } from '../src/parser';
-import { Block, BlockType, ContainerBlockBase } from '../src/markdown-types';
+import { AnyBlock, Block, BlockBase_Container, BlockType, isContainer } from '../src/markdown-types';
 import { lineDataAll } from '../src/util';
+import { MarkdownParser } from '../src/markdown-parser';
 
 interface ResultMakerItem {
     type:      BlockType;
@@ -29,13 +29,13 @@ function resultMaker(input: ResultMakerItem[], i: number = 0) {
 
 const ignored_props = { type: true,  logical_line_start: true,  logical_line_extent: true,  contents: true };
 
-function blocks_check(blocks: Block[]) {
+function blocks_check(blocks: AnyBlock[]) {
     return blocks.map(B => {
         const X = { type: B.type,  range: [ B.logical_line_start, B.logical_line_extent ] };
         for(const k of Object.keys(B).filter(k => !ignored_props[k]))
             X[k] = B[k];
-        if(("blocks" in B) && (B as ContainerBlockBase<BlockType>).blocks.length > 0)
-            (X as any).blocks = blocks_check((B as ContainerBlockBase<BlockType>).blocks);
+        if(isContainer(B) && B.blocks.length > 0)
+            (X as any).blocks = blocks_check(B.blocks);
         return X;
     });
 }

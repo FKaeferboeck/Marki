@@ -121,7 +121,6 @@ function renderBlock(B: AnyBlock, buf: string[]) {
             if(B.blocks.length === 1 && B.blocks[0].type === "emptySpace")
                 buf.push(`<li></li>`);
             else if(L.isLoose) {
-                //renderBlock(B, buf);
                 buf.push(`<li>`);
                 for(const B1 of B.blocks)
                     renderBlock(B1, buf);

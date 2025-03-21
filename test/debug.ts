@@ -1,7 +1,7 @@
-import { MarkdownParser } from '../src/block-parser.js';
 import { linify } from '../src/parser.js';
 import { lineDataAll } from '../src/util.js';
 import { referenceRender } from '../src/renderer/referenceRenderer.js';
+import { MarkdownParser } from '../src/markdown-parser.js';
 //import * as commonmark from 'commonmark';
 
 

@@ -1,6 +1,9 @@
-import { BlockParser, MarkdownParser } from "./block-parser.js";
+import { BlockParser } from "./block-parser.js";
 import { BlockParser_Container } from "./blocks/blockQuote.js";
-import { BlockType, ExtensionBlockType, BlockBase, BlockBase_Container, LogicalLineData, BlockType_Container, Block } from "./markdown-types.js";
+import { InlineParser } from "./inline-parser.js";
+import { MarkdownParser } from "./markdown-parser.js";
+import { BlockType, ExtensionBlockType, BlockBase, BlockBase_Container, LogicalLineData, BlockType_Container, Block, InlineElementType, ExtensionInlineElementType, InlineElement, InlinePos } from "./markdown-types.js";
+import { BlockContentIterator } from "./util.js";
 
 
 export type BlockContinuationType = number    // block definitely continues in this line (e.g. because of the prefix)
@@ -45,8 +48,6 @@ export interface BlockTraits<T extends BlockType = ExtensionBlockType> {
 export interface BlockTraits_Container<T extends BlockType_Container> extends BlockTraits<T> {
     isContainer: true;
 
-    //startsHere(this: BlockParser_Container<T>, data: LogicalLineData, B: BlockBase_Container<T>, interrupting?: BlockType | undefined): number;
-
     creator: (MDP: MarkdownParser) => BlockParser_Container<T>;
     defaultBlockInstance: Block<T>;
 }
@@ -55,4 +56,22 @@ export interface BlockTraits_Container<T extends BlockType_Container> extends Bl
 
 export type BlockParserTraitsList = Partial<{
     [K in BlockType]: (K extends BlockType_Container ? BlockTraits_Container<K> : BlockTraits<K>);
+}>;
+
+
+
+/**********************************************************************************************************************/
+
+export interface InlineElementTraits<T extends InlineElementType = ExtensionInlineElementType> {
+    startChars: string[]; // characters where inline element can possibly start — doesn't have to be a sufficient condition
+
+    parse(It: BlockContentIterator): InlineElement<T> | false;
+
+    creator: (MDP: MarkdownParser) => InlineParser<T>;
+    defaultElementInstance: InlineElement<T>;
+}
+
+
+export type InlineParserTraitsList = Partial<{
+    [K in InlineElementType]:  InlineElementTraits<K>;
 }>;

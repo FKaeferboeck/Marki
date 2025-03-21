@@ -1,4 +1,4 @@
-import { LogicalLineData } from "./markdown-types.js";
+import { InlinePos, LogicalLineData } from "./markdown-types.js";
 import { LinePart, LineStructure, LogicalLineType } from "./parser.js";
 
 
@@ -87,3 +87,138 @@ export function LLDinfo(LLD: LogicalLineData | null | undefined) {
         return '[EOF]';
     return `[${LLD.logl_idx}:${LLD.startIndent ? `(${LLD.startIndent})+` : ''}${LLD.startPart}${LLD.isSoftContainerContinuation ? '\\SCC' : ''}]`;
 }
+
+
+
+/**********************************************************************************************************************/
+
+export const makeInlinePos = (LLD: LogicalLineData): InlinePos => ({
+    LLD,
+    part_idx: 0,
+    char_idx: 0
+});
+
+
+export interface InlineParsingConfig {
+    ignoreStartIndents: boolean;
+    html_as_literal:    boolean;
+    report_line_breaks: boolean;
+}
+
+
+export function contentSlice(p0: InlinePos, p1: InlinePos, includeComments: boolean) {
+    let R0 = p0.LLD.parts[p0.part_idx], R1 = p1.LLD.parts[p1.part_idx];
+    
+    if(R0 === R1)
+        return R0.content.slice(p0.char_idx, p1.char_idx);
+
+    const buf = [ R0.content.slice(p0.char_idx) ];
+    //console.log(p0, p1)
+    let LLD = p0.LLD;
+    for(let i = p0.part_idx + 1, iN = p1.part_idx;  i < iN;  ++i) {
+        const R = LLD.parts[i];
+        if(R.type !== "XML_Comment" || includeComments)
+            buf.push(R.content);
+    }
+    if(p1.char_idx > 0)
+        buf.push(R1.content.slice(0, p1.char_idx));
+    return buf.join('');
+}
+
+
+export interface BlockContentIterator {
+    pos: InlinePos;
+    checkpoint: InlinePos;
+    line_break_char: string;
+
+    peekChar(): string | false;
+    //peekItem(): string | LinePart;
+
+    nextChar(): false | string;
+    nextItem(): false | string | LinePart;
+
+    stepBack(P?: InlinePos): void;
+    setCheckPoint      (P?: InlinePos): void;
+    setCheckPointAtPrev(P?: InlinePos): void;
+}
+
+
+const LP_break = { type: "lineBreak" as const,  content: [ ' ' ] };
+const LP_EOF   = { type: "EOF" as const,        content: [ false as const ] };
+
+export function makeBlockContentIterator(LLD: LogicalLineData): BlockContentIterator {
+    const pos        = makeInlinePos(LLD);
+    let   checkpoint = makeInlinePos(LLD);
+    let curLine = LLD;
+    let curPart: LinePart | typeof LP_break | typeof LP_EOF = curLine.parts[0];
+    let curPartLength = curPart.content.length;
+
+    const nextPart = () => {
+        const x = (++pos.part_idx - curLine.parts.length);
+        if(x === 0 && curLine.next) { // insert line break character, except after the last line
+            curPart = LP_break;
+            pos.char_idx = 0;
+            curPartLength = 0;
+            return;
+        }
+        if(x >= 0) {
+            if(!curLine.next) {
+                curPart = LP_EOF;
+                /*pos.part_idx = */pos.char_idx = 0;
+                return;
+            }
+            if(curLine = curLine.next)
+                pos.LLD = curLine;
+            pos.part_idx = 0;
+        }
+        curPart = curLine.parts[pos.part_idx];
+        curPartLength = curPart.content.length;
+        pos.char_idx = 0;
+    };
+
+    const stepBack = (P?: InlinePos) => {
+        P ||= pos;
+        --P.char_idx; // TODO!! Improve this
+    };
+
+    return {
+        pos,
+        checkpoint,
+        line_break_char: ' ',
+
+        peekChar: () => curPart.content[pos.char_idx],
+
+        nextChar: () => {
+            const s = curPart.content[pos.char_idx];
+            if(s && ++pos.char_idx >= curPartLength)
+                nextPart();
+            return s;
+        },
+
+        nextItem: () => {
+            if(curPart.type === "XML_Comment") {
+                const s = curPart;
+                nextPart();
+                return s;
+            }
+            const s = curPart.content[pos.char_idx];
+            if(s && ++pos.char_idx >= curPartLength)
+                nextPart();
+            return s;
+        },
+
+        stepBack,
+
+        setCheckPoint: (P?: InlinePos) => {
+            Object.assign(P || checkpoint, pos);
+        },
+        setCheckPointAtPrev: (P?: InlinePos) => {
+            Object.assign(P || checkpoint, pos);
+            stepBack(P || checkpoint);
+        }
+    };
+}
+
+
+
+
