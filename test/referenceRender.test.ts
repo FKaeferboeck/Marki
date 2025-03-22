@@ -17,35 +17,37 @@ var commonmark_reader = new commonmark.Parser();
 var commonmark_writer = new commonmark.HtmlRenderer();
 
 
-function doTest(title: string, input: (string | boolean)[]) {
+function doTest(title: string, startNumber: number, input: (string | boolean)[]) {
     const verboses: Record<number, boolean> = { };
-    test(title, () => {
+    describe(title, () => {
         input.forEach((s, idx) => {
-            if(typeof s === "boolean") {
-                verboses[idx + 1] = s;
-                return;
-            }
-            const LS        = linify(s);
-            const LLD       = lineDataAll(LS, 0);
-            const diag = verboses[idx] || false;
-            parser.diagnostics = diag;
-            const blocks    = parser.processContent(LLD);
-            collectLists(blocks, diag);
-            const my_result = referenceRender(blocks, diag);
+            test('Case ' + (idx + startNumber), () => {
+                if(typeof s === "boolean") {
+                    verboses[idx + 1] = s;
+                    return;
+                }
+                const LS        = linify(s);
+                const LLD       = lineDataAll(LS, 0);
+                const diag = verboses[idx] || false;
+                parser.diagnostics = diag;
+                const blocks    = parser.processContent(LLD);
+                collectLists(blocks, diag);
+                const my_result = referenceRender(blocks, diag);
 
-            const parsed = commonmark_reader.parse(s);
-            const commonmark_result = commonmark_writer.render(parsed) as string;
-            if(diag)
-                console.log('CommonMark:', [ commonmark_result ]);
+                const parsed = commonmark_reader.parse(s);
+                const commonmark_result = commonmark_writer.render(parsed) as string;
+                if(diag)
+                    console.log('CommonMark:', [ commonmark_result ]);
 
-            expect(my_result).toEqual(commonmark_result);
-            //expect(my_result.length).toEqual(commonmark_result.length);
-        })
+                expect(my_result).toEqual(commonmark_result);
+                //expect(my_result.length).toEqual(commonmark_result.length);
+            })
+        });
     });
 }
 
 
-doTest('thematic breaks', [
+doTest('thematic breaks', 1, [
     `***\n---\n___`,
     `+++`, // wrong character
     `===`, //
@@ -68,7 +70,7 @@ doTest('thematic breaks', [
 ])
 
 
-doTest('ATX headings', [
+doTest('ATX headings', 1, [
     `# foo\n## foo\n### foo\n#### foo\n##### foo\n###### foo`,
     `####### foo`, // More than six # characters is not a heading
     `#5 bolt\n\n#hashtag`, // space after # required
@@ -90,7 +92,7 @@ doTest('ATX headings', [
 ]);
 
 
-doTest('setext headings', [
+doTest('setext headings', 83, [
     //`Foo *bar*\n=========\n\nFoo *bar*\n---------`, // 83
     //`Foo *bar\nbaz*\n====`, // 84 The content of the header may span more than one line
     //`  Foo *bar\nbaz*\t\n====`, // 85 surrounding space
@@ -125,7 +127,7 @@ doTest('setext headings', [
 ]);
 
 
-doTest('indented code blocks', [
+doTest('indented code blocks', 107, [
     `    a simple\n      indented code block`, // 107
     `  - foo108\n\n    bar`, // item list takes precedence
     `1.  foo109\n\n    - bar109`, // 109
@@ -141,7 +143,7 @@ doTest('indented code blocks', [
 ]);
 
 
-doTest('fenced code blocks', [
+doTest('fenced code blocks', 119, [
     /*'```\n<\n >\n```', // 119
     '~~~\n<\n >\n~~~', // 120
     '``\nfoo\n``', // Fewer than three backticks is not enough*/
@@ -174,7 +176,7 @@ doTest('fenced code blocks', [
 ])
 
 
-doTest('basic paragraphs', [
+doTest('basic paragraphs', 148, [
     `aaa\n\nbbb`,
     `aaa\nbbb\n\nccc\nddd`,
     `aaa\n\n\nbbb`,
@@ -185,7 +187,7 @@ doTest('basic paragraphs', [
 ]);
 
 
-doTest('block quotes', [
+doTest('block quotes', 228, [
     '> # Foo\n> bar\n> baz', // 228
     '># Foo\n>bar\n> baz', // The space or tab after the > characters can be omitted
     '   > # Foo\n   > bar\n > baz', // he > characters can be preceded by up to three spaces of indentation
@@ -215,7 +217,7 @@ doTest('block quotes', [
 ])
 
 
-doTest('list items', [
+doTest('list items', 253, [
     'A paragraph\nwith two lines.\n\n    indented code\n\n> A block quote.', // 253
     '1.  A paragraph\n    with two lines.\n\n        indented code\n\n    > A block quote.', // 254
     '- one\n\n two', // 255
@@ -267,7 +269,7 @@ doTest('list items', [
 ]);
 
 
-doTest('lists', [
+doTest('lists', 301, [
     '- foo\n- bar\n+ baz', // 301 Changing the bullet or ordered list delimiter starts a new list
     '1. foo\n2. bar\n3) baz', // 302
     'Foo\n- bar\n- baz', // 303 a list can interrupt a paragraph

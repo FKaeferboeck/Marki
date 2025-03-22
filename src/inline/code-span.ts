@@ -1,39 +1,44 @@
-import { T } from "vitest/dist/chunks/environment.d8YfPkTm.js";
 import { InlineParser_Standard } from "../inline-parser.js";
-import { LogicalLineData, InlinePos, InlineElement } from "../markdown-types.js";
+import { InlinePos, InlineElement } from "../markdown-types.js";
 import { InlineElementTraits } from "../traits.js";
-import { BlockContentIterator, contentSlice, makeInlinePos } from "../util.js";
-import { LinePart } from "../parser.js";
+import { contentSlice } from "../util.js";
 
 
 export const codeSpan_traits: InlineElementTraits<"codeSpan"> = {
     startChars: [ '`' ],
 
-    parse(It: BlockContentIterator): InlineElement<"codeSpan"> | false {
-        It.setCheckPointAtPrev();
-        let marker_in_length = 1;
-        let s: false | string | LinePart = false;
+    parse(It, pos0) {
+        let marker_in_length = 0;
+        let s: false | string = false;
+        if(It.prevCharInPart() === '`') // start char is part of a longer sequence of ````, but not the first one
+            return false;
         while((s = It.nextChar()) === '`')
             ++marker_in_length;
+        if(marker_in_length === 0) // just in case, it should already be guaranteed by the start char check
+            return false;
         const space_in = (s === ' ');
-        let space_out = false, marker_out_length = 0;
+        let space_out = false, marker_out_length = 0, non_space = 0;
         while(true) {
-            switch(s = It.nextItem()) {
+            switch(s) {
             case ' ':
                 space_out = true;
                 marker_out_length = 0;
                 break;
             case '`':
-                if(++marker_out_length === marker_in_length)
-                    return extractCodeSpan(It.checkpoint, It.pos, marker_in_length, space_in && space_out ? "spaced" : "normal");
+                ++non_space;
+                if(++marker_out_length === marker_in_length && It.peekChar() !== '`')
+                    return extractCodeSpan(pos0, It.pos, marker_in_length,
+                                           space_in && space_out && non_space != marker_in_length ? "spaced" : "normal");
                 break;
             case false: // block ended in unclosed code span
-                return extractCodeSpan(It.checkpoint, It.pos, marker_in_length, "unclosed");
+                return false;
             default:
+                ++non_space;
                 space_out = false;
                 marker_out_length = 0;
                 break;
             }
+            s = It.nextChar();
         }
     },
     
@@ -49,7 +54,7 @@ export const codeSpan_traits: InlineElementTraits<"codeSpan"> = {
 
 
 function extractCodeSpan(p0: InlinePos, p1: InlinePos, marker_length: number, mode: "normal" | "spaced" | "unclosed") : InlineElement<"codeSpan"> {
-    let s: string = contentSlice(p0, p1, true);
+    let s: string = contentSlice(p0, p1, true, ' '); // turn line endings into space
     const m = marker_length + (mode === "spaced" ? 1 : 0);
     return {
         type:    "codeSpan",

@@ -108,6 +108,7 @@ export const isContainer = (B: AnyBlock): B is AnyContainerBlock => ("isContaine
 /**********************************************************************************************************************/
 
 export interface InlineElementMap {
+	html:     { stuff: string; };
 	codeSpan: { content: string; };
 }
 

@@ -1,5 +1,5 @@
 import { collectLists } from "../blocks/listItem.js";
-import { AnyBlock, BlockBase, BlockType, BlockBase_Container, LogicalLineData, Block, List } from "../markdown-types.js";
+import { AnyBlock, BlockBase, BlockType, BlockBase_Container, LogicalLineData, Block, List, InlineElement, InlineElementType, AnyInline } from "../markdown-types.js";
 
 
 function singleParagraphContent(B: AnyBlock[]) {
@@ -152,3 +152,35 @@ export function referenceRender(content: AnyBlock[], verbose?: boolean, appendSp
     const S_joined = S.join('\n');
     return (S_joined && appendSpace ? S_joined + '\n' : S_joined);
 }
+
+
+
+/**********************************************************************************************************************/
+
+export function referenceRenderInline(data: (string | AnyInline)[]) {
+    const buf: string[] = [];
+    for(const elt of data) {
+        if(typeof elt === "string") {
+            buf.push(escapeXML(elt));
+            continue;
+        }
+        switch(elt.type) {
+        case "codeSpan":
+            buf.push(`<code>${escapeXML(elt.content)}</code>`);
+            break;
+        case "html":
+            buf.push(elt.stuff);
+            break;
+        }
+    }
+    return `<p>${buf.join('')}</p>\n`;
+}
+
+
+const replacements: Record<string, string> = {
+    '<': '&lt;',
+    '>': '&gt;',
+    '&': '&amp;',
+    '"': '&quot;'
+};
+const escapeXML = (s: string) => s.replaceAll(/[<>&"]/g, x => replacements[x]);

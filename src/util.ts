@@ -106,19 +106,43 @@ export interface InlineParsingConfig {
 }
 
 
-export function contentSlice(p0: InlinePos, p1: InlinePos, includeComments: boolean) {
-    let R0 = p0.LLD.parts[p0.part_idx], R1 = p1.LLD.parts[p1.part_idx];
-    
-    if(R0 === R1)
-        return R0.content.slice(p0.char_idx, p1.char_idx);
-
-    const buf = [ R0.content.slice(p0.char_idx) ];
-    //console.log(p0, p1)
+export function contentSlice(p0: InlinePos, p1: InlinePos, includeComments: boolean, line_break_char = '\n') {
+    const buf: string[] = [];
     let LLD = p0.LLD;
-    for(let i = p0.part_idx + 1, iN = p1.part_idx;  i < iN;  ++i) {
-        const R = LLD.parts[i];
-        if(R.type !== "XML_Comment" || includeComments)
-            buf.push(R.content);
+
+    if(p0.part_idx >= LLD.parts.length) { // starting at an end-of-line (or perhaps EOF) character
+        if(!LLD.next)
+            return ''; // p0 is EOF
+        p0 = { LLD: LLD.next,  part_idx: 0,  char_idx: 0 };
+        buf.push(line_break_char);
+    }
+
+    let R0 = p0.LLD.parts[p0.part_idx], R1 = p1.LLD.parts[p1.part_idx];
+    if(R0 === R1) {
+        buf.push(R0.content.slice(p0.char_idx, p1.char_idx));
+        return buf.join('');
+    }
+
+    buf.push(R0.content.slice(p0.char_idx));
+    
+    const fct = (i: number, iE: number) => {
+        for(;  i < iE;  ++i) {
+            const R = LLD.parts[i];
+            if(R.type !== "XML_Comment" || includeComments)
+                buf.push(R.content);
+        }
+    };
+
+    if(p0.LLD === p1.LLD) // everything contained in one line
+        fct(p0.part_idx + 1, p1.part_idx);
+    else { // content spanning multiple lines
+        fct(p0.part_idx + 1, LLD.parts.length);
+        buf.push(line_break_char);
+        while((LLD = LLD.next!) !== p1.LLD) { // complete lines between start and end
+            fct(0, LLD.parts.length);
+            buf.push(line_break_char);
+        }
+        fct(0, p1.part_idx);
     }
     if(p1.char_idx > 0)
         buf.push(R1.content.slice(0, p1.char_idx));
@@ -132,12 +156,14 @@ export interface BlockContentIterator {
     line_break_char: string;
 
     peekChar(): string | false;
-    //peekItem(): string | LinePart;
+    peekItem(): string | LinePart | false;
 
+    prevCharInPart(): false | string;
     nextChar(): false | string;
     nextItem(): false | string | LinePart;
 
-    stepBack(P?: InlinePos): void;
+    setPosition        (P:  InlinePos): void;
+    stepBack           (P?: InlinePos): void;
     setCheckPoint      (P?: InlinePos): void;
     setCheckPointAtPrev(P?: InlinePos): void;
 }
@@ -178,7 +204,10 @@ export function makeBlockContentIterator(LLD: LogicalLineData): BlockContentIter
 
     const stepBack = (P?: InlinePos) => {
         P ||= pos;
-        --P.char_idx; // TODO!! Improve this
+        if(--P.char_idx >= 0)
+            return;
+        P.char_idx = (curPart = P.LLD.parts[--P.part_idx]).content.length - 1;
+        curPartLength = curPart.content.length;
     };
 
     return {
@@ -187,7 +216,13 @@ export function makeBlockContentIterator(LLD: LogicalLineData): BlockContentIter
         line_break_char: ' ',
 
         peekChar: () => curPart.content[pos.char_idx],
+        peekItem: () => {
+            if((curPart.type === "XML_Comment" || curPart.type === "HTML_Tag") && pos.char_idx === 0)
+                return curPart;
+            return curPart.content[pos.char_idx];
+        },
 
+        prevCharInPart: () => (pos.char_idx > 0 && curPart.content[pos.char_idx - 1]),
         nextChar: () => {
             const s = curPart.content[pos.char_idx];
             if(s && ++pos.char_idx >= curPartLength)
@@ -196,7 +231,7 @@ export function makeBlockContentIterator(LLD: LogicalLineData): BlockContentIter
         },
 
         nextItem: () => {
-            if(curPart.type === "XML_Comment") {
+            if((curPart.type === "XML_Comment" || curPart.type === "HTML_Tag") && pos.char_idx === 0) {
                 const s = curPart;
                 nextPart();
                 return s;
@@ -207,6 +242,10 @@ export function makeBlockContentIterator(LLD: LogicalLineData): BlockContentIter
             return s;
         },
 
+        setPosition: (P: InlinePos) => {
+            Object.assign(pos, P);
+            curPartLength = (curPart = (curLine = P.LLD).parts[P.part_idx]).content.length;
+        },
         stepBack,
 
         setCheckPoint: (P?: InlinePos) => {

@@ -65,7 +65,7 @@ export type BlockParserTraitsList = Partial<{
 export interface InlineElementTraits<T extends InlineElementType = ExtensionInlineElementType> {
     startChars: string[]; // characters where inline element can possibly start — doesn't have to be a sufficient condition
 
-    parse(It: BlockContentIterator): InlineElement<T> | false;
+    parse(It: BlockContentIterator, startPos: InlinePos): InlineElement<T> | false;
 
     creator: (MDP: MarkdownParser) => InlineParser<T>;
     defaultElementInstance: InlineElement<T>;

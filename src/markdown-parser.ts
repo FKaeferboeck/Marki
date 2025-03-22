@@ -1,9 +1,9 @@
 import { BlockContainer, BlockParser, standardBlockParserTraits } from "./block-parser.js";
 import { standardInlineParserTraits } from "./inline-parser.js";
-import { AnyBlock, BlockBase, BlockType, ExtensionBlockType, InlineElementType, InlinePos, LogicalLineData } from "./markdown-types.js";
-import { LineStructure } from "./parser.js";
+import { AnyBlock, AnyInline, BlockBase, BlockType, ExtensionBlockType, InlineElementType, InlinePos, LogicalLineData } from "./markdown-types.js";
+import { LinePart, LineStructure } from "./parser.js";
 import { BlockParserTraitsList, InlineParserTraitsList } from "./traits.js";
-import { LLDinfo } from "./util.js";
+import { contentSlice, LLDinfo, makeBlockContentIterator, makeInlinePos } from "./util.js";
 
 
 interface BlockParserProviderItem<K extends BlockType> {
@@ -255,27 +255,47 @@ export function processLines(this: MarkdownParser, LLD0: LogicalLineData, LLD1: 
 
 /**********************************************************************************************************************/
 
-function processInline(this: MarkdownParser, Ls: LogicalLineData[]) {
-    /*if(Ls.length === 0)
-        return [];
+function processInline(this: MarkdownParser, LLD: LogicalLineData) {
+		let It = makeBlockContentIterator(LLD);
+        const checkpoint = makeInlinePos(LLD), checkpoint1 = makeInlinePos(LLD);
+        let c: false | string | LinePart = false;
+        let buf: (string | AnyInline)[] = [];
 
-    const pos: InlinePos = {
-        line_idx: 0,
-        part_idx: 0,
-        char_idx: 0
-    }
-    for(const c of Ls[0].startPart) {
-        const ts = this.startCharMap[c];
-        if(ts) {
-            for(const t of ts) {
-                const P = this.getInlineParser(t);
-                const x = P.parse(Ls, pos);
+        while(c = It.peekItem()) {
+			if(!(typeof c === "string" && this.startCharMap[c])) {
+				if(typeof c !== "string") {
+					It.setCheckPoint(checkpoint1);
+					const flush = contentSlice(checkpoint, checkpoint1, false);
+                    if(flush)
+                        buf.push(flush);
+                    buf.push({ type: "html",  stuff: c.content });
+					It.nextItem();
+                    It.setCheckPoint(checkpoint);
+				} else
+					It.nextItem();
+				continue;
+			}
+			
+			It.setCheckPoint(checkpoint1);
+			let found = false;
+            for(const t of this.startCharMap[c]) {
+				const P = this.getInlineParser(t);
+                const elt = P.parse(It);
+                if(elt) {
+                    const flush = contentSlice(checkpoint, checkpoint1, false);
+                    if(flush)
+                        buf.push(flush);
+                    buf.push(elt);
+                    It.setCheckPoint(checkpoint);
+					found = true;
+                    break;
+                }
             }
+			if(!found)
+				It.nextItem();
         }
-
-        ++pos.char_idx;
-    }*/
-
-
+        const flush = contentSlice(checkpoint, It.pos, false);
+        if(flush)
+            buf.push(flush);
+        return buf;
 }
-//MarkdownParser.prototype.processInline = processInline;
