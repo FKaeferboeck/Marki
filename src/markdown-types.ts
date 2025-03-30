@@ -3,15 +3,22 @@ import { ThematicBreak } from "./blocks/thematicBreak.js";
 import { IndentedCodeBlock } from "./blocks/indentedCodeBlock.js";
 import { Paragraph } from "./blocks/paragraph.js";
 import { SectionHeader } from "./blocks/sectionHeader.js";
-import { LinePart, LogicalLineType } from "./parser.js";
+import { HTML_Markup, LinePart, LogicalLineType } from "./parser.js";
 
 export type ExtensionNamespace = string;
 
 export type ExtensionBlockType = `ext_${ExtensionNamespace}_${string}`;
 
+
+export const LP_break      = { type: "lineBreak"     as const,  content: '\n' };
+export const LP_break_HTML = { type: "lineBreakHTML" as const,  content: '\n' };
+export const LP_EOF        = { type: "EOF"           as const,  content: [ false ] as const };
+
+export type LinePart_ext = LinePart | typeof LP_break | typeof LP_break_HTML | typeof LP_EOF;
+
 export interface LogicalLineData {
 	logl_idx:                      number;
-	parts:                         LinePart[];
+	parts:                         LinePart_ext[];
 	startIndent:                   number;
 	startPart:                     string; // after the indent
 	type:                          LogicalLineType | "single";
@@ -108,8 +115,14 @@ export const isContainer = (B: AnyBlock): B is AnyContainerBlock => ("isContaine
 /**********************************************************************************************************************/
 
 export interface InlineElementMap {
-	html:     { stuff: string; };
-	codeSpan: { content: string; };
+	escaped:    { character: string; };
+	htmlEntity: { code: string;  codePoint: number | undefined; /* undefined describes an illegal entity code */ }
+	html:       { stuff: string;  continues?: boolean; };
+	codeSpan:   { content: string; };
+	link:       { linkType:    "inline" | "reference" | "collapsed" | "shortcut";
+	              linkText:    InlineContent;
+	              destination: AnyInline[];
+	              linkTitle?:  AnyInline[]; };
 }
 
 export type ExtensionInlineElementType = `ext_${ExtensionNamespace}_${string}`;
@@ -123,3 +136,5 @@ export interface InlineElementBase<K extends InlineElementType> {
 export type InlineElement<K extends InlineElementType> = (K extends keyof InlineElementMap ? InlineElementMap[K] & InlineElementBase<K> : never);
 
 export type AnyInline = string | (InlineElementType extends infer U ? (U extends keyof InlineElementMap ? InlineElement<U> : never) : never);
+
+export type InlineContent = (string | AnyInline)[];

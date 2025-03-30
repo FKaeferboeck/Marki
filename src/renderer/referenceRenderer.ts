@@ -1,5 +1,5 @@
 import { collectLists } from "../blocks/listItem.js";
-import { AnyBlock, BlockBase, BlockType, BlockBase_Container, LogicalLineData, Block, List, InlineElement, InlineElementType, AnyInline } from "../markdown-types.js";
+import { AnyBlock, BlockBase, BlockType, BlockBase_Container, LogicalLineData, Block, List, InlineElement, InlineElementType, AnyInline, InlineContent } from "../markdown-types.js";
 
 
 function singleParagraphContent(B: AnyBlock[]) {
@@ -157,8 +157,8 @@ export function referenceRender(content: AnyBlock[], verbose?: boolean, appendSp
 
 /**********************************************************************************************************************/
 
-export function referenceRenderInline(data: (string | AnyInline)[]) {
-    const buf: string[] = [];
+export function referenceRenderInline(data: InlineContent, buf?: string[]) {
+    buf ||= [];
     for(const elt of data) {
         if(typeof elt === "string") {
             buf.push(escapeXML(elt));
@@ -170,7 +170,13 @@ export function referenceRenderInline(data: (string | AnyInline)[]) {
             break;
         case "html":
             buf.push(elt.stuff);
+            /*if(elt.continues)
+                buf.push('\n');*/
             break;
+        case "link":
+            buf.push(`<a href="${urlEncode(elt.destination)}"${elt.linkTitle ? ` title="${escapeXML_all(elt.linkTitle)}"` : ''}>`);
+            referenceRenderInline(elt.linkText, buf);
+            buf.push('</a>');
         }
     }
     return `<p>${buf.join('')}</p>\n`;
@@ -184,3 +190,43 @@ const replacements: Record<string, string> = {
     '"': '&quot;'
 };
 const escapeXML = (s: string) => s.replaceAll(/[<>&"]/g, x => replacements[x]);
+
+function escapeXML_all(C: AnyInline[]) {
+    return escapeXML(C.map(s => {
+        if(typeof s === "string")
+            return s;
+        switch(s.type) {
+        case "escaped":     return s.character;
+        case "htmlEntity":  return (s.codePoint === undefined ? s.code : String.fromCodePoint(s.codePoint));
+        default:            return '';
+        }
+    }).join(''));
+}
+
+
+const digits = '0123456789ABCDEF';
+const hexByte = (n: number) => '%' + digits[(n >> 4) & 0x0F] + digits[n & 0x0F];
+
+const urlEncode = (S: AnyInline[]) => {
+    const joined = S.map(s => {
+        if(typeof s === "string")
+            return s;
+        switch(s.type) {
+        case "escaped":     return s.character;
+        case "htmlEntity":  return (s.codePoint === undefined ? s.code : String.fromCodePoint(s.codePoint));
+        default:            return '';
+        }
+    }).join('');
+    return joined.replaceAll(/[^A-Za-z\d-._~!#$&'()*+,/:l=?@\[\]]/g, (c, i: number) => {
+        if(c === '%' && /^%[\dA-F]{2}/.test(joined.slice(i, i + 3)))
+            return c; // skip already present character code
+        const n = c.charCodeAt(0);
+        if (n <= 0x7F)
+            return hexByte(n);
+        if (n <= 0x7FF)
+            return hexByte(0xC0 | (n >> 6)) + hexByte(0x80 | (n & 0x3F));
+        if (n <= 0xFFFF)
+            return hexByte(0xE0 | (n >> 12)) + hexByte(0x80 | ((n >> 6) & 0x3F)) + hexByte(0x80 | (n & 0x3F));
+        return hexByte(0xF0 | (n >> 18)) + hexByte(0x80 | ((n >> 12) & 0x3F)) + hexByte(0x80 | ((n >> 6) & 0x3F)) + hexByte(0x80 | (n & 0x3F));
+    });
+}

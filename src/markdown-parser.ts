@@ -1,9 +1,9 @@
 import { BlockContainer, BlockParser, standardBlockParserTraits } from "./block-parser.js";
 import { standardInlineParserTraits } from "./inline-parser.js";
-import { AnyBlock, AnyInline, BlockBase, BlockType, ExtensionBlockType, InlineElementType, InlinePos, LogicalLineData } from "./markdown-types.js";
+import { AnyBlock, AnyInline, BlockBase, BlockType, ExtensionBlockType, InlineContent, InlineElementType, InlinePos, LogicalLineData } from "./markdown-types.js";
 import { LinePart, LineStructure } from "./parser.js";
 import { BlockParserTraitsList, InlineParserTraitsList } from "./traits.js";
-import { contentSlice, LLDinfo, makeBlockContentIterator, makeInlinePos } from "./util.js";
+import { BlockContentIterator, contentSlice, LLDinfo, makeBlockContentIterator, makeInlinePos } from "./util.js";
 
 
 interface BlockParserProviderItem<K extends BlockType> {
@@ -152,6 +152,8 @@ export class MarkdownParser implements BlockContainer {
             });
         }
     }
+
+	inlineParseLoop = inlineParseLoop;
 };
 
 
@@ -255,47 +257,65 @@ export function processLines(this: MarkdownParser, LLD0: LogicalLineData, LLD1: 
 
 /**********************************************************************************************************************/
 
-function processInline(this: MarkdownParser, LLD: LogicalLineData) {
-		let It = makeBlockContentIterator(LLD);
-        const checkpoint = makeInlinePos(LLD), checkpoint1 = makeInlinePos(LLD);
-        let c: false | string | LinePart = false;
-        let buf: (string | AnyInline)[] = [];
+function inlineParseLoop(this: MarkdownParser, It: BlockContentIterator, buf: InlineContent,
+	                     stopCbk?: (It: BlockContentIterator, c: string | LinePart) => boolean) {
+	let c: false | string | LinePart = false;
+	const checkpoint = It.newCheckpoint(), checkpoint1 = It.newCheckpoint();
+	let returnVal = "EOF";
 
-        while(c = It.peekItem()) {
-			if(!(typeof c === "string" && this.startCharMap[c])) {
-				if(typeof c !== "string") {
-					It.setCheckPoint(checkpoint1);
-					const flush = contentSlice(checkpoint, checkpoint1, false);
-                    if(flush)
-                        buf.push(flush);
-                    buf.push({ type: "html",  stuff: c.content });
-					It.nextItem();
-                    It.setCheckPoint(checkpoint);
-				} else
-					It.nextItem();
-				continue;
-			}
-			
+	while(c = It.peekItem()) {
+		if(stopCbk?.(It, c)) {
+			returnVal = "byCbk";
+			break;
+		}
+
+		if(typeof c === "string" && this.startCharMap[c]) {
 			It.setCheckPoint(checkpoint1);
 			let found = false;
-            for(const t of this.startCharMap[c]) {
+			for(const t of this.startCharMap[c]) {
 				const P = this.getInlineParser(t);
-                const elt = P.parse(It);
-                if(elt) {
-                    const flush = contentSlice(checkpoint, checkpoint1, false);
-                    if(flush)
-                        buf.push(flush);
-                    buf.push(elt);
-                    It.setCheckPoint(checkpoint);
+				const elt = P.parse(It);
+				if(elt) {
+					const flush = contentSlice(checkpoint, checkpoint1, false);
+					if(flush)
+						buf.push(flush);
+					buf.push(elt);
+					It.setCheckPoint(checkpoint);
 					found = true;
-                    break;
-                }
-            }
-			if(!found)
-				It.nextItem();
-        }
-        const flush = contentSlice(checkpoint, It.pos, false);
-        if(flush)
-            buf.push(flush);
-        return buf;
+					break;
+				}
+			}
+			if(found)
+				continue;
+		}
+
+		if(typeof c !== "string") {
+			It.setCheckPoint(checkpoint1);
+			const flush = contentSlice(checkpoint, checkpoint1, false);
+			if(flush)
+				buf.push(flush);
+			const elt: AnyInline = { type: "html",  stuff: c.content };
+			if(c.type === "HTML_Tag" && c.continues)
+				elt.continues = true;
+			buf.push(elt);
+			It.nextItem();
+			It.setCheckPoint(checkpoint);
+			continue;
+		}
+
+		It.nextItem();
+	}
+	const flush = contentSlice(checkpoint, It.pos, false);
+	if(flush)
+		buf.push(flush);
+	return returnVal;
+}
+
+
+
+function processInline(this: MarkdownParser, LLD: LogicalLineData) {
+		let It = makeBlockContentIterator(LLD);
+		const buf: InlineContent = [];
+		inlineParseLoop.call(this, It, buf);
+		return buf;
 }

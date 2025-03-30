@@ -33,7 +33,7 @@ const my_result = referenceRender(blocks, true);*/
 parser.makeStartCharMap();
 
 {
-  const input = '`hi`lo`';
+  const input = '[link](<foo\nbar>)';
   const LS   = linify(input);
   const LLD  = lineDataAll(LS, 0);
   const data = parser.processInline(LLD);

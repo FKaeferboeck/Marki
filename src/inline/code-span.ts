@@ -16,11 +16,12 @@ export const codeSpan_traits: InlineElementTraits<"codeSpan"> = {
             ++marker_in_length;
         if(marker_in_length === 0) // just in case, it should already be guaranteed by the start char check
             return false;
-        const space_in = (s === ' ');
+        const space_in = (s === ' ' || s === '\n');
         let space_out = false, marker_out_length = 0, non_space = 0;
         while(true) {
             switch(s) {
             case ' ':
+            case '\n':
                 space_out = true;
                 marker_out_length = 0;
                 break;
