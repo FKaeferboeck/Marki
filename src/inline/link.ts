@@ -1,17 +1,22 @@
 import { InlineParser_Standard, parseBackslashEscapes } from "../inline-parser.js";
+import { MarkdownParser } from "../markdown-parser.js";
 import { AnyInline, InlineElement } from "../markdown-types.js";
 import { InlineElementTraits } from "../traits.js";
 import { BlockContentIterator, contentSlice, removeDelimiter } from "../util.js";
 
 
-function acceptable(B: InlineElement<"link">) {
-    const X: Record<string, boolean> = { link: true,  foo: true };
+function acceptable(MDP: MarkdownParser, B: InlineElement<"link">) {
     switch(B.linkType) {
     case "reference":
         return B;
     case "collapsed":
     case "shortcut":
-        return (X[B.linkText[0] as string] ? B : false);
+        {
+            const L = MDP.linkDefs[B.linkText[0] as string]; // TODO!! Improve!
+            if(!L)    return false; // link not found
+            B.reference = L;
+            return B;
+        }
     default:
         return B;
     }
@@ -93,19 +98,19 @@ export const link_traits: InlineElementTraits<"link"> = {
             if(It.peekChar() === ']') {
                 It.nextChar();
                 B.linkType = "collapsed";
-                return acceptable(B);
+                return acceptable(this.MDP, B);
             }
             const ref = It.takeDelimited({ '[': ']' });
             if(ref === false)
                 return false;
             B.linkType = (ref ? "reference" : "collapsed");
             parseBackslashEscapes(removeDelimiter(ref), B.destination);
-            return acceptable(B);
+            return acceptable(this.MDP, B);
         }
 
         // shortcut reference link
         B.linkType = "shortcut";
-        return acceptable(B);
+        return acceptable(this.MDP, B);
     },
     
     creator(MDP) { return new InlineParser_Standard<"link">(MDP, this); },

@@ -12,6 +12,7 @@ import { standardBlockParserTraits } from '../src/block-parser';
 standardBlockParserTraits.listItem = listItem_traits;
 
 const parser = new MarkdownParser();
+parser.makeStartCharMap();
 
 var commonmark_reader = new commonmark.Parser();
 var commonmark_writer = new commonmark.HtmlRenderer();
@@ -305,22 +306,16 @@ function doTest2(idx: number | string, input: string, verbose = false) {
         const LS   = linify(input);
         const LLD  = lineDataAll(LS, 0);
         
-        const data = parser.processInline(LLD);
-        const diag = true;
+        const diag = false;
         //const diag = verboses[idx] || false;
         parser.diagnostics = diag;
-        const blocks    = parser.processContent(LLD);
+        const blocks = parser.processContent(LLD);
         blocks.forEach(B => {
-            if(!B.content)
-                return;
-            //parser.processInline(B.contents[0]);
-        
+            if(B.content)
+                B.inlineContent = parser.processInline(B.content);
         });
         const my_result = referenceRender(blocks, diag);
-        console.log(blocks)
-
-        if(verbose)
-            console.log(data);
+        //console.log(blocks)
 
         const commonmark_parsed = commonmark_reader.parse(input);
         const commonmark_result = commonmark_writer.render(commonmark_parsed) as string;
@@ -331,5 +326,5 @@ function doTest2(idx: number | string, input: string, verbose = false) {
 }
 
 describe('Link reference definitions', () => {
-    doTest2(327, '[foo]: /url "title"\n\n[foo]', true);
+    doTest2(327, '[foo]: /url "title"\n\n[foo]');
 });

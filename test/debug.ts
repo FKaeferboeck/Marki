@@ -33,14 +33,21 @@ const my_result = referenceRender(blocks, true);*/
 parser.makeStartCharMap();
 
 {
-  const input = '\n    \n    foo117\n    '; //'aaa\n\nbbb';
+  const input = '[foo]: /url "title"\n\n[foo]';
   const LS   = linify(input);
   const LLD  = lineDataAll(LS, 0);
-
-  const diag = true;
+  
+  const diag = false;
+  //const diag = verboses[idx] || false;
   parser.diagnostics = diag;
-  const blocks    = parser.processContent(LLD);
-  console.log(blocks);
+  const blocks = parser.processContent(LLD);
+  blocks.forEach(B => {
+      if(B.content)
+          B.inlineContent = parser.processInline(B.content);
+  });
+  console.log(blocks)
+
+  
   const my_result = referenceRender(blocks, diag);
 
   //const data = parser.processInline(LLD);

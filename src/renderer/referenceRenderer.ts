@@ -36,12 +36,6 @@ function renderBlockContent(B: AnyBlock, buf: string[] | null, mode?: "literal" 
         if(mode === "blockquote")
             s = s.trim();
         return add(s);
-        /*const B_P = singleParagraphContent(blocks);
-        //console.log('list content', B1, B_P, B_P ? `Single[${renderBlockContent(B_P)}]` : 'nonSingle')
-        if(B_P)
-            return renderBlockContent(B_P, buf);
-        return add('\n' + referenceRender(blocks, false, true));*/
-        //return '\n' + B1.map(renderBlock).filter(S => S).join('\n') + '\n';
     }
 
     let s = '';
@@ -50,6 +44,8 @@ function renderBlockContent(B: AnyBlock, buf: string[] | null, mode?: "literal" 
         for(let LLD = B.content || null;  LLD;  LLD = LLD.next)
             arr.push(' '.repeat(LLD.startIndent) + LLD.startPart + '\n');
         s = arr.join('');
+    } else if(B.inlineContent) {
+        return add(referenceRenderInline(B.inlineContent));
     } else {
         for(let LLD = B.content || null;  LLD;  LLD = LLD.next)
             arr.push(LLD.startPart);
@@ -177,12 +173,17 @@ export function referenceRenderInline(data: InlineContent, buf?: string[]) {
                 buf.push('\n');*/
             break;
         case "link":
-            buf.push(`<a href="${urlEncode(elt.destination)}"${elt.linkTitle ? ` title="${escapeXML_all(elt.linkTitle)}"` : ''}>`);
-            referenceRenderInline(elt.linkText, buf);
-            buf.push('</a>');
+            {
+                const dst   = elt.reference?.destination || elt.destination;
+                const title = elt.reference?.linkTitle   || elt.linkTitle;
+                buf.push(`<a href="${urlEncode(dst)}"${title ? ` title="${escapeXML_all(title)}"` : ''}>`);
+                referenceRenderInline(elt.linkText, buf);
+                buf.push('</a>');
+            }
         }
     }
-    return `<p>${buf.join('')}</p>\n`;
+    return buf.join('');
+    //return `<p>${buf.join('')}</p>\n`;
 }
 
 
