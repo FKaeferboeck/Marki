@@ -1,18 +1,8 @@
-
-import { codeSpan_traits } from "./inline/code-span.js";
-import { link_traits } from "./inline/link.js";
 import { MarkdownParser } from "./markdown-parser.js";
 import { AnyInline, ExtensionInlineElementType, InlineElement, InlineElementType } from "./markdown-types.js";
-import { InlineElementTraits, InlineParserTraitsList } from "./traits.js";
+import { InlineElementTraits } from "./traits.js";
 import { BlockContentIterator } from "./util.js";
-import entityList from "./htmlEntities.json";
-
-
-export const standardInlineParserTraits: InlineParserTraitsList = {
-	codeSpan: codeSpan_traits,
-    link:     link_traits
-};
-
+import entityList from "./htmlEntities.json" with { type: "json" };
 
 
 export interface InlineParser<K extends InlineElementType = ExtensionInlineElementType> {

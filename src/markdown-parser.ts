@@ -1,9 +1,10 @@
-import { BlockContainer, BlockParser, standardBlockParserTraits } from "./block-parser.js";
-import { standardInlineParserTraits } from "./inline-parser.js";
-import { AnyBlock, AnyInline, BlockBase, BlockType, ExtensionBlockType, InlineContent, InlineElementType, InlinePos, LogicalLineData } from "./markdown-types.js";
+import { BlockContainer, BlockParser, BlockParser_Container, BlockParser_Standard, standardBlockParserTraits } from "./block-parser.js";
+import { codeSpan_traits } from "./inline/code-span.js";
+import { link_traits } from "./inline/link.js";
+import { AnyBlock, AnyInline, Block, BlockBase, BlockType, BlockType_Container, InlineContent, InlineElementType, LogicalLineData } from "./markdown-types.js";
 import { LinePart, LineStructure } from "./parser.js";
-import { BlockParserTraitsList, InlineParserTraitsList } from "./traits.js";
-import { BlockContentIterator, contentSlice, LLDinfo, makeBlockContentIterator, makeInlinePos } from "./util.js";
+import { BlockParserTraitsList, BlockTraits, BlockTraits_Container, InlineParserTraitsList } from "./traits.js";
+import { BlockContentIterator, contentSlice, LLDinfo, makeBlockContentIterator } from "./util.js";
 
 
 interface BlockParserProviderItem<K extends BlockType> {
@@ -29,6 +30,13 @@ export type TakeBlockResult = {
 };
 
 
+export const standardInlineParserTraits: InlineParserTraitsList = {
+	codeSpan: codeSpan_traits,
+	link:     link_traits
+};
+
+
+
 export class MarkdownParser implements BlockContainer {
 	constructor() {
 		// TODO!! Adjust traits to the desired configuration
@@ -44,7 +52,7 @@ export class MarkdownParser implements BlockContainer {
 		let LLD0: LogicalLineData | null = LLD;
 		while(LLD0) {
 			const P = this.processLines(LLD0, null, { container: this,  curParser: null,  generator: null });
-			if(this.diagnostics)    console.log(`Coming out of parsing with open block`, P.curParser?.type, P.curParser?.B.contents, P.curParser?.getCheckpoint());
+			if(this.diagnostics)    console.log(`Coming out of parsing with open block`, P.curParser?.type, P.curParser?.getCheckpoint());
 			LLD0 = (P.curParser?.finish()?.next || null);
 		}
 		
@@ -60,12 +68,23 @@ export class MarkdownParser implements BlockContainer {
 		logical_lines: []
 	};
 
-	private makeParser<K extends BlockType>(blockType: K) {
-		const traits = this.traitsList[blockType];
-		if(!traits) {
-			throw new Error(`Missing block parser traits for block type "${blockType}"`)
-		}
-		return traits.creator(this);
+	isContainerType(type: BlockType): type is BlockType_Container {
+		const traits = this.traitsList[type];
+		return ((traits && "isContainer" in traits && traits.isContainer) || false);
+	}
+
+	private makeParser<K extends BlockType>(type: K) {
+		const traits = this.traitsList[type] as BlockTraits<K> | undefined;
+		if(!traits)
+			throw new Error(`Missing block parser traits for block type "${type}"`)
+		if(traits.creator)
+			return traits.creator(this, type);
+
+		// No individual parser creator function found -> use the default version
+		if(this.isContainerType(type))
+			return new BlockParser_Container<typeof type>(this, type, traits as BlockTraits_Container<typeof type>);
+		else
+			return new BlockParser_Standard<K>(this, type, traits);
 	}
 
 	tryOrder: BlockType[] = [
@@ -76,6 +95,7 @@ export class MarkdownParser implements BlockContainer {
 		"fenced",
 		"blockQuote",
 		"listItem",
+		"linkDef",
 		"paragraph",
 		"sectionHeader_setext" // this only get used if a paragraph is rejected due to encountering "=======" (SETEXT header suffix)
 	];
@@ -124,6 +144,11 @@ export class MarkdownParser implements BlockContainer {
 	blocks: AnyBlock[] = [];
 	blockContainerType = "MarkdownParser" as const;
 	diagnostics = false;
+
+	linkDefs: Record<string, Block<"linkDef">> = { };
+	registerLinkDef(B: Block<"linkDef">) {
+		this.linkDefs[B.linkLabel] = B;
+	}
 
     /******************************************************************************************************************/
 
@@ -258,13 +283,14 @@ export function processLines(this: MarkdownParser, LLD0: LogicalLineData, LLD1: 
 /**********************************************************************************************************************/
 
 function inlineParseLoop(this: MarkdownParser, It: BlockContentIterator, buf: InlineContent,
-	                     stopCbk?: (It: BlockContentIterator, c: string | LinePart) => boolean) {
+	                     contCbk?:  (It: BlockContentIterator, c: string | LinePart) => boolean,
+						 contCbk2?: (It: BlockContentIterator, c: string | LinePart) => boolean) {
 	let c: false | string | LinePart = false;
 	const checkpoint = It.newCheckpoint(), checkpoint1 = It.newCheckpoint();
 	let returnVal = "EOF";
 
 	while(c = It.peekItem()) {
-		if(stopCbk?.(It, c)) {
+		if(contCbk?.(It, c) === false) {
 			returnVal = "byCbk";
 			break;
 		}
@@ -287,6 +313,11 @@ function inlineParseLoop(this: MarkdownParser, It: BlockContentIterator, buf: In
 			}
 			if(found)
 				continue;
+		}
+
+		if(contCbk2?.(It, c) === false) {
+			returnVal = "byCbk";
+			break;
 		}
 
 		if(typeof c !== "string") {

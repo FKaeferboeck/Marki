@@ -138,7 +138,7 @@ doTest('indented code blocks', 107, [
     `    foo\nbar`, // any non-blank line with fewer than four spaces of indentation ends the code block immediately
     `# Heading\n    foo\nHeading\n------\n    foo\n----`, // And indented code can occur immediately before and after other kinds of blocks
     `        foo116\n    bar`, // The first line can be preceded by more than four spaces of indentation
-    `\n    \n    foo\n    `, // Blank lines preceding or following an indented code block are not included in it
+    `\n    \n    foo117\n    `, // Blank lines preceding or following an indented code block are not included in it
     `    foo  ` // 118 Trailing spaces or tabs are included in the code block’s content
 ]);
 
@@ -298,3 +298,38 @@ doTest('lists', 301, [
     '- a\n  - b\n  - c\n\n- d\n  - e\n  - f' // 326
 ]);
 
+
+
+function doTest2(idx: number | string, input: string, verbose = false) {
+    test('' + idx, () => {
+        const LS   = linify(input);
+        const LLD  = lineDataAll(LS, 0);
+        
+        const data = parser.processInline(LLD);
+        const diag = true;
+        //const diag = verboses[idx] || false;
+        parser.diagnostics = diag;
+        const blocks    = parser.processContent(LLD);
+        blocks.forEach(B => {
+            if(!B.content)
+                return;
+            //parser.processInline(B.contents[0]);
+        
+        });
+        const my_result = referenceRender(blocks, diag);
+        console.log(blocks)
+
+        if(verbose)
+            console.log(data);
+
+        const commonmark_parsed = commonmark_reader.parse(input);
+        const commonmark_result = commonmark_writer.render(commonmark_parsed) as string;
+        if(verbose)
+            console.log('CommonMark:', commonmark_result);
+        expect(my_result).toEqual(commonmark_result);
+    });
+}
+
+describe('Link reference definitions', () => {
+    doTest2(327, '[foo]: /url "title"\n\n[foo]', true);
+});

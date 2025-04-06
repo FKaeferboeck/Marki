@@ -1,4 +1,3 @@
-import { BlockParser_Standard } from "../block-parser.js";
 import { LogicalLineData } from "../markdown-types.js";
 import { BlockTraits } from "../traits.js";
 
@@ -28,12 +27,5 @@ export const sectionHeader_traits: BlockTraits<"sectionHeader"> = {
 
     allowSoftContinuations: false,
     allowCommentLines: false,
-    creator(MDP) { return new BlockParser_Standard<"sectionHeader">(MDP, this); },
-    defaultBlockInstance: {
-        type: "sectionHeader",
-        logical_line_start: -1,
-        logical_line_extent: 0,
-        contents: [],
-        level: -1
-    }
+    defaultBlockInstance: { level: -1 }
 };

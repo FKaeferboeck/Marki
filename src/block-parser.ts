@@ -12,6 +12,7 @@ import { BlockParserTraitsList, BlockContinuationType, BlockTraits, BlockTraits_
 import { LLDinfo, sliceLLD } from './util.js';
 import { listItem_traits } from './blocks/listItem.js';
 import { MarkdownParser, ParseState } from './markdown-parser.js';
+import { linkDef_traits } from './blocks/linkDef.js';
 
 
 
@@ -24,7 +25,8 @@ export const standardBlockParserTraits: BlockParserTraitsList = {
 	indentedCodeBlock:    indentedCodeBlock_traits,
 	fenced:               fenced_traits,
 	listItem:             listItem_traits,
-	blockQuote:           blockQuote_traits
+	blockQuote:           blockQuote_traits,
+	linkDef:              linkDef_traits
 };
 
 
@@ -60,11 +62,14 @@ export interface BlockParser<K extends BlockType = BlockType> {
 export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits extends BlockTraits<K> = BlockTraits<K>> implements BlockParser<K> {
 	type: K;
 
-	constructor(MDP: MarkdownParser, traits: Traits, useSoftContinuations: boolean = true) {
+	constructor(MDP: MarkdownParser, type: K, traits: Traits, useSoftContinuations: boolean = true) {
 		this.MDP = MDP;
-		this.type = traits.defaultBlockInstance.type as K;
+		this.type = type;
 		this.traits = traits;
-		this.B = structuredClone(traits.defaultBlockInstance); // make a deep copy because the block object contains arrays
+		this.B = structuredClone(traits.defaultBlockInstance) as Block<K>; // make a deep copy because the individual block data can contain arrays
+		this.B.type                = type;
+		this.B.logical_line_start  = -1;
+		this.B.logical_line_extent = 0;
 		this.useSoftContinuations = useSoftContinuations;
 	}
 
@@ -131,10 +136,11 @@ export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits e
 		this.B.logical_line_extent = LLD.logl_idx - this.B.logical_line_start + 1;
 		if(bct !== "last" || this.traits.lastIsContent) {
 			// flush pending content lines to the block contents array
-			const n = this.B.contents.length;
-			let LLD_content = (n > 0 ? (this.B.contents[n - 1] as LogicalLineData).next : this.lastEnqueuedContent!)
+			let LLD_content = (this.lastAddedContent ? this.lastAddedContent.next : this.lastEnqueuedContent!);
+			if(!this.B.content && LLD_content && this.traits.hasContent !== false)
+				this.B.content = LLD_content;
 			for(;  LLD_content;  LLD_content = LLD_content.next) {
-				this.B.contents.push(LLD_content);
+				this.lastAddedContent = LLD_content;
 				if(this.MDP.diagnostics)    console.log(`      Adding content ${LLDinfo(LLD_content)} to "${this.type}"`);
 			}
 		}
@@ -143,6 +149,8 @@ export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits e
 	finish(): LogicalLineData {
 		if(this.traits.finalizeBlockHook)
 			this.traits.finalizeBlockHook.call(this);
+		if(this.lastAddedContent)
+			this.lastAddedContent.next = null; // if we ignore some scheduled content because it's after the last checkpoint, we have to drop it from the linked list.
 		if(this.parent)
 			this.parent.addContentBlock(this.B);
 		//container.addContentBlock(this.B);
@@ -155,10 +163,11 @@ export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits e
 	MDP: MarkdownParser;
 	parent: BlockContainer | undefined;
 	traits: Traits;
-	B: Traits["defaultBlockInstance"];
+	B: Block<K>; //Traits["defaultBlockInstance"];
 	isInterruption: boolean = false;
 	startLine:  LogicalLineData | undefined;
 	lastLine:   LogicalLineData | undefined; // the line most recently added to the block through acceptLine()
+	lastAddedContent: LogicalLineData | undefined; // tail of the linked list in this.B.content
 	checkpoint: LogicalLineData | undefined;
 	lastEnqueuedContent: LogicalLineData | undefined;
 	blockContainerType: BlockContainer["blockContainerType"] | "none" = "none";
@@ -188,8 +197,10 @@ export class BlockParser_Container<K extends BlockType_Container = BlockType_Con
     extends BlockParser_Standard<K, BlockTraits_Container<K>>
     implements BlockContainer
 {
-    constructor(MDP: MarkdownParser, traits: BlockTraits_Container<K>, useSoftContinuations: boolean = true) {
-        super(MDP, traits, useSoftContinuations);
+    constructor(MDP: MarkdownParser, type: K, traits: BlockTraits_Container<K>, useSoftContinuations: boolean = true) {
+        super(MDP, type, traits, useSoftContinuations);
+		this.B.isContainer = true;
+		this.B.blocks      = [];
         this.curContentParser = { container: this,  curParser: null,  generator: null };
     }
 
@@ -281,8 +292,8 @@ export class BlockParser_Container<K extends BlockType_Container = BlockType_Con
 export class BlockParser_EmptySpace extends BlockParser_Standard<"emptySpace"> {
     static readonly empties: Partial<Record<LogicalLineType, true>> = { empty: true,  emptyish: true,  comment: true };
 
-    constructor(MDP: MarkdownParser, traits: BlockTraits<"emptySpace">, useSoftContinuations: boolean = true) {
-        super(MDP, traits, useSoftContinuations);
+    constructor(MDP: MarkdownParser, type: "emptySpace", traits: BlockTraits<"emptySpace">, useSoftContinuations: boolean = true) {
+        super(MDP, type, traits, useSoftContinuations);
 	}
 
     beginsHere(LLD: LogicalLineData): number {

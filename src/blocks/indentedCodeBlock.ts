@@ -24,12 +24,5 @@ export const indentedCodeBlock_traits: BlockTraits<"indentedCodeBlock"> = {
 
     allowSoftContinuations: false,
     allowCommentLines: true,
-
-    creator(MDP) { return new BlockParser_Standard<"indentedCodeBlock">(MDP, this); },
-    defaultBlockInstance: {
-        type: "indentedCodeBlock",
-        logical_line_start: -1,
-        logical_line_extent: 0,
-        contents: []
-    }
+    defaultBlockInstance: { }
 };

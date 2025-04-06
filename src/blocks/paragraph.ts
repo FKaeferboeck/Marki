@@ -25,11 +25,5 @@ export const paragraph_traits: BlockTraits<"paragraph"> = {
 
     allowSoftContinuations: true,
     allowCommentLines: true,
-    creator(MDP) { return new BlockParser_Standard<"paragraph">(MDP, this); },
-    defaultBlockInstance: {
-        type: "paragraph",
-        logical_line_start: -1,
-        logical_line_extent: 0,
-        contents: []
-    }
+    defaultBlockInstance: { }
 };

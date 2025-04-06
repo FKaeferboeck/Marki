@@ -57,7 +57,7 @@ export function sliceLLD(LLD: LogicalLineData, begin: number): LogicalLineData {
 
 
 
-function lineData(LS: LineStructure, logl_idx: number): LogicalLineData {
+export function lineData(LS: LineStructure, logl_idx: number): LogicalLineData {
     const LL = LS.logical_lines[logl_idx];
     let P  = LS.all[LL.start];
     const p0 = (P.type === "TextPart" ? P.content : '');
@@ -175,6 +175,7 @@ export interface BlockContentIterator {
     nextItem(): false | string | LinePart;
 
     skip(chars: Record<string, boolean>) : number;
+    skipNobrSpace(): number;
 
     regexInPart(rex: RegExp): RegExpMatchArray | false; // advances iterator by the given regex if it matches, but only within the current line part
     takeDelimited(allowedDelimiters: Record<string, string>): string | false;
@@ -257,6 +258,16 @@ export function makeBlockContentIterator(LLD: LogicalLineData): BlockContentIter
             for(let c: string | false = false;  (c = It.peekChar()) && chars[c];  It.nextChar())
                 ++skipped;
             return skipped;
+        },
+
+        skipNobrSpace: () => {
+            let i = pos.char_idx, c: string|false = '';
+            while(i < curPartLength && ((c = curPart.content[i]) === ' ' || c === '\t'))    ++i;
+            const d = i - pos.char_idx;
+            pos.char_idx = i;
+            if(pos.char_idx === curPartLength)
+                nextPart();
+            return d;
         },
 
         regexInPart: (rex: RegExp) => {

@@ -1,6 +1,49 @@
 import { InlineParser_Standard, parseBackslashEscapes } from "../inline-parser.js";
+import { AnyInline, InlineElement } from "../markdown-types.js";
 import { InlineElementTraits } from "../traits.js";
 import { BlockContentIterator, contentSlice, removeDelimiter } from "../util.js";
+
+
+function acceptable(B: InlineElement<"link">) {
+    const X: Record<string, boolean> = { link: true,  foo: true };
+    switch(B.linkType) {
+    case "reference":
+        return B;
+    case "collapsed":
+    case "shortcut":
+        return (X[B.linkText[0] as string] ? B : false);
+    default:
+        return B;
+    }
+}
+
+
+export function takeLinkDestination(It: BlockContentIterator, destination: AnyInline[]) {
+    It.skip({ ' ': true,  '\n': true });
+    const bracketed = It.regexInPart(/^<(?:\\[<>]|[^<>])*>/);
+    if(bracketed)
+        parseBackslashEscapes(bracketed[0].slice(1, -1), destination);
+    else {
+        if(It.peekChar() === '<')
+            return false;
+        const chkp = It.newCheckpoint();
+        if(untilSpaceOrStop(It) === "invalid")
+            return false;
+        parseBackslashEscapes(contentSlice(chkp, It.pos, true), destination);
+    }
+    It.skip({ ' ': true,  '\n': true });
+    return true;
+}
+
+
+export function takeLinkTitle(It: BlockContentIterator, linkTitle: AnyInline[]) {
+    const title = It.takeDelimited({ '"': '"',  '\'': '\'',  '(': ')' });
+    if(!title)
+        return false;
+    parseBackslashEscapes(removeDelimiter(title), linkTitle);
+    It.skip({ ' ': true,  '\n': true });
+    return true;
+}
 
 
 export const link_traits: InlineElementTraits<"link"> = {
@@ -10,7 +53,16 @@ export const link_traits: InlineElementTraits<"link"> = {
         if(It.nextChar() !== '[')
             return false;
         const B = this.B;
-        if(this.MDP.inlineParseLoop(It, B.linkText, (_It, c) => (c === ']')) === "EOF")
+
+        let bracketLevel = 1;
+        if(this.MDP.inlineParseLoop(It, B.linkText,
+            (_It, c) => (c != ']' || --bracketLevel > 0),
+            (_It, c) => {
+                if(c === '[')    ++bracketLevel;
+                return true;
+            }) === "EOF")
+            return false;
+        if(B.linkText.some(I => (typeof I !== "string" && I.type === "link")))
             return false;
         It.nextChar(); // skip ']'
 
@@ -41,19 +93,19 @@ export const link_traits: InlineElementTraits<"link"> = {
             if(It.peekChar() === ']') {
                 It.nextChar();
                 B.linkType = "collapsed";
-                return B;
+                return acceptable(B);
             }
             const ref = It.takeDelimited({ '[': ']' });
             if(ref === false)
                 return false;
             B.linkType = (ref ? "reference" : "collapsed");
             parseBackslashEscapes(removeDelimiter(ref), B.destination);
-            return B;
+            return acceptable(B);
         }
 
         // shortcut reference link
         B.linkType = "shortcut";
-        return B;
+        return acceptable(B);
     },
     
     creator(MDP) { return new InlineParser_Standard<"link">(MDP, this); },

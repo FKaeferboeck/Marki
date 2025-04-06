@@ -35,12 +35,5 @@ export const sectionHeader_setext_traits: BlockTraits<"sectionHeader_setext"> = 
     allowSoftContinuations: false,
     canBeSoftContinuation: false,
     allowCommentLines: false,
-    creator(MDP) { return new BlockParser_Standard<"sectionHeader_setext">(MDP, this); },
-    defaultBlockInstance: {
-        type: "sectionHeader_setext",
-        logical_line_start: -1,
-        logical_line_extent: 0,
-        contents: [],
-        level: -1
-    }
+    defaultBlockInstance: { level: -1 }
 };

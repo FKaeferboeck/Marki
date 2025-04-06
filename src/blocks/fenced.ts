@@ -1,7 +1,14 @@
-import { BlockParser_Standard } from "../block-parser.js";
-import { FencedBlock, LogicalLineData } from "../markdown-types.js";
+import { LogicalLineData } from "../markdown-types.js";
 import { BlockTraits } from "../traits.js";
 import { standardBlockStart } from "../util.js";
+
+
+export interface FencedBlock {
+	fence_type:   "`" | "~";
+	fence_length: number; // will be 3 most commonly
+	indentation:  number;
+	info_string:  string;
+}
 
 
 export const fenced_traits: BlockTraits<"fenced"> = {
@@ -39,12 +46,7 @@ export const fenced_traits: BlockTraits<"fenced"> = {
     allowSoftContinuations: false,
     allowCommentLines: true,
 
-    creator(MDP) { return new BlockParser_Standard<"fenced">(MDP, this); },
     defaultBlockInstance: {
-        type: "fenced",
-        logical_line_start: -1,
-        logical_line_extent: 0,
-        contents: [],
         fence_type:   "`",
         fence_length: 3,
         indentation:  0,

@@ -4,6 +4,10 @@ import { IndentedCodeBlock } from "./blocks/indentedCodeBlock.js";
 import { Paragraph } from "./blocks/paragraph.js";
 import { SectionHeader } from "./blocks/sectionHeader.js";
 import { HTML_Markup, LinePart, LogicalLineType } from "./parser.js";
+import { LinkDef } from "./blocks/linkDef.js";
+import { FencedBlock } from "./blocks/fenced.js";
+import { EmptySpace } from "./blocks/emptySpace.js";
+import { ListItem } from "./blocks/listItem.js";
 
 export type ExtensionNamespace = string;
 
@@ -36,40 +40,15 @@ export interface InlinePos {
 }
 
 
-export interface EmptySpace { };
-
-export interface ListItem {
-	marker:         "*" | "-" | "+" | "." | ")";
-	marker_number?: number;
-	indent:         number;
-	isLooseItem:    boolean;
-	parentList:     List | undefined;
-}
-
-export interface List {
-	listType:  "Ordered" | "Bullet";
-	contents:  Block<"listItem">[];
-	startIdx?: number;
-	isLoose:   boolean;
-}
-
-export interface FencedBlock {
-	fence_type:   "`" | "~";
-	fence_length: number; // will be 3 most commonly
-	indentation:  number;
-	info_string:  string;
-}
-
-
 export interface BlockTypeMap_Leaf {
-	emptySpace:        EmptySpace;
-	paragraph:         Paragraph;
-	sectionHeader:     SectionHeader; // atx header
-
+	emptySpace:           EmptySpace;
+	paragraph:            Paragraph;
+	sectionHeader:        SectionHeader; // atx header
 	sectionHeader_setext: SectionHeader;
 	indentedCodeBlock:    IndentedCodeBlock;
 	thematicBreak:        ThematicBreak;
 	fenced:               FencedBlock;
+	linkDef:              LinkDef;
 }
 
 export interface BlockTypeMap_Container {
@@ -83,30 +62,31 @@ export type BlockType = BlockType_Leaf | BlockType_Container | ExtensionBlockTyp
 
 
 export type BlockBase<K extends BlockType> = {
-	type: K;
+	type:                K;
 	logical_line_start:  number;
 	logical_line_extent: number;
-	contents:            any[];
+	content?:            LogicalLineData;
 };
-
-
 
 export interface BlockBase_Container_additions {
 	isContainer: true;
 	blocks:      AnyBlock[];
 }
 
-export type BlockBase_Leaf     <K extends BlockType_Leaf>      = BlockBase<K> & BlockTypeMap_Leaf[K];
-export type BlockBase_Container<K extends BlockType_Container> = BlockBase<K> & BlockTypeMap_Container[K] & BlockBase_Container_additions;
+export type BlockIndividualData<K extends BlockType> = (K extends BlockType_Container ? BlockTypeMap_Container[K] :
+	                                                    K extends BlockType_Leaf      ? BlockTypeMap_Leaf[K] : { });
 
-export type Block<K extends BlockType> = (K extends BlockType_Container ? BlockBase_Container<K> :
-	                                      K extends BlockType_Leaf      ? BlockBase_Leaf<K> : BlockBase<K>);
+export type Block_Leaf     <K extends BlockType_Leaf>      = BlockBase<K> & BlockTypeMap_Leaf[K];
+export type Block_Container<K extends BlockType_Container> = BlockBase<K> & BlockTypeMap_Container[K] & BlockBase_Container_additions;
+
+export type Block<K extends BlockType> = (K extends BlockType_Container ? Block_Container<K> :
+	                                      K extends BlockType_Leaf      ? Block_Leaf<K> : BlockBase<K>);
 
 
-export type AnyBlock = BlockType extends infer U ? (U extends BlockType_Leaf      ? BlockBase_Leaf<U> :
-	                                                U extends BlockType_Container ? BlockBase_Container<U> : never) : never;
+export type AnyBlock = BlockType extends infer U ? (U extends BlockType_Leaf      ? Block_Leaf<U> :
+	                                                U extends BlockType_Container ? Block_Container<U> : never) : never;
 
-export type AnyContainerBlock = BlockType_Container extends infer U ? (U extends BlockType_Container ? BlockBase_Container<U> : never) : never;
+export type AnyContainerBlock = BlockType_Container extends infer U ? (U extends BlockType_Container ? Block_Container<U> : never) : never;
 
 export const isContainer = (B: AnyBlock): B is AnyContainerBlock => ("isContainer" in B);
 

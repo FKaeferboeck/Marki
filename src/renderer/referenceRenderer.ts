@@ -1,14 +1,11 @@
-import { collectLists } from "../blocks/listItem.js";
-import { AnyBlock, BlockBase, BlockType, BlockBase_Container, LogicalLineData, Block, List, InlineElement, InlineElementType, AnyInline, InlineContent } from "../markdown-types.js";
+import { AnyBlock, BlockType, Block, AnyInline, InlineContent } from "../markdown-types.js";
 
 
-function singleParagraphContent(B: AnyBlock[]) {
+/*function singleParagraphContent(B: AnyBlock[]) {
     //return (B.length === 0 || B.some((b, i) => b.type !== (i ? "emptySpace" : "paragraph")) ? undefined : B[0]);
     const para = B.find(b => b.type === "paragraph");
     return (para && !B.some(b => !(b === para || b.type === "emptySpace")) ? para : undefined);
-}
-
-
+}*/
 
 function renderBlockContent(B: AnyBlock, buf: string[] | null, mode?: "literal" | "tightListItem" | "blockquote") {
     const add = (s: string) => {
@@ -47,12 +44,17 @@ function renderBlockContent(B: AnyBlock, buf: string[] | null, mode?: "literal" 
         //return '\n' + B1.map(renderBlock).filter(S => S).join('\n') + '\n';
     }
 
-    const C = B.contents as LogicalLineData[];
     let s = '';
-    if(mode === "literal")
-        s = C.map(LLD => ' '.repeat(LLD.startIndent) + LLD.startPart + '\n').join('');
-    else
-        s = C.map(LLD => LLD.startPart).join('\n');
+    const arr: string[] = [];
+    if(mode === "literal") {
+        for(let LLD = B.content || null;  LLD;  LLD = LLD.next)
+            arr.push(' '.repeat(LLD.startIndent) + LLD.startPart + '\n');
+        s = arr.join('');
+    } else {
+        for(let LLD = B.content || null;  LLD;  LLD = LLD.next)
+            arr.push(LLD.startPart);
+        s = arr.join('\n');
+    }
     return add(s.replaceAll('<', '&lt;').replaceAll('>', '&gt;'));
 }
 
@@ -134,6 +136,7 @@ function renderBlock(B: AnyBlock, buf: string[]) {
         }
         return;
     case "emptySpace":
+    case "linkDef":
         return;
     default:
         return add(`<??>`);

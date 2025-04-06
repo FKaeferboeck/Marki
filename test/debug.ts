@@ -33,9 +33,16 @@ const my_result = referenceRender(blocks, true);*/
 parser.makeStartCharMap();
 
 {
-  const input = '[link](<foo\nbar>)';
+  const input = '\n    \n    foo117\n    '; //'aaa\n\nbbb';
   const LS   = linify(input);
   const LLD  = lineDataAll(LS, 0);
-  const data = parser.processInline(LLD);
-  console.log(data);
+
+  const diag = true;
+  parser.diagnostics = diag;
+  const blocks    = parser.processContent(LLD);
+  console.log(blocks);
+  const my_result = referenceRender(blocks, diag);
+
+  //const data = parser.processInline(LLD);
+  console.log(my_result);
 }

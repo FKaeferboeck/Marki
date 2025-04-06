@@ -1,4 +1,3 @@
-import { BlockParser_Standard } from "../block-parser.js";
 import { LogicalLineData } from "../markdown-types.js";
 import { BlockTraits } from "../traits.js";
 import { standardBlockStart } from "../util.js";
@@ -20,12 +19,5 @@ export const thematicBreak_traits: BlockTraits<"thematicBreak"> = {
     allowCommentLines: false,
     continuesHere() { return "end"; }, // thematic breaks are single-line
     
-    creator(MDP) { return new BlockParser_Standard<"thematicBreak">(MDP, this); },
-    defaultBlockInstance: {
-        type: "thematicBreak",
-        logical_line_start: -1,
-        logical_line_extent: 0,
-        contents: [],
-        ruleType: "*"
-    }
+    defaultBlockInstance: { ruleType: "*" }
 };

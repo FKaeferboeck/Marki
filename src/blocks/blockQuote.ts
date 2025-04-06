@@ -10,6 +10,7 @@ export interface BlockQuote {
 
 export const blockQuote_traits: BlockTraits_Container<"blockQuote"> = {
     isContainer: true,
+
     startsHere(LLD: LogicalLineData) {
         if(!(standardBlockStart(LLD) && LLD.startPart.startsWith('>')))
             return -1;
@@ -24,21 +25,10 @@ export const blockQuote_traits: BlockTraits_Container<"blockQuote"> = {
             return "soft";
         return rexres[0].length + LLD.startIndent;
     },
-    
 
     allowSoftContinuations: true,
     allowCommentLines: true,
-    
-    creator(MDP) { return new BlockParser_Container<"blockQuote">(MDP, this as BlockTraits_Container<"blockQuote">); },
-    defaultBlockInstance: {
-        type: "blockQuote",
-        isContainer: true,
-        logical_line_start: -1,
-        logical_line_extent: 0,
-        contents: [],
-        blocks: [],
-        prefix: ''
-    }
+    defaultBlockInstance: { prefix: '' }
 };
 export { BlockParser_Container };
 

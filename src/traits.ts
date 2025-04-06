@@ -2,7 +2,7 @@ import { BlockParser } from "./block-parser.js";
 import { BlockParser_Container } from "./blocks/blockQuote.js";
 import { InlineParser } from "./inline-parser.js";
 import { MarkdownParser } from "./markdown-parser.js";
-import { BlockType, ExtensionBlockType, BlockBase, BlockBase_Container, LogicalLineData, BlockType_Container, Block, InlineElementType, ExtensionInlineElementType, InlineElement, InlinePos } from "./markdown-types.js";
+import { BlockType, ExtensionBlockType, BlockBase, Block_Container, LogicalLineData, BlockType_Container, Block, InlineElementType, ExtensionInlineElementType, InlineElement, InlinePos, BlockIndividualData } from "./markdown-types.js";
 import { BlockContentIterator } from "./util.js";
 
 
@@ -37,10 +37,11 @@ export interface BlockTraits<T extends BlockType = ExtensionBlockType> {
     allowSoftContinuations: boolean;
     canBeSoftContinuation?: boolean; // default true
     allowCommentLines: boolean;
+    hasContent?: boolean; // default true; false means that this element stores all data it has in its individual block data and doesn't use the "content" property
     lastIsContent?: boolean; // if a line is continuation type "last" it will still be added to the block content - default false
     canSelfInterrupt?: boolean; // list items do that
-    creator: (MDP: MarkdownParser) => BlockParser<T>;
-    defaultBlockInstance: Block<T>;
+    creator?: (MDP: MarkdownParser, type: T) => BlockParser<T>;
+    defaultBlockInstance: BlockIndividualData<T>;
 }
 
 
@@ -48,8 +49,8 @@ export interface BlockTraits<T extends BlockType = ExtensionBlockType> {
 export interface BlockTraits_Container<T extends BlockType_Container> extends BlockTraits<T> {
     isContainer: true;
 
-    creator: (MDP: MarkdownParser) => BlockParser_Container<T>;
-    defaultBlockInstance: Block<T>;
+    creator?: (MDP: MarkdownParser, type: T) => BlockParser_Container<T>;
+    defaultBlockInstance: BlockIndividualData<T>;
 }
 
 
