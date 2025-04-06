@@ -66,6 +66,7 @@ export type BlockBase<K extends BlockType> = {
 	logical_line_start:  number;
 	logical_line_extent: number;
 	content?:            LogicalLineData;
+	inlineContent?:      AnyInline[]; // same as "content", but inline parsed
 };
 
 export interface BlockBase_Container_additions {
@@ -102,7 +103,8 @@ export interface InlineElementMap {
 	link:       { linkType:    "inline" | "reference" | "collapsed" | "shortcut";
 	              linkText:    InlineContent;
 	              destination: AnyInline[];
-	              linkTitle?:  AnyInline[]; };
+	              linkTitle?:  AnyInline[];
+				  reference?:  Block<"linkDef">; };
 }
 
 export type ExtensionInlineElementType = `ext_${ExtensionNamespace}_${string}`;
