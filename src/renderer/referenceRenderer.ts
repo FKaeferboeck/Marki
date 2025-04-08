@@ -1,3 +1,4 @@
+import { parseBackslashEscapes } from "../inline-parser.js";
 import { AnyBlock, BlockType, Block, AnyInline, InlineContent } from "../markdown-types.js";
 
 
@@ -177,7 +178,12 @@ export function referenceRenderInline(data: InlineContent, buf?: string[]) {
                 const dst   = elt.reference?.destination || elt.destination;
                 const title = elt.reference?.linkTitle   || elt.linkTitle;
                 buf.push(`<a href="${urlEncode(dst)}"${title ? ` title="${escapeXML_all(title)}"` : ''}>`);
-                referenceRenderInline(elt.linkText, buf);
+                //referenceRenderInline(elt.linkLabel, buf);
+                console.log(`{${elt.linkLabel}}`);
+                const buf2: AnyInline[] = [];
+                parseBackslashEscapes(elt.linkLabel, buf2);
+                buf.push(... buf2.map(s => (typeof s === "string" ? s : s.type === "escaped" ? s.character : '??')));
+                //buf.push(elt.linkLabel);
                 buf.push('</a>');
             }
         }

@@ -33,7 +33,7 @@ const my_result = referenceRender(blocks, true);*/
 parser.makeStartCharMap();
 
 {
-  const input = '[foo]: /url "title"\n\n[foo]';
+  const input = '[foo196]: /url \'\ntitle\nline1\nline2\n\'\n\n[foo196]';
   const LS   = linify(input);
   const LLD  = lineDataAll(LS, 0);
   

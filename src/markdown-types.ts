@@ -101,7 +101,7 @@ export interface InlineElementMap {
 	html:       { stuff: string;  continues?: boolean; };
 	codeSpan:   { content: string; };
 	link:       { linkType:    "inline" | "reference" | "collapsed" | "shortcut";
-	              linkText:    InlineContent;
+	              linkLabel:   string; //InlineContent;
 	              destination: AnyInline[];
 	              linkTitle?:  AnyInline[];
 				  reference?:  Block<"linkDef">; };

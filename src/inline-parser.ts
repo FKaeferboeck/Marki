@@ -66,8 +66,10 @@ export function parseHTML_entities(s: string, buf: AnyInline[]) {
 
 
 const escapeds: Record<string, boolean> = {
-    '!': true,  '"': true,  '#': true,  '$': true,  '%': true,  '&': true,  '\'': true,  '(': true,
-    ')': true,  '_': true,  '`': true,  '{': true,  '|': true,  '}': true,  '~': true,  '\\': true
+    '!': true,  '"': true,  '#': true,  '$': true,  '%': true,  '&': true,  '\'': true,  '(' : true,
+    ')': true,  '*': true,  '+': true,  ',': true,  '-': true,  '.': true,  '/' : true,  ':' : true,
+    ';': true,  '<': true,  '=': true,  '>': true,  '?': true,  '@': true,  '[' : true,  '\\': true,
+    ']': true,  '^': true,  '_': true,  '`': true,  '{': true,  '|': true,  '}' : true,  '~' : true
 };
 export function parseBackslashEscapes(s: string, buf: AnyInline[], pusher?: (s: string, buf: AnyInline[]) => void) {
     if(!pusher)

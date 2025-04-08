@@ -12,7 +12,7 @@ function acceptable(MDP: MarkdownParser, B: InlineElement<"link">) {
     case "collapsed":
     case "shortcut":
         {
-            const L = MDP.linkDefs[B.linkText[0] as string]; // TODO!! Improve!
+            const L = MDP.linkDefs[B.linkLabel]; // TODO!! Improve!
             if(!L)    return false; // link not found
             B.reference = L;
             return B;
@@ -42,6 +42,7 @@ export function takeLinkDestination(It: BlockContentIterator, destination: AnyIn
 
 
 export function takeLinkTitle(It: BlockContentIterator, linkTitle: AnyInline[]) {
+    It.skipNobrSpace();
     const title = It.takeDelimited({ '"': '"',  '\'': '\'',  '(': ')' });
     if(!title)
         return false;
@@ -55,21 +56,26 @@ export const link_traits: InlineElementTraits<"link"> = {
     startChars: [ '[' ],
 
     parse(It) {
-        if(It.nextChar() !== '[')
+        if(It.peekChar() !== '[')
             return false;
         const B = this.B;
 
-        let bracketLevel = 1;
-        if(this.MDP.inlineParseLoop(It, B.linkText,
+        const label = It.takeDelimited({ '[': ']' });
+        if(!label)
+            return false;
+        this.B.linkLabel = label.slice(1, -1);
+
+        /*let bracketLevel = 1;
+        if(this.MDP.inlineParseLoop(It, B,
             (_It, c) => (c != ']' || --bracketLevel > 0),
             (_It, c) => {
                 if(c === '[')    ++bracketLevel;
                 return true;
             }) === "EOF")
             return false;
-        if(B.linkText.some(I => (typeof I !== "string" && I.type === "link")))
+        if(B.linkLabel.some(I => (typeof I !== "string" && I.type === "link")))
             return false;
-        It.nextChar(); // skip ']'
+        It.nextChar(); // skip ']'*/
 
         let c = It.nextItem();
         if(c === "(") { // link destination present -> it is an inline link
@@ -118,7 +124,7 @@ export const link_traits: InlineElementTraits<"link"> = {
     defaultElementInstance: {
         type:        "link",
         linkType:    "inline",
-        linkText:    [],
+        linkLabel:   '',
         destination: []
     }
 };

@@ -160,6 +160,11 @@ export function contentSlice(p0: InlinePos, p1: InlinePos, includeComments: bool
 }
 
 
+export interface BCI_TakeDelimited_IO {
+    delim:  string | undefined; // initial call: should be emtpy;  trailing call: the delimiter the text started with
+    isOpen: boolean; // in: do we accept an open end?  out: did we end open?
+}
+
 export interface BlockContentIterator {
     pos: InlinePos;
     checkpoint: InlinePos;
@@ -178,7 +183,7 @@ export interface BlockContentIterator {
     skipNobrSpace(): number;
 
     regexInPart(rex: RegExp): RegExpMatchArray | false; // advances iterator by the given regex if it matches, but only within the current line part
-    takeDelimited(allowedDelimiters: Record<string, string>): string | false;
+    takeDelimited(allowedDelimiters: Record<string, string>, delim_io?: BCI_TakeDelimited_IO): string | false;
 
     setPosition        (P:  InlinePos): void;
     setCheckPoint      (P?: InlinePos): void;
@@ -189,7 +194,7 @@ export interface BlockContentIterator {
 
 
 
-export function makeBlockContentIterator(LLD: LogicalLineData): BlockContentIterator {
+export function makeBlockContentIterator(LLD: LogicalLineData, singleLine: boolean = false): BlockContentIterator {
     const pos        = makeInlinePos(LLD);
     let   checkpoint = makeInlinePos(LLD);
     let curLine = LLD;
@@ -198,14 +203,14 @@ export function makeBlockContentIterator(LLD: LogicalLineData): BlockContentIter
 
     const nextPart = () => {
         const x = (++pos.part_idx - curLine.parts.length);
-        if(x === 0 && curLine.next) { // insert line break character, except after the last line
+        if(x === 0 && curLine.next && !singleLine) { // insert line break character, except after the last line
             curPart = LP_break;
             pos.char_idx = 0;
             curPartLength = 0;
             return;
         }
         if(x >= 0) {
-            if(!curLine.next) {
+            if(!curLine.next || singleLine) {
                 curPart = LP_EOF;
                 /*pos.part_idx = */pos.char_idx = 0;
                 return;
@@ -282,18 +287,28 @@ export function makeBlockContentIterator(LLD: LogicalLineData): BlockContentIter
             return rexres;
         },
 
-        takeDelimited: (allowedDelimiters: Record<string, string>) => {
-            let delim = It.peekChar();
+        takeDelimited: (allowedDelimiters: Record<string, string>, delim_io?: BCI_TakeDelimited_IO) => {
+            let c = It.peekChar(), c0 = c;
+            let delim = delim_io?.delim || c;
             const endDelim = delim && allowedDelimiters[delim];
             if(!endDelim)
                 return false;
             const chkp = It.newCheckpoint();
-            let c = It.nextChar(), c0 = c;
+            if(!delim_io?.delim) // if we started a new delimiting expression the first character is the delimiter and will be skipped here
+                It.nextChar(); 
+            if(delim_io && !delim_io.delim)
+                delim_io.delim = c as string;
+            
             while(c = It.nextChar()) {
-                if((c === delim || c === endDelim) && c0 !== '\\')
+                if((c === delim || c === endDelim) && c0 !== '\\') {
+                    if(delim_io)
+                        delim_io.isOpen = false;
                     return contentSlice(chkp, It.pos, true);
+                }
                 c0 = c;
             }
+            if(delim_io?.isOpen)
+                return contentSlice(chkp, It.pos, true);
             It.setPosition(chkp);
             return false;
         },
