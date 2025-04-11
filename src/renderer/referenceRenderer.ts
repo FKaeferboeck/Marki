@@ -177,9 +177,10 @@ export function referenceRenderInline(data: InlineContent, buf?: string[]) {
             {
                 const dst   = elt.reference?.destination || elt.destination;
                 const title = elt.reference?.linkTitle   || elt.linkTitle;
-                buf.push(`<a href="${urlEncode(dst)}"${title ? ` title="${escapeXML_all(title)}"` : ''}>`);
+                const title_s = (title && title.length > 0 ? escapeXML_all(title) : undefined);
+                buf.push(`<a href="${urlEncode(dst)}"${title_s ? ` title="${title_s}"` : ''}>`);
                 //referenceRenderInline(elt.linkLabel, buf);
-                console.log(`{${elt.linkLabel}}`);
+                //console.log(`{${elt.linkLabel}}`);
                 const buf2: AnyInline[] = [];
                 parseBackslashEscapes(elt.linkLabel, buf2);
                 buf.push(... buf2.map(s => (typeof s === "string" ? s : s.type === "escaped" ? s.character : '??')));

@@ -32,9 +32,11 @@ export function takeLinkDestination(It: BlockContentIterator, destination: AnyIn
         if(It.peekChar() === '<')
             return false;
         const chkp = It.newCheckpoint();
-        if(untilSpaceOrStop(It) === "invalid")
-            return false;
-        parseBackslashEscapes(contentSlice(chkp, It.pos, true), destination);
+        untilSpaceOrStop(It);
+        const S = contentSlice(chkp, It.pos, true);
+        if(!S)
+            return false; // this should be impossible
+        parseBackslashEscapes(S, destination);
     }
     It.skip({ ' ': true,  '\n': true });
     return true;

@@ -308,6 +308,7 @@ function doTest2(idx: number | string, input: string, verbose = false) {
         
         //const diag = false;
         const diag = verbose;
+        parser.reset();
         parser.diagnostics = diag;
         const blocks = parser.processContent(LLD);
         blocks.forEach(B => {
@@ -332,9 +333,19 @@ describe('Link reference definitions', () => {
     doTest2(194, '[Foo*bar\\]]:my_(url) \'title (with parens)\'\n\n[Foo*bar\\]]');
     doTest2(195, '[Foo195 bar]:\n<my url>\n\'title\'\n\n[Foo195 bar]');
     doTest2(196, '[foo196]: /url \'\ntitle\nline1\nline2\n\'\n\n[foo196]');
-    doTest2(197, '');
-    doTest2(198, '');
-    doTest2(199, '');
-    doTest2(200, '');
+    doTest2(197, '[foo]: /url \'title\n\nwith blank line\'\n\n[foo]');
+    doTest2(198, '[foo]:\n/url\n\n[foo]'); // The title may be omitted
+    doTest2(199, '[foo]:\n\n[foo]'); // The link destination may not be omitted
+    doTest2(200, '[foo]: <>\n\n[foo]'); // However, an empty link destination may be specified using angle brackets
+    doTest2(201, '');
+    doTest2(201, '');
+    doTest2(201, '');
+    doTest2(201, '');
+    doTest2(201, '');
+    doTest2(201, '');
+    doTest2(201, '');
+    doTest2(201, '');
+    doTest2(201, '');
+    doTest2(201, '');
     doTest2(201, '');
 });

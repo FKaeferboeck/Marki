@@ -43,6 +43,10 @@ export class MarkdownParser implements BlockContainer {
 		//console.log(this.traitsList)
 	}
 
+	reset() {
+		this.linkDefs = {};
+	}
+
 	startBlock   = startBlock;
 	processLine  = processLine;
 	processLines = processLines;
