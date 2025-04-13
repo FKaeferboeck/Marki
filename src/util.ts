@@ -278,8 +278,8 @@ export function makeBlockContentIterator(LLD: LogicalLineData, singleLine: boole
         regexInPart: (rex: RegExp) => {
             if(curPart.type === "EOF" || curPart.type === "lineBreak")
                 return false;
-            rex.lastIndex = pos.char_idx;
-            const rexres = rex.exec(curPart.content);
+            //rex.lastIndex = pos.char_idx;
+            const rexres = rex.exec(curPart.content.slice(pos.char_idx));
             if(!rexres)
                 return false;
             if((pos.char_idx += rexres[0].length) >= curPartLength)
