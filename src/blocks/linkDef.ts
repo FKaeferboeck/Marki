@@ -15,6 +15,7 @@ export type LinkDefParser = BlockParser<"linkDef"> & {
     stage: number;
     parts: string[];             //
     delim: BCI_TakeDelimited_IO; // used consecutively for link label and link title
+    hadSpace: boolean; // space between link destination and link link title (it must exist)
 };
 
 function linkDefStep(this: LinkDefParser, It: BlockContentIterator): BlockContinuationType {
@@ -45,9 +46,10 @@ function linkDefStep(this: LinkDefParser, It: BlockContentIterator): BlockContin
             return "reject";
         //console.log(`> Destination {${this.B.destination}}`)
         this.stage = 3;
-        It.skipNobrSpace();
+        this.hadSpace = (It.skipNobrSpace() > 0);
         if(!It.peekChar()) { // line break after link destination
             this.stage = 4;
+            this.hadSpace = true;
             return 0;
         }
     case 3: // looking for link title in the same line as the link destination
@@ -65,6 +67,8 @@ function linkDefStep(this: LinkDefParser, It: BlockContentIterator): BlockContin
             }
             return "reject";
         }
+        if(!this.hadSpace)
+            return "reject"; // there must be whitespace between link destination and link title, if there is a link title
         this.stage = 5;
         this.parts.push(title);
         if(this.delim.isOpen)
@@ -90,9 +94,15 @@ export const linkDef_traits: BlockTraits<"linkDef"> = {
             return -1;
         if(!LLD.startPart.startsWith('['))
             return -1;
+        if(this.MDP.diagnostics)
+            console.log('Link def block', this.B)
         const It = makeBlockContentIterator(LLD, true);
         const res = linkDefStep.call(this, It);
-        return (res === "reject" ? -1 : 0); // Even when we know the link def finishes in one line we'll still end it in the next line, because that's how the parser works.
+        if(res === "reject") {
+		    this.resetBlock(); // if we abort in the first line the parser doesn't get a chance to release the parser from the reuse cache, so we need to reset it for the next use
+            return -1;
+        }
+        return 0; // Even when we know the link def finishes in one line we'll still end it in the next line, because that's how the parser works.
     },
 
     continuesHere(this: LinkDefParser, LLD: LogicalLineData) {

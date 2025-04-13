@@ -29,7 +29,7 @@ export class InlineParser_Standard<K extends InlineElementType = ExtensionInline
 
     parse(It: BlockContentIterator) {
         const pos0 = It.newCheckpoint();
-        const elt = this.traits.parse.call(this, It, pos0);
+        const elt  = this.traits.parse.call(this, It, pos0);
         if(!elt)
             It.setPosition(pos0); // rewind position
         return elt;

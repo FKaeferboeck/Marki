@@ -33,7 +33,7 @@ const my_result = referenceRender(blocks, true);*/
 parser.makeStartCharMap();
 
 {
-  const input = '[foo]: <>\n\n[foo]';
+  const input = '[foo]: /url "title"\n[foo]: /uruul "title"\n\n[foo]';
   const LS   = linify(input);
   const LLD  = lineDataAll(LS, 0);
   
@@ -44,6 +44,7 @@ parser.makeStartCharMap();
   blocks.forEach(B => {
       if(B.content)
           B.inlineContent = parser.processInline(B.content);
+
   });
   console.log(blocks)
 

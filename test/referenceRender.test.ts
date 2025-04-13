@@ -332,20 +332,20 @@ describe('Link reference definitions', () => {
     doTest2(193, '   [foo]: \n      /url  \n           \'the title\'  \n\n[foo]');
     doTest2(194, '[Foo*bar\\]]:my_(url) \'title (with parens)\'\n\n[Foo*bar\\]]');
     doTest2(195, '[Foo195 bar]:\n<my url>\n\'title\'\n\n[Foo195 bar]');
-    doTest2(196, '[foo196]: /url \'\ntitle\nline1\nline2\n\'\n\n[foo196]');
+    doTest2(196, '[foo]: /url \'\ntitle\nline1\nline2\n\'\n\n[foo]');
     doTest2(197, '[foo]: /url \'title\n\nwith blank line\'\n\n[foo]');
-    doTest2(198, '[foo]:\n/url\n\n[foo]'); // The title may be omitted
+    doTest2(198, '[foo]:\n/Xurlr\n\n[foo]'); // The title may be omitted
     doTest2(199, '[foo]:\n\n[foo]'); // The link destination may not be omitted
     doTest2(200, '[foo]: <>\n\n[foo]'); // However, an empty link destination may be specified using angle brackets
-    doTest2(201, '');
-    doTest2(201, '');
-    doTest2(201, '');
-    doTest2(201, '');
-    doTest2(201, '');
-    doTest2(201, '');
-    doTest2(201, '');
-    doTest2(201, '');
-    doTest2(201, '');
-    doTest2(201, '');
-    doTest2(201, '');
+    doTest2(201, '[foo]: <bar>(baz)\n\n[foo]'); // The title must be separated from the link destination by spaces or tabs
+    doTest2(202, '[foo]: /url\bar\*baz "foo\"bar\baz"\n\n[foo]'); // Both title and destination can contain backslash escapes and literal backslashes
+    doTest2(203, '[foo]\n\n[foo]: url'); // A link can come before its corresponding definition
+    doTest2(204, '[foo]\n\n[foo]: first\n[foo]: second'); // If there are several matching definitions, the first one takes precedence
+    doTest2(205, '');
+    doTest2(206, '');
+    doTest2(207, '');
+    doTest2(208, '');
+    doTest2(209, '');
+    doTest2(210, '');
+    doTest2(211, '');
 });

@@ -50,6 +50,7 @@ export interface BlockParser<K extends BlockType = BlockType> {
 
 	setCheckpoint(LLD: LogicalLineData): void;
 	getCheckpoint(): LogicalLineData | null;
+	resetBlock(): Block<K>;
 	MDP: MarkdownParser;
 	parent: BlockContainer | undefined;
 	B: Block<K>;
@@ -66,11 +67,18 @@ export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits e
 		this.MDP = MDP;
 		this.type = type;
 		this.traits = traits;
-		this.B = structuredClone(traits.defaultBlockInstance) as Block<K>; // make a deep copy because the individual block data can contain arrays
-		this.B.type                = type;
+		if(MDP.diagnostics)
+			console.log(`Making new parser [${type}]`)
+		this.B = this.resetBlock();
+		this.useSoftContinuations = useSoftContinuations;
+	}
+
+	resetBlock() {
+		this.B = structuredClone(this.traits.defaultBlockInstance) as Block<K>; // make a deep copy because the individual block data can contain arrays
+		this.B.type                = this.type;
 		this.B.logical_line_start  = -1;
 		this.B.logical_line_extent = 0;
-		this.useSoftContinuations = useSoftContinuations;
+		return this.B;
 	}
 
 	static textLines: Partial<Record<LogicalLineType, boolean>> = { text: true,  single: true };
@@ -81,8 +89,12 @@ export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits e
 
 		const starts = this.traits.startsHere.call(this, LLD, this.B, interrupting);
 		if(starts < 0)    return -1;
+		
 		this.B.logical_line_start  = LLD.logl_idx;
 		this.B.logical_line_extent = 1;
+		if(this.MDP.diagnostics)
+			console.log(`Releasing [${this.type}]`);
+		
 		this.MDP.blockParserProvider.release(this);
 		return starts;
 	}

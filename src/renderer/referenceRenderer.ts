@@ -175,6 +175,7 @@ export function referenceRenderInline(data: InlineContent, buf?: string[]) {
             break;
         case "link":
             {
+                //console.log(elt.reference)
                 const dst   = elt.reference?.destination || elt.destination;
                 const title = elt.reference?.linkTitle   || elt.linkTitle;
                 const title_s = (title && title.length > 0 ? escapeXML_all(title) : undefined);

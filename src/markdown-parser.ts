@@ -151,7 +151,7 @@ export class MarkdownParser implements BlockContainer {
 
 	linkDefs: Record<string, Block<"linkDef">> = { };
 	registerLinkDef(B: Block<"linkDef">) {
-		this.linkDefs[B.linkLabel] = B;
+		this.linkDefs[B.linkLabel] ||= B; // ||= because the first occurance of a link label takes precedence
 	}
 
     /******************************************************************************************************************/
