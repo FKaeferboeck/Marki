@@ -138,9 +138,11 @@ export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits e
 		// We prepare the content part of the line for acceptance, even if we don't accept it right away due to checkpoint (and perhaps never will)
 		// This way when the next checkpoint arrives we have the pending content lines in the linked list.
 		// continuing lines inside block containers are already enqueued during continues().
-		if((this.blockContainerType !== "containerBlock" /*|| bct === "start"*/) &&
-		   !(bct === "last" && !this.traits.lastIsContent))
+		if((this.blockContainerType !== "containerBlock" /*|| bct === "start"*/) && !(bct === "last" && !this.traits.lastIsContent)) {
+			if(this.traits.trimLeadingContentSpace)
+				prefix_length = Math.max(prefix_length, LLD.startIndent);
 			this.enqueueContentSlice(LLD, prefix_length, bct);
+		}
 
 		if(this.checkpoint && LLD.logl_idx > this.checkpoint.logl_idx)
 			return;

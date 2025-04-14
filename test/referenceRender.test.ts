@@ -177,17 +177,6 @@ doTest('fenced code blocks', 119, [
 ])
 
 
-doTest('basic paragraphs', 148, [
-    `aaa\n\nbbb`,
-    `aaa\nbbb\n\nccc\nddd`,
-    `aaa\n\n\nbbb`,
-    `  aaa\n bbb`,
-    `aaa\n             bbb\n                                       ccc`,
-    `   aaa\nbbb`,
-    //`aaa     \nbbb     `
-]);
-
-
 doTest('block quotes', 228, [
     '> # Foo\n> bar\n> baz', // 228
     '># Foo\n>bar\n> baz', // The space or tab after the > characters can be omitted
@@ -356,3 +345,16 @@ describe('Link reference definitions', () => {
     doTest2(217, '[foo]: /foo-url "foo"\n[bar]: /bar-url\n  "bar"\n[baz]: /baz-url\n\n[foo],\n[bar],\n[baz]'); // Several link reference definitions can occur one after another
     doTest2(218, '[foo]\n\n> [foo]: /url'); // Link reference definitions can occur inside block containers
 });
+
+
+describe('Paragraphs', () => {
+    doTest2(219, `aaa\n\nbbb`); // A simple example with two paragraphs
+    doTest2(220, `aaa\nbbb\n\nccc\nddd`); // Paragraphs can contain multiple lines, but no blank lines
+    doTest2(221, `aaa\n\n\nbbb`); // Multiple blank lines between paragraphs have no effect
+    doTest2(222, `  aaa\n bbb`); // Leading spaces or tabs are skipped
+    doTest2(223, `aaa\n             bbb\n                                       ccc`); // Lines after the first may be indented any amount, since indented code blocks cannot interrupt paragraphs
+    doTest2(224, `   aaa\nbbb`); // The first line may be preceded by up to three spaces
+    doTest2(225, `    aaa\nbbb`); // Four spaces is too many
+    doTest2(226, 'aaa     \nbbb     '); // Final spaces or tabs are stripped before inline parsing
+});
+

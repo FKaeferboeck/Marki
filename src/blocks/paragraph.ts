@@ -1,4 +1,3 @@
-import { BlockParser_Standard } from "../block-parser.js";
 import { LogicalLineData } from "../markdown-types.js";
 import { BlockTraits, BlockContinuationType } from "../traits.js";
 import { setext_end_line } from "./sectionHeader_setext.js";
@@ -8,7 +7,7 @@ export interface Paragraph { };
 
 
 export const paragraph_traits: BlockTraits<"paragraph"> = {
-    startsHere(LLD: LogicalLineData) { return 0; },
+    startsHere() { return 0; },
     continuesHere(LLD: LogicalLineData, isSoftContainerContinuation?: boolean): BlockContinuationType | undefined {
         /* By the philosophy of the parsing algorithm we should look for SETEXT headers before looking for a paragraph and
          * paragraphs shouldn't be aware that such a thing as a SETEXT header even exists.
@@ -21,9 +20,11 @@ export const paragraph_traits: BlockTraits<"paragraph"> = {
         /*if(LLD.type === "empty")
             return "end";*/
         return undefined;
+        //return LLD.startIndent;
     },
 
     allowSoftContinuations: true,
     allowCommentLines: true,
+    trimLeadingContentSpace: true,
     defaultBlockInstance: { }
 };

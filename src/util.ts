@@ -175,6 +175,8 @@ export interface BlockContentIterator {
     peekChar(): string | false;
     peekItem(): string | LinePart | false;
 
+    peekBack(n: number): string | false;
+
     prevCharInPart(): false | string;
     nextChar(): false | string;
     nextItem(): false | string | LinePart;
@@ -188,6 +190,7 @@ export interface BlockContentIterator {
     setPosition        (P:  InlinePos): void;
     setCheckPoint      (P?: InlinePos): void;
     //setCheckPointAtPrev(P?: InlinePos): void;
+    getPosition(P: InlinePos, n?: number): boolean; // extract current position, optionally with an offset
 }
 
 
@@ -236,6 +239,17 @@ export function makeBlockContentIterator(LLD: LogicalLineData, singleLine: boole
             if(isHTML_Markup(curPart) && pos.char_idx === 0)
                 return curPart;
             return It.peekChar();
+        },
+
+        peekBack: (n: number) => {
+            if(pos.char_idx >= n)    return curPart.content[pos.char_idx - n];
+            n -= pos.char_idx;
+            if(pos.part_idx > 0) {
+                const C = curLine.parts[pos.part_idx - 1].content;
+                if(C.length > n)
+                    return C[C.length - n];
+            }
+            return false;
         },
 
         prevCharInPart: () => (pos.char_idx > 0 && curPart.content[pos.char_idx - 1]),
@@ -315,10 +329,28 @@ export function makeBlockContentIterator(LLD: LogicalLineData, singleLine: boole
 
         setPosition: (P: InlinePos) => {
             Object.assign(pos, P);
-            curPartLength = (curPart = (curLine = P.LLD).parts[P.part_idx]).content.length;
+            const pa = (curLine = P.LLD).parts;
+            curPart = (P.part_idx < pa.length ? pa[P.part_idx] : LP_break);
+            curPartLength = curPart.content.length;
         },
         setCheckPoint: (P?: InlinePos) => {
             Object.assign(P || checkpoint, pos);
+        },
+        getPosition: (P: InlinePos, n?: number) => {
+            Object.assign(P, pos);
+            // TODO!! Wo can only use negative offsets currently
+            if(n) {
+                if(P.char_idx >= -n)
+                    P.char_idx += n;
+                else {
+                    n += P.char_idx;
+                    if(P.part_idx === 0)
+                        return false;
+                    const C = P.LLD.parts[--P.part_idx].content;
+                    P.char_idx = C.length + n;
+                }
+            }
+            return true;
         }
     };
     return It;

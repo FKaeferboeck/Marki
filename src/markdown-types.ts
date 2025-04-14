@@ -105,6 +105,7 @@ export interface InlineElementMap {
 	              destination: AnyInline[];
 	              linkTitle?:  AnyInline[];
 				  reference?:  Block<"linkDef">; };
+	hardBreak:  { };
 }
 
 export type ExtensionInlineElementType = `ext_${ExtensionNamespace}_${string}`;

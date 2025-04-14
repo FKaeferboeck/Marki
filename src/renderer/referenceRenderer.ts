@@ -188,6 +188,10 @@ export function referenceRenderInline(data: InlineContent, buf?: string[]) {
                 //buf.push(elt.linkLabel);
                 buf.push('</a>');
             }
+            break;
+        case "hardBreak":
+            buf.push('<br />\n');
+            break;
         }
     }
     return buf.join('');

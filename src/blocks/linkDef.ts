@@ -1,5 +1,5 @@
-import { BlockParser, BlockParser_Standard } from "../block-parser.js";
-import { takeLinkDestination, takeLinkTitle } from "../inline/link.js";
+import { BlockParser } from "../block-parser.js";
+import { takeLinkDestination } from "../inline/link.js";
 import { AnyInline, LogicalLineData } from "../markdown-types.js";
 import { BlockContinuationType, BlockTraits } from "../traits.js";
 import { BCI_TakeDelimited_IO, BlockContentIterator, makeBlockContentIterator } from "../util.js";
@@ -40,13 +40,11 @@ function linkDefStep(this: LinkDefParser, It: BlockContentIterator): BlockContin
         this.stage = 2;
         this.B.linkLabel = this.parts.join('\n').slice(1, -1);
         It.skipNobrSpace();
-        //console.log(`> Link label  {${this.B.linkLabel}}`)
         if(!It.peekChar()) // line break after link label
             return 0;
     case 2:
         if(!takeLinkDestination(It, this.B.destination))
             return "reject";
-        //console.log(`> Destination {${this.B.destination}}`)
         this.stage = 3;
         this.hadSpace = (It.skipNobrSpace() > 0);
         if(!It.peekChar()) { // line break after link destination
@@ -82,8 +80,6 @@ function linkDefStep(this: LinkDefParser, It: BlockContentIterator): BlockContin
                                                           // if it doesn't but the potential link title was after a line break we accept the part before the checkpoint (== link without title)
         this.stage = 7;
         this.B.linkTitle = [this.parts.join('\n').slice(1, -1)]
-        //parseBackslashEscapes(removeDelimiter(title), linkTitle);
-        //It.skip({ ' ': true,  '\n': true });
         return "last";
     }
     return "reject"; // unreachable

@@ -1,5 +1,6 @@
 import { BlockContainer, BlockParser, BlockParser_Container, BlockParser_Standard, standardBlockParserTraits } from "./block-parser.js";
 import { codeSpan_traits } from "./inline/code-span.js";
+import { hardBreak_traits } from "./inline/hard-break.js";
 import { link_traits } from "./inline/link.js";
 import { AnyBlock, AnyInline, Block, BlockBase, BlockType, BlockType_Container, InlineContent, InlineElementType, LogicalLineData } from "./markdown-types.js";
 import { LinePart, LineStructure } from "./parser.js";
@@ -31,8 +32,9 @@ export type TakeBlockResult = {
 
 
 export const standardInlineParserTraits: InlineParserTraitsList = {
-	codeSpan: codeSpan_traits,
-	link:     link_traits
+	codeSpan:  codeSpan_traits,
+	link:      link_traits,
+	hardBreak: hardBreak_traits
 };
 
 
@@ -309,7 +311,7 @@ function inlineParseLoop(this: MarkdownParser, It: BlockContentIterator, buf: In
 			let found = false;
 			for(const t of this.startCharMap[c]) {
 				const P = this.getInlineParser(t);
-				const elt = P.parse(It);
+				const elt = P.parse(It, checkpoint1);
 				if(elt) {
 					const flush = contentSlice(checkpoint, checkpoint1, false);
 					if(flush)

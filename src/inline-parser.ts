@@ -1,5 +1,5 @@
 import { MarkdownParser } from "./markdown-parser.js";
-import { AnyInline, ExtensionInlineElementType, InlineElement, InlineElementType } from "./markdown-types.js";
+import { AnyInline, ExtensionInlineElementType, InlineElement, InlineElementType, InlinePos } from "./markdown-types.js";
 import { InlineElementTraits } from "./traits.js";
 import { BlockContentIterator } from "./util.js";
 import entityList from "./htmlEntities.json" with { type: "json" };
@@ -10,7 +10,7 @@ export interface InlineParser<K extends InlineElementType = ExtensionInlineEleme
 
     // guarantee: if an element is successfully parsed, It will afterwards point behind it
     //            if it cannot be parsed here, It will be at the same start position it was in before (though the checkpoint may have been changed)
-    parse(It: BlockContentIterator): InlineElement<K> | false;
+    parse(It: BlockContentIterator, startCheckpoint: InlinePos): InlineElement<K> | false;
 
     MDP: MarkdownParser;
     B: InlineElement<K>;
@@ -27,11 +27,10 @@ export class InlineParser_Standard<K extends InlineElementType = ExtensionInline
         this.traits = traits;
     }
 
-    parse(It: BlockContentIterator) {
-        const pos0 = It.newCheckpoint();
-        const elt  = this.traits.parse.call(this, It, pos0);
+    parse(It: BlockContentIterator, startCheckpoint: InlinePos) {
+        const elt  = this.traits.parse.call(this, It, startCheckpoint);
         if(!elt)
-            It.setPosition(pos0); // rewind position
+            It.setPosition(startCheckpoint); // rewind position
         return elt;
     }
 

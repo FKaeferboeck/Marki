@@ -39,6 +39,7 @@ export interface BlockTraits<T extends BlockType = ExtensionBlockType> {
     hasContent?: boolean; // default true; false means that this element stores all data it has in its individual block data and doesn't use the "content" property
     lastIsContent?: boolean; // if a line is continuation type "last" it will still be added to the block content - default false
     canSelfInterrupt?: boolean; // list items do that
+    trimLeadingContentSpace?: boolean;
     creator?: (MDP: MarkdownParser, type: T) => BlockParser<T>;
     defaultBlockInstance: BlockIndividualData<T>;
 }
@@ -65,6 +66,8 @@ export type BlockParserTraitsList = Partial<{
 export interface InlineElementTraits<T extends InlineElementType = ExtensionInlineElementType> {
     startChars: string[]; // characters where inline element can possibly start — doesn't have to be a sufficient condition
 
+    // The implementation can modify startPos to e.g. an earlier position if the inline item wants to backtrack
+    // Use this feature with caution! It cannot collide with an already parsed earlier inline item.
     parse(this: InlineParser<T>, It: BlockContentIterator, startPos: InlinePos): InlineElement<T> | false;
 
     creator: (MDP: MarkdownParser) => InlineParser<T>;
