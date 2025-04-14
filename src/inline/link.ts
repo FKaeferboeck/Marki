@@ -12,7 +12,7 @@ function acceptable(MDP: MarkdownParser, B: InlineElement<"link">) {
     case "collapsed":
     case "shortcut":
         {
-            const L = MDP.linkDefs[B.linkLabel]; // TODO!! Improve!
+            const L = MDP.findLinkDef(B.linkLabel); // TODO!! Improve!
             if(!L)    return false; // link not found
             B.reference = L;
             return B;
@@ -67,20 +67,9 @@ export const link_traits: InlineElementTraits<"link"> = {
             return false;
         this.B.linkLabel = label.slice(1, -1);
 
-        /*let bracketLevel = 1;
-        if(this.MDP.inlineParseLoop(It, B,
-            (_It, c) => (c != ']' || --bracketLevel > 0),
-            (_It, c) => {
-                if(c === '[')    ++bracketLevel;
-                return true;
-            }) === "EOF")
-            return false;
-        if(B.linkLabel.some(I => (typeof I !== "string" && I.type === "link")))
-            return false;
-        It.nextChar(); // skip ']'*/
-
-        let c = It.nextItem();
+        let c = It.peekChar();
         if(c === "(") { // link destination present -> it is an inline link
+            It.nextChar();
             It.skip({ ' ': true,  '\n': true });
             B.linkType = "inline";
             const bracketed = It.regexInPart(/^<(?:\\[<>]|[^<>])*>/);
@@ -103,6 +92,7 @@ export const link_traits: InlineElementTraits<"link"> = {
         }
 
         if(c === '[') { // reference link, full or collapsed
+            It.nextChar();
             if(It.peekChar() === ']') {
                 It.nextChar();
                 B.linkType = "collapsed";

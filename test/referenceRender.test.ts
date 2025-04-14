@@ -341,11 +341,18 @@ describe('Link reference definitions', () => {
     doTest2(202, '[foo]: /url\bar\*baz "foo\"bar\baz"\n\n[foo]'); // Both title and destination can contain backslash escapes and literal backslashes
     doTest2(203, '[foo]\n\n[foo]: url'); // A link can come before its corresponding definition
     doTest2(204, '[foo]\n\n[foo]: first\n[foo]: second'); // If there are several matching definitions, the first one takes precedence
-    doTest2(205, '');
-    doTest2(206, '');
-    doTest2(207, '');
-    doTest2(208, '');
-    doTest2(209, '');
-    doTest2(210, '');
-    doTest2(211, '');
+    doTest2(205, '[FOO]: /url\n\n[Foo]'); // matching of labels is case-insensitive
+    doTest2(206, '[ΑΓΩ]: /φου\n\n[αγω]');
+    doTest2(207, '[foo]: /url'); // link def that isn't used
+    doTest2(208, '[\nfoo\n]: /url\nbar');
+    doTest2(209, '[foo]: /url "title" ok'); // not a link reference definition, because there are characters other than spaces or tabs after the title
+    doTest2(210, '[foo]: /url\n"ti\ntle" ok'); // This is a link reference definition, but it has no title
+    doTest2(211, '    [foo]: /url "title"\n\n[foo]'); // This is not a link reference definition, because it is indented four spaces
+    doTest2(212, '```\n[foo]: /url\n```\n\n[foo]'); // This is not a link reference definition, because it occurs inside a code block
+    doTest2(213, 'Foo\n[bar]: /baz\n\n[bar]'); // A link reference definition cannot interrupt a paragraph
+    doTest2(214, '# [Foo]\n[foo]: /url\n> bar'); // However, it can directly follow other block elements
+    doTest2(215, '[foo]: /url\nbar\n===\n[foo]');
+    doTest2(216, '[foo]: /url\n===\n[foo]');
+    doTest2(217, '[foo]: /foo-url "foo"\n[bar]: /bar-url\n  "bar"\n[baz]: /baz-url\n\n[foo],\n[bar],\n[baz]'); // Several link reference definitions can occur one after another
+    doTest2(218, '[foo]\n\n> [foo]: /url'); // Link reference definitions can occur inside block containers
 });

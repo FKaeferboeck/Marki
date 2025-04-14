@@ -3,7 +3,7 @@ import { codeSpan_traits } from "./inline/code-span.js";
 import { link_traits } from "./inline/link.js";
 import { AnyBlock, AnyInline, Block, BlockBase, BlockType, BlockType_Container, InlineContent, InlineElementType, LogicalLineData } from "./markdown-types.js";
 import { LinePart, LineStructure } from "./parser.js";
-import { BlockParserTraitsList, BlockTraits, BlockTraits_Container, InlineParserTraitsList } from "./traits.js";
+import { BlockContinuationType, BlockParserTraitsList, BlockTraits, BlockTraits_Container, InlineParserTraitsList } from "./traits.js";
 import { BlockContentIterator, contentSlice, LLDinfo, makeBlockContentIterator } from "./util.js";
 
 
@@ -149,9 +149,14 @@ export class MarkdownParser implements BlockContainer {
 	blockContainerType = "MarkdownParser" as const;
 	diagnostics = false;
 
-	linkDefs: Record<string, Block<"linkDef">> = { };
+	private linkDefs: Record<string, Block<"linkDef">> = { };
 	registerLinkDef(B: Block<"linkDef">) {
-		this.linkDefs[B.linkLabel] ||= B; // ||= because the first occurance of a link label takes precedence
+		const label = B.linkLabel.toLowerCase();
+		this.linkDefs[label] ||= B; // ||= because the first occurance of a link label takes precedence
+	}
+	findLinkDef(label: string): Block<"linkDef"> | undefined {
+		label = label.toLowerCase();
+		return this.linkDefs[label];
 	}
 
     /******************************************************************************************************************/
@@ -242,7 +247,7 @@ export function processLine(this: MarkdownParser, PP: ParseState, LLD: LogicalLi
 		if(curParser.isInterruption)
 			throw new Error('Problem! Rejecting a block that interrupted another block is a bit too much in terms of backtracking, so we don\'t allow that.');
 		// schedule backtracking:
-		return { container,  retry: curParser.startLine!,  curParser: null,  generator };
+		return { container,  retry: curParser.getCheckpoint() || curParser.startLine!,  curParser: null,  generator };
 	case "soft": // it's a soft continuation, which means it's possible that the next block begins here, interrupting the current one
 		{
 			const P1 = this.startBlock({ container,  curParser: null,  generator: this.blockParserProvider.interrupters(curParser) }, LLD, curParser.type).curParser;

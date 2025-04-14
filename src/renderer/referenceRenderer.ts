@@ -52,7 +52,7 @@ function renderBlockContent(B: AnyBlock, buf: string[] | null, mode?: "literal" 
             arr.push(LLD.startPart);
         s = arr.join('\n');
     }
-    return add(s.replaceAll('<', '&lt;').replaceAll('>', '&gt;'));
+    return add(escapeXML(s));
 }
 
 
