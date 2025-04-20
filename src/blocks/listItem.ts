@@ -1,7 +1,7 @@
 import { BlockParser_Container } from "../block-parser.js";
 import { LogicalLineData, Block_Container, AnyBlock, isContainer, Block } from "../markdown-types.js";
 import { BlockTraits_Container } from "../traits.js";
-import { LLDinfo, standardBlockStart } from "../util.js";
+import { LLDinfo, measureIndent, standardBlockStart } from "../util.js";
 
 
 export interface ListItem {
@@ -35,7 +35,8 @@ export const listItem_traits: BlockTraits_Container<"listItem"> = {
                 return -1; // orderedlist items may only interrupt a paragraph if they have the starting number 1 (CommonMark just-so rule)
         }
 
-        let space = Math.max(rexres[2].length, 1);
+        const pre = (LLD.preStartIndent || 0) + rexres[1].length;
+        let space = Math.max(measureIndent(rexres[2], pre), 1);
         if(rexres[0].length === LLD.startPart.length) {
             if(interrupting === "paragraph")
                 return -1; // list items starting with an empty line are not allowed to interrupt paragraph (CommonMark just-so rule)

@@ -177,36 +177,6 @@ doTest('fenced code blocks', 119, [
 ])
 
 
-doTest('block quotes', 228, [
-    '> # Foo\n> bar\n> baz', // 228
-    '># Foo\n>bar\n> baz', // The space or tab after the > characters can be omitted
-    '   > # Foo\n   > bar\n > baz', // he > characters can be preceded by up to three spaces of indentation
-    '    > # Foo\n    > bar\n    > baz', // Four spaces of indentation is too many
-    '> # Foo\n> bar\nbaz', // soft continuation
-    '> bar\nbaz\n> foo', // A block quote can contain some lazy and some non-lazy continuation lines
-    '> foo\n> ---', // Laziness only applies to lines that would have been continuations of paragraphs
-    '> foo\n---', // 234 ... without changing the meaning
-    '> - foo\n- bar', // 235
-    '>     foo\n    bar', // 236 can't omit the > in front of subsequent lines of an indented or fenced code block
-    '> ```\nfoo\n```', // 237
-    '> foo\n    - bar', // 238
-    '>', // A block quote can be empty
-    '>\n>  \n> ', // 240
-    '>\n> foo\n>  ', // 241 A block quote can have initial or final blank lines
-    '> foo\n\n> bar', // A blank line always separates block quotes
-    '> foo\n> bar', // 243
-    '> foo\n>\n> bar', // block quote with two paragraphs
-    'foo\n> bar', // Block quotes can interrupt paragraphs
-    '> aaa\n***\n> bbb', // In general, blank lines are not needed before or after block quotes
-    '> bar\nbaz', // However, because of laziness, a blank line is needed between a block quote and a following paragraph
-    '> bar\n\nbaz', // 248
-    '> bar\n>\nbaz', // 249
-    '> > > foo\nbar', // any number of initial >s may be omitted on a continuation line of a nested block quote
-    '>>> foo\n> bar\n>>baz', // 251
-    '>     code\n\n>    not code' // 252
-])
-
-
 doTest('list items', 253, [
     'A paragraph\nwith two lines.\n\n    indented code\n\n> A block quote.', // 253
     '1.  A paragraph\n    with two lines.\n\n        indented code\n\n    > A block quote.', // 254
@@ -300,10 +270,8 @@ function doTest2(idx: number | string, input: string, verbose = false) {
         parser.reset();
         parser.diagnostics = diag;
         const blocks = parser.processContent(LLD);
-        blocks.forEach(B => {
-            if(B.content)
-                B.inlineContent = parser.processInline(B.content);
-        });
+        collectLists(blocks, diag);
+        blocks.forEach(B => parser.processBlock(B));
         const my_result = referenceRender(blocks, diag);
         if(verbose)
             console.log(blocks)
@@ -315,6 +283,29 @@ function doTest2(idx: number | string, input: string, verbose = false) {
         expect(my_result).toEqual(commonmark_result);
     });
 }
+
+
+describe('Tabs', () => {
+    doTest2( 1,   '\tfoo\tbaz\t\tbim');
+    doTest2( 2,   '  \tfoo\tbaz\t\tbim');
+    doTest2( 3,   '    a\ta\n    ὐ\ta');
+    doTest2( 4,   '  - foo\n\n    \tbar');
+    doTest2( 5,   '- foo\n\n\t\tbar');
+    doTest2( 5.1, '- foo\n\n    \t\tbar');
+    doTest2( 6,   '>\t\tfoo');
+    doTest2( 7,   '-\t\tfoo');
+    doTest2( 8,   '    foo\n    \tbar');
+    doTest2( 9,   ' - foo\n    - bar\n \t - baz');
+    doTest2(10,   '#\tFoo');
+    doTest2(11,   '*\t*\t*\t');
+});
+
+
+describe('Backslash escapes', () => {
+    doTest2(12, '\\!\\"\\#\\$\\%\\&\\\'\\(\\)\\*\\+\\,\\-\\.\\/\\:\\;\\<\\=\\>\\?\\@\\[\\\\\\]\\^\\_\\`\\{\\|\\}\\~');
+    doTest2(13, '');
+});
+
 
 describe('Link reference definitions', () => {
     doTest2(192, '[foo]: /url "title"\n\n[foo]');
@@ -356,5 +347,41 @@ describe('Paragraphs', () => {
     doTest2(224, `   aaa\nbbb`); // The first line may be preceded by up to three spaces
     doTest2(225, `    aaa\nbbb`); // Four spaces is too many
     doTest2(226, 'aaa     \nbbb     '); // Final spaces or tabs are stripped before inline parsing
+});
+
+
+describe('Blank lines', () => {
+    doTest2(227,   '  \n\naaa\n  \n\n# aaa\n\n  ');
+    doTest2(227.1, '\n\n  \n\n    aaa\n      \n    \n    # aaa\n    \n      \n    \n    ');
+});
+
+
+describe('Block quotes', () => {
+    doTest2(228,   '> # Foo\n> bar\n> baz');
+    doTest2(229,   '># Foo\n>bar\n> baz'); // The space or tab after the > characters can be omitted
+    doTest2(230,   '   > # Foo\n   > bar\n > baz'); // he > characters can be preceded by up to three spaces of indentation
+    doTest2(231,   '    > # Foo\n    > bar\n    > baz'); // Four spaces of indentation is too many
+    doTest2(232,   '> # Foo\n> bar\nbaz'); // soft continuation
+    doTest2(233,   '> bar\nbaz\n> foo'); // A block quote can contain some lazy and some non-lazy continuation lines
+    doTest2(234,   '> foo\n> ---'); // Laziness only applies to lines that would have been continuations of paragraphs
+    doTest2(234.1, '> foo\n---'); // ... without changing the meaning
+    doTest2(235,   '> - foo\n- bar');
+    doTest2(236,   '>     foo\n    bar'); // can't omit the > in front of subsequent lines of an indented or fenced code block
+    doTest2(237,   '> ```\nfoo\n```');
+    doTest2(238,   '> foo\n    - bar');
+    doTest2(239,   '>'); // A block quote can be empty
+    doTest2(240,   '>\n>  \n> ');
+    doTest2(241,   '>\n> foo\n>  '); // A block quote can have initial or final blank lines
+    doTest2(242,   '> foo\n\n> bar'); // A blank line always separates block quotes
+    doTest2(243,   '> foo\n> bar');
+    doTest2(244,   '> foo\n>\n> bar'); // block quote with two paragraphs
+    doTest2(245,   'foo\n> bar'); // Block quotes can interrupt paragraphs
+    doTest2(246,   '> aaa\n***\n> bbb'); // In general, blank lines are not needed before or after block quotes
+    doTest2(247,   '> bar\nbaz'); // However, because of laziness, a blank line is needed between a block quote and a following paragraph
+    doTest2(248,   '> bar\n\nbaz');
+    doTest2(249,   '> bar\n>\nbaz');
+    doTest2(250,   '> > > foo\nbar'); // any number of initial >s may be omitted on a continuation line of a nested block quote
+    doTest2(251,   '>>> foo\n> bar\n>>baz');
+    doTest2(252,   '>     code\n\n>    not code');
 });
 

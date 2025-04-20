@@ -23,6 +23,7 @@ export type LinePart_ext = LinePart | typeof LP_break | typeof LP_break_HTML | t
 export interface LogicalLineData {
 	logl_idx:                      number;
 	parts:                         LinePart_ext[];
+	preStartIndent?:               number;
 	startIndent:                   number;
 	startPart:                     string; // after the indent
 	type:                          LogicalLineType | "single";
@@ -89,7 +90,7 @@ export type AnyBlock = BlockType extends infer U ? (U extends BlockType_Leaf    
 
 export type AnyContainerBlock = BlockType_Container extends infer U ? (U extends BlockType_Container ? Block_Container<U> : never) : never;
 
-export const isContainer = (B: AnyBlock): B is AnyContainerBlock => ("isContainer" in B);
+export const isContainer = (B: AnyBlock): B is AnyContainerBlock => ("isContainer" in B && B.isContainer);
 
 
 

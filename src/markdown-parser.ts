@@ -1,8 +1,9 @@
 import { BlockContainer, BlockParser, BlockParser_Container, BlockParser_Standard, standardBlockParserTraits } from "./block-parser.js";
+import { escaped_traits } from "./inline/backslash-escape.js";
 import { codeSpan_traits } from "./inline/code-span.js";
 import { hardBreak_traits } from "./inline/hard-break.js";
 import { link_traits } from "./inline/link.js";
-import { AnyBlock, AnyInline, Block, BlockBase, BlockType, BlockType_Container, InlineContent, InlineElementType, LogicalLineData } from "./markdown-types.js";
+import { AnyBlock, AnyInline, Block, BlockBase, BlockType, BlockType_Container, InlineContent, InlineElementType, LogicalLineData, isContainer } from "./markdown-types.js";
 import { LinePart, LineStructure } from "./parser.js";
 import { BlockContinuationType, BlockParserTraitsList, BlockTraits, BlockTraits_Container, InlineParserTraitsList } from "./traits.js";
 import { BlockContentIterator, contentSlice, LLDinfo, makeBlockContentIterator } from "./util.js";
@@ -32,11 +33,11 @@ export type TakeBlockResult = {
 
 
 export const standardInlineParserTraits: InlineParserTraitsList = {
+	escaped:   escaped_traits,
 	codeSpan:  codeSpan_traits,
 	link:      link_traits,
 	hardBreak: hardBreak_traits
 };
-
 
 
 export class MarkdownParser implements BlockContainer {
@@ -63,6 +64,15 @@ export class MarkdownParser implements BlockContainer {
 		}
 		
 		return this.blocks;
+	}
+
+	processBlock(B: AnyBlock) {
+		const T = this.traitsList[B.type];
+		if(!T)    throw new Error(`Cannot process content of block "${B.type}"`);
+		if(isContainer(B))
+			B.blocks.forEach(B1 => this.processBlock(B1));
+		else if(B.type !== "fenced" && B.type !== "indentedCodeBlock" && B.content?.parts.length)
+			B.inlineContent = this.processInline(B.content);
 	}
 
     processInline = processInline;

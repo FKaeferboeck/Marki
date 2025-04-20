@@ -2,6 +2,7 @@ import { linify } from '../src/parser.js';
 import { lineDataAll } from '../src/util.js';
 import { referenceRender } from '../src/renderer/referenceRenderer.js';
 import { MarkdownParser } from '../src/markdown-parser.js';
+import { collectLists } from '../src/blocks/listItem.js';
 //import * as commonmark from 'commonmark';
 
 
@@ -33,19 +34,15 @@ const my_result = referenceRender(blocks, true);*/
 parser.makeStartCharMap();
 
 {
-  const input = 'aaa     \nbbb     ';
+  const input = '# foo';
   const LS   = linify(input);
   const LLD  = lineDataAll(LS, 0);
-  
   const diag = false;
   //const diag = verboses[idx] || false;
   parser.diagnostics = diag;
   const blocks = parser.processContent(LLD);
-  blocks.forEach(B => {
-      if(B.content)
-          B.inlineContent = parser.processInline(B.content);
-
-  });
+  collectLists(blocks, diag);
+  blocks.forEach(B => parser.processBlock(B));
   console.log(blocks)
 
   

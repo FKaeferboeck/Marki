@@ -30,6 +30,12 @@ export const standardBlockParserTraits: BlockParserTraitsList = {
 };
 
 
+export function isBlockType_Container(t: BlockType): t is BlockType_Container {
+	const T = standardBlockParserTraits[t];
+	return ((T && ("isContainer" in T) && T.isContainer) || false);
+}
+
+
 export interface BlockContainer {
 	addContentBlock<K extends BlockType>(B: BlockBase<K>): void;
 	blockContainerType: "containerBlock" | "MarkdownParser";
@@ -112,7 +118,7 @@ export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits e
 				return ret(x);
 		}
 
-		if(LLD.type === "empty")
+		if(LLD.type === "empty" || LLD.type === "emptyish")
 			return ret("end");
 		if(LLD.type === "comment")
 			return ret(this.traits.allowCommentLines ? "soft" : "end");

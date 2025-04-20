@@ -42,8 +42,10 @@ function renderBlockContent(B: AnyBlock, buf: string[] | null, mode?: "literal" 
     let s = '';
     const arr: string[] = [];
     if(mode === "literal") {
-        for(let LLD = B.content || null;  LLD;  LLD = LLD.next)
-            arr.push(' '.repeat(LLD.startIndent) + LLD.startPart + '\n');
+        for(let LLD = B.content || null;  LLD;  LLD = LLD.next) {
+            LLD.parts.forEach(P => arr.push(P.content as string));
+            arr.push('\n');
+        }
         s = arr.join('');
     } else if(B.inlineContent) {
         return add(referenceRenderInline(B.inlineContent));
@@ -165,6 +167,9 @@ export function referenceRenderInline(data: InlineContent, buf?: string[]) {
             continue;
         }
         switch(elt.type) {
+        case "escaped":
+            buf.push(escapeXML(elt.character));
+            break;
         case "codeSpan":
             buf.push(`<code>${escapeXML(elt.content)}</code>`);
             break;

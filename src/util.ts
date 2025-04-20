@@ -6,12 +6,15 @@ const isHTML_Markup = (P: LinePart_ext): P is HTML_Markup => breakable[P.type] |
 
 
 
-function measureIndent(s: string, i0: number = 0) {
+export function measureIndent(s: string, preStartIndent: number = 0) {
     let n = 0;
-    for (let i = i0, iN = s.length;  i < iN;  i++)
+    for (let i = 0, iN = s.length;  i < iN;  i++)
         switch(s[i]) {
         case ' ':     ++n;       break;
-        case '\t':    n += 4;    break;
+        case '\t':
+            n += 4 + preStartIndent;
+            n -= (n % 4) + preStartIndent;
+            break;
         default:      return n;
         }
     return n;
@@ -32,23 +35,41 @@ export function lineTypeLP(L: LinePart_ext[]): LogicalLineType {
 }
 
 
+function trimStart_tabbed(s: string, n: number, preStartIndent: number) {
+    if(n <= 0)    return s;
+    for(let i = 0, iN = s.length, colPos = 0;  i < iN;  ++i) {
+        if(s[i] === '\t') {
+            colPos += 4 + preStartIndent;
+            colPos -= (colPos % 4) + preStartIndent;
+            if(colPos >= n)
+                return ' '.repeat(colPos - n) + s.slice(i + 1);
+        }
+        else if(++colPos >= n)
+            return s.slice(i + 1);
+    }
+    return '';
+}
 
 export function sliceLLD(LLD: LogicalLineData, begin: number): LogicalLineData {
-    const p0 = (' '.repeat(LLD.startIndent) + LLD.startPart).slice(begin);
+    const p0 = (LLD.parts.length > 0 ? trimStart_tabbed(LLD.parts[0].content as string, begin, LLD.preStartIndent || 0) : '');
+    //const p0 = (' '.repeat(LLD.startIndent) + LLD.startPart).slice(begin);
     const parts = [ ... LLD.parts ];
     if(p0.length > 0)
         parts[0].content = p0;
     else
         parts.splice(0, 1);
 
+    const pre = begin + (LLD.preStartIndent || 0);
     const LLD_c: LogicalLineData = {
         logl_idx:    LLD.logl_idx,
         parts:       parts,
         startPart:   p0.trimStart(),
-        startIndent: measureIndent(p0),
+        startIndent: measureIndent(p0, pre),
         type:        lineTypeLP(parts),
         next:        null
     };
+    if(pre > 0)
+        LLD_c.preStartIndent = pre;
     LLD.contentSlice = LLD_c;
     if(LLD.isSoftContainerContinuation)
         LLD_c.isSoftContainerContinuation = true;

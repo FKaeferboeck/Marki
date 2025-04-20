@@ -1,5 +1,6 @@
 import { LogicalLineData } from "../markdown-types.js";
 import { BlockTraits } from "../traits.js";
+import { measureIndent } from "../util.js";
 
 
 export interface SectionHeader {
@@ -12,11 +13,12 @@ export const sectionHeader_traits: BlockTraits<"sectionHeader"> = {
     startsHere(LLD: LogicalLineData, B) {
         if(!(LLD.type === "single" || LLD.type === "text") || LLD.startIndent >= 4)
             return -1;
-        const rexres = /^(#{1,6})(?:\s+|$)/.exec(LLD.startPart);
+        const rexres = /^(#{1,6})(\s+|$)/.exec(LLD.startPart);
         if(!rexres)
             return -1;
         B.level = rexres[1].length;
-        return rexres[0].length + LLD.startIndent;
+        const n0 = rexres[1].length + LLD.startIndent;
+        return n0 + measureIndent(rexres[2], (LLD.preStartIndent || 0) + n0);
     },
     continuesHere() { return "end"; }, // section headers are single-line
 

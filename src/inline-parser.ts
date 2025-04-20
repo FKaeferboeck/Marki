@@ -1,8 +1,10 @@
+import { backslashEscapeds } from "./inline/backslash-escape.js";
 import { MarkdownParser } from "./markdown-parser.js";
 import { AnyInline, ExtensionInlineElementType, InlineElement, InlineElementType, InlinePos } from "./markdown-types.js";
 import { InlineElementTraits } from "./traits.js";
 import { BlockContentIterator } from "./util.js";
-import entityList from "./htmlEntities.json" with { type: "json" };
+//import entityList from "./htmlEntities.json" with { type: "json" };
+const { default: entityList } = await import("./htmlEntities.json", { assert: { type: "json" } });
 
 
 export interface InlineParser<K extends InlineElementType = ExtensionInlineElementType> {
@@ -27,8 +29,8 @@ export class InlineParser_Standard<K extends InlineElementType = ExtensionInline
         this.traits = traits;
     }
 
-    parse(It: BlockContentIterator, startCheckpoint: InlinePos) {
-        const elt  = this.traits.parse.call(this, It, startCheckpoint);
+    parse(It: BlockContentIterator, startCheckpoint: InlinePos): false | InlineElement<K> {
+        const elt: false | InlineElement<K>  = this.traits.parse.call(this, It, startCheckpoint);
         if(!elt)
             It.setPosition(startCheckpoint); // rewind position
         return elt;
@@ -64,19 +66,14 @@ export function parseHTML_entities(s: string, buf: AnyInline[]) {
 
 
 
-const escapeds: Record<string, boolean> = {
-    '!': true,  '"': true,  '#': true,  '$': true,  '%': true,  '&': true,  '\'': true,  '(' : true,
-    ')': true,  '*': true,  '+': true,  ',': true,  '-': true,  '.': true,  '/' : true,  ':' : true,
-    ';': true,  '<': true,  '=': true,  '>': true,  '?': true,  '@': true,  '[' : true,  '\\': true,
-    ']': true,  '^': true,  '_': true,  '`': true,  '{': true,  '|': true,  '}' : true,  '~' : true
-};
+
 export function parseBackslashEscapes(s: string, buf: AnyInline[], pusher?: (s: string, buf: AnyInline[]) => void) {
     if(!pusher)
         pusher = parseHTML_entities;
     let checkpoint = 0;
     for(let i = 0, iN = s.length;  i < iN;  ++i) {
         const c = s[i];
-        if(c !== '\\' || !escapeds[s[i + 1]])
+        if(c !== '\\' || !backslashEscapeds[s[i + 1]])
             continue;
         if(i !== checkpoint)
             pusher(s.slice(checkpoint, i), buf);
