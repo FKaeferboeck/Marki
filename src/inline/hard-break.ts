@@ -11,17 +11,27 @@ export const hardBreak_traits: InlineElementTraits<"hardBreak"> = {
 
     parse(It, pos0) {
         let n = 0;
-        while(It.peekBack(++n) === ' ');
+        // I. Backslashed hard break
+        while(It.peekBack(++n) === '\\');
+        if((n % 2) === 0) { // there was an odd number of backslashes, so we know (1) there is at least one and (2) the last one isn't backslash-escaped
+            It.getPosition(pos0, -1);
+            It.nextChar();
+            this.B.nSpaces = false;
+            return this.B;
+        };
+        for(n = 1;  It.peekBack(n) === ' ';  ++n);
         if(--n < 2)
             return false;
         It.getPosition(pos0, -n);
         It.nextChar();
-        return { type: "hardBreak" };
+        this.B.nSpaces = n;
+        return this.B;
     },
     
     creator(MDP) { return new InlineParser_Standard<"hardBreak">(MDP, this); },
 
     defaultElementInstance: {
-        type:    "hardBreak"
+        type:    "hardBreak",
+        nSpaces: 0
     }
 };
