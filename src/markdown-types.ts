@@ -98,7 +98,8 @@ export const isContainer = (B: AnyBlock): B is AnyContainerBlock => ("isContaine
 
 export interface InlineElementMap {
 	escaped:    { character: string; };
-	htmlEntity: { code: string;  codePoint: number | undefined; /* undefined describes an illegal entity code */ }
+	htmlEntity: { code: string;  codePoint: number | number[] | undefined; /* undefined describes an illegal entity code */
+                  valid: boolean; }
 	html:       { stuff: string;  continues?: boolean; };
 	codeSpan:   { content: string; };
 	link:       { linkType:    "inline" | "reference" | "collapsed" | "shortcut";

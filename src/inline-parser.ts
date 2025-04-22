@@ -55,8 +55,8 @@ export function parseHTML_entities(s: string, buf: AnyInline[]) {
             continue;
         if(i !== checkpoint)
             buf.push(s.slice(checkpoint, i));
-        buf.push({ type: "htmlEntity",  code: entity,
-                   codePoint: (entityList as Record<string, number>)[entity.slice(1, -1)] });
+        buf.push({ type: "htmlEntity",  code: entity,  valid: true,
+                   codePoint: (entityList as Record<string, number | number[]>)[entity.slice(1, -1)] });
         i += entity.length - 1;
         checkpoint = i + 1;
     }

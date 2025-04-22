@@ -1,5 +1,5 @@
 import { parseBackslashEscapes } from "../inline-parser.js";
-import { AnyBlock, BlockType, Block, AnyInline, InlineContent } from "../markdown-types.js";
+import { AnyBlock, BlockType, Block, AnyInline, InlineContent, InlineElement } from "../markdown-types.js";
 
 
 /*function singleParagraphContent(B: AnyBlock[]) {
@@ -84,13 +84,18 @@ function posInList(B: Block<"listItem">) {
 }
 
 
+function strictTrim(s: string) {
+    return s.replace(/^[ \t]+|[ \t]+$/g, '');
+}
+
+
 function renderBlock(B: AnyBlock, buf: string[]) {
     const add = (s: string) => { buf.push(s); };
     switch(B.type) {
     case "thematicBreak":
         return add(`<hr />`);
     case "paragraph":
-        return add(`<p>${renderBlockContent(B, null).trim()}</p>`);
+        return add(`<p>${strictTrim(renderBlockContent(B, null))}</p>`);
     case "indentedCodeBlock":
         return add(`<pre><code>${renderBlockContent(B, null, "literal")}</code></pre>`);
     case "fenced":
@@ -159,6 +164,14 @@ export function referenceRender(content: AnyBlock[], verbose?: boolean, appendSp
 
 /**********************************************************************************************************************/
 
+function renderHTML_entity(elt: InlineElement<"htmlEntity">) {
+    if(elt.codePoint === undefined)
+        return `&${elt.code};`;
+    return (typeof elt.codePoint === "number" ? String.fromCodePoint(elt.codePoint)
+                                              : String.fromCodePoint(... elt.codePoint));
+}
+
+
 export function referenceRenderInline(data: InlineContent, buf?: string[]) {
     buf ||= [];
     for(const elt of data) {
@@ -197,6 +210,9 @@ export function referenceRenderInline(data: InlineContent, buf?: string[]) {
         case "hardBreak":
             buf.push('<br />\n');
             break;
+        case "htmlEntity":
+            buf.push(escapeXML(renderHTML_entity(elt)));
+            break;
         }
     }
     return buf.join('');
@@ -218,7 +234,7 @@ function escapeXML_all(C: AnyInline[]) {
             return s;
         switch(s.type) {
         case "escaped":     return s.character;
-        case "htmlEntity":  return (s.codePoint === undefined ? s.code : String.fromCodePoint(s.codePoint));
+        case "htmlEntity":  return renderHTML_entity(s);
         default:            return '';
         }
     }).join(''));
@@ -234,7 +250,7 @@ const urlEncode = (S: AnyInline[]) => {
             return s;
         switch(s.type) {
         case "escaped":     return s.character;
-        case "htmlEntity":  return (s.codePoint === undefined ? s.code : String.fromCodePoint(s.codePoint));
+        case "htmlEntity":  return renderHTML_entity(s);
         default:            return '';
         }
     }).join('');

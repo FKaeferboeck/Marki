@@ -34,7 +34,7 @@ const my_result = referenceRender(blocks, true);*/
 parser.makeStartCharMap();
 
 {
-  const input = '# foo';
+  const input = '[foo]\n\n[foo]: /f&ouml;&ouml; "f&ouml;&ouml;"';
   const LS   = linify(input);
   const LLD  = lineDataAll(LS, 0);
   const diag = false;

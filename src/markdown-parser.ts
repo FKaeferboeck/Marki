@@ -2,6 +2,7 @@ import { BlockContainer, BlockParser, BlockParser_Container, BlockParser_Standar
 import { escaped_traits } from "./inline/backslash-escape.js";
 import { codeSpan_traits } from "./inline/code-span.js";
 import { hardBreak_traits } from "./inline/hard-break.js";
+import { htmlEntity_traits } from "./inline/html-entity.js";
 import { link_traits } from "./inline/link.js";
 import { AnyBlock, AnyInline, Block, BlockBase, BlockType, BlockType_Container, InlineContent, InlineElementType, LogicalLineData, isContainer } from "./markdown-types.js";
 import { LinePart, LineStructure } from "./parser.js";
@@ -33,10 +34,11 @@ export type TakeBlockResult = {
 
 
 export const standardInlineParserTraits: InlineParserTraitsList = {
-	escaped:   escaped_traits,
-	codeSpan:  codeSpan_traits,
-	link:      link_traits,
-	hardBreak: hardBreak_traits
+	escaped:    escaped_traits,
+	codeSpan:   codeSpan_traits,
+	link:       link_traits,
+	hardBreak:  hardBreak_traits,
+	htmlEntity: htmlEntity_traits
 };
 
 
@@ -177,9 +179,9 @@ export class MarkdownParser implements BlockContainer {
 
     /* During inline parsing we check for element start chars before calling their full parsers, so the order below only
      * matters between elements that share a start char. */
-    inlineTryOrder: InlineElementType[] = [
+    /*inlineTryOrder: InlineElementType[] = [
 		"codeSpan"
-	];
+	];*/
 
     getInlineParser<K extends InlineElementType>(type: K) {
 		const traits = this.inlineTraitsList[type];
