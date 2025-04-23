@@ -210,6 +210,7 @@ export interface BlockContentIterator {
 
     setPosition        (P:  InlinePos): void;
     setCheckPoint      (P?: InlinePos): void;
+    goToEnd(): void;
     //setCheckPointAtPrev(P?: InlinePos): void;
     getPosition(P: InlinePos, n?: number): boolean; // extract current position, optionally with an offset
 }
@@ -356,6 +357,9 @@ export function makeBlockContentIterator(LLD: LogicalLineData, singleLine: boole
         },
         setCheckPoint: (P?: InlinePos) => {
             Object.assign(P || checkpoint, pos);
+        },
+        goToEnd: () => {
+
         },
         getPosition: (P: InlinePos, n?: number) => {
             Object.assign(P, pos);

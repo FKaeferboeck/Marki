@@ -1,12 +1,13 @@
 import { BlockContainer, BlockParser, BlockParser_Container, BlockParser_Standard, standardBlockParserTraits } from "./block-parser.js";
 import { escaped_traits } from "./inline/backslash-escape.js";
 import { codeSpan_traits } from "./inline/code-span.js";
+import { emphasis_traits } from "./inline/emphasis.js";
 import { hardBreak_traits } from "./inline/hard-break.js";
 import { htmlEntity_traits } from "./inline/html-entity.js";
 import { link_traits } from "./inline/link.js";
 import { AnyBlock, AnyInline, Block, BlockBase, BlockType, BlockType_Container, InlineContent, InlineElementType, LogicalLineData, isContainer } from "./markdown-types.js";
 import { LinePart, LineStructure } from "./parser.js";
-import { BlockContinuationType, BlockParserTraitsList, BlockTraits, BlockTraits_Container, InlineParserTraitsList } from "./traits.js";
+import { BlockParserTraitsList, BlockTraits, BlockTraits_Container, InlineParserTraitsList } from "./traits.js";
 import { BlockContentIterator, contentSlice, LLDinfo, makeBlockContentIterator } from "./util.js";
 
 
@@ -38,7 +39,8 @@ export const standardInlineParserTraits: InlineParserTraitsList = {
 	codeSpan:   codeSpan_traits,
 	link:       link_traits,
 	hardBreak:  hardBreak_traits,
-	htmlEntity: htmlEntity_traits
+	htmlEntity: htmlEntity_traits,
+	emphasis:   emphasis_traits
 };
 
 

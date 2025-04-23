@@ -32,7 +32,7 @@ const my_result = referenceRender(blocks, true);*/
 //console.log('CommonMark:', [ commonmark_result ]);
 
 {
-  const input = 'aaa     \nbbb     ';
+  const input = '### foo ###     ';
   const LS   = linify(input);
   const LLD  = lineDataAll(LS, 0);
   const diag = false;

@@ -47,51 +47,6 @@ function doTest(title: string, startNumber: number, input: (string | boolean)[])
 }
 
 
-doTest('thematic breaks', 1, [
-    `***\n---\n___`,
-    `+++`, // wrong character
-    `===`, //
-    `--\n**\n__`, // not enough characters
-    ` ***\n  ***\n   ***`, // up to three spaces of indention allowed
-    `    ***`, // Four spaces of indentation is too many
-    `Foo\n    ***`,
-    `_____________________________________`, // More than three characters may be used
-    ` - - -`, // Spaces and tabs are allowed between the characters
-    ` **  * ** * ** * **`,
-    `-     -      -      -`,
-    `- - - -    `, // Spaces and tabs are allowed at the end
-    `_ _ _ _ a\n\na------\n\n---a---`, // However, no other characters may occur in the line
-    //` *-*`, // It is required that all of the characters other than spaces or tabs be the same. So, this is not a thematic break
-    `- foo\n***\n- bar`, // Thematic breaks do not need blank lines before or after
-    `Foo\n***\nbar`, // Thematic breaks can interrupt a paragraph
-    `Foo\n---\nbar`, // setext heading takes precedence
-    `* Foo\n* * *\n* Bar`, // thematic break takes precedence over list item
-    `- XFoo\n- * * *` // thematic break inside list
-])
-
-
-doTest('ATX headings', 1, [
-    `# foo\n## foo\n### foo\n#### foo\n##### foo\n###### foo`,
-    `####### foo`, // More than six # characters is not a heading
-    `#5 bolt\n\n#hashtag`, // space after # required
-    //`\\## foo`, // This is not a heading, because the first # is escaped
-    //`# foo *bar* \\*baz\\*`, // Contents are parsed as inlines
-    `#                  foo                     `, // Leading and trailing spaces or tabs are ignored in parsing inline content
-    ` ### foo\n  ## foo\n   # foo`, // Up to three spaces of indentation are allowed
-    `    # foo`,      // Four spaces of indentation is too many
-    `foo\n    # bar`, // 
-    `## foo ##\n  ###   bar    ###`, // A closing sequence of # characters is optional
-    `# foo ##################################\n##### foo ##`, // It need not be the same length as the opening sequence
-    `### foo ###     `, // Spaces or tabs are allowed after the closing sequence
-    `### foo ### b`,
-    `# foo#`, // closing sequence must be preceded by a space or tab
-    //`### foo \\###\n## foo #\\##\n# foo \\#`, // Backslash-escaped # characters do not count as part of the closing sequence
-    `****\n## foo\n****`, // ATX headings need not be separated from surrounding content by blank lines, and they can interrupt paragraphs
-    `Foo bar\n# baz\nBar foo`,
-    `## \n#\n### ###` // ATX headings can be empty
-]);
-
-
 doTest('setext headings', 83, [
     //`Foo *bar*\n=========\n\nFoo *bar*\n---------`, // 83
     //`Foo *bar\nbaz*\n====`, // 84 The content of the header may span more than one line
@@ -343,6 +298,56 @@ describe('Entity and numeric character references', () => {
     doTest2(39, 'foo&#10;&#10;bar');
     doTest2(40, '&#9;foo');
     doTest2(41, '[a](url &quot;tit&quot;)');
+});
+
+
+describe('Precedence', () => {
+    doTest2(42, '- `one\n- two`'); // Indicators of block structure always take precedence over indicators of inline structure
+});
+
+
+describe('thematic breaks', () => {
+    doTest2(43, `***\n---\n___`);
+    doTest2(44, `+++`); // wrong character
+    doTest2(45, `===`); //
+    doTest2(46, `--\n**\n__`); // not enough characters
+    doTest2(47, ` ***\n  ***\n   ***`); // up to three spaces of indention allowed
+    doTest2(48,  `    ***`); // Four spaces of indentation is too many
+    doTest2(49, `Foo\n    ***`);
+    doTest2(50, `_____________________________________`); // More than three characters may be used
+    doTest2(51, ` - - -`); // Spaces and tabs are allowed between the characters
+    doTest2(52, ` **  * ** * ** * **`);
+    doTest2(53, `-     -      -      -`);
+    doTest2(54, `- - - -    `); // Spaces and tabs are allowed at the end
+    doTest2(55, `_ _ _ _ a\n\na------\n\n---a---`); // However, no other characters may occur in the line
+    //doTest2(56, ` *-*`); // It is required that all of the characters other than spaces or tabs be the same. So, this is not a thematic break
+    doTest2(57, `- foo\n***\n- bar`); // Thematic breaks do not need blank lines before or after
+    doTest2(58, `Foo\n***\nbar`); // Thematic breaks can interrupt a paragraph
+    doTest2(59, `Foo\n---\nbar`); // setext heading takes precedence
+    doTest2(60, `* Foo\n* * *\n* Bar`); // thematic break takes precedence over list item
+    doTest2(61, `- XFoo\n- * * *`); // thematic break inside list
+});
+
+
+describe('ATX headings', () => {
+    doTest2(62, `# foo\n## foo\n### foo\n#### foo\n##### foo\n###### foo`);
+    doTest2(63, `####### foo`); // More than six # characters is not a heading
+    doTest2(64, `#5 bolt\n\n#hashtag`); // space after # required
+    doTest2(65, `\\## foo`); // This is not a heading, because the first # is escaped
+    //doTest2(66, `# foo *bar* \\*baz\\*`); // Contents are parsed as inlines
+    doTest2(67, `#                  foo                     `); // Leading and trailing spaces or tabs are ignored in parsing inline content
+    doTest2(68, ` ### foo\n  ## foo\n   # foo`); // Up to three spaces of indentation are allowed
+    doTest2(69, `    # foo`);      // Four spaces of indentation is too many
+    doTest2(70, `foo\n    # bar`); // 
+    doTest2(71, `## foo ##\n  ###   bar    ###`); // A closing sequence of # characters is optional
+    doTest2(72, `# foo ##################################\n##### foo ##`); // It need not be the same length as the opening sequence
+    doTest2(73, `### foo ###     `); // Spaces or tabs are allowed after the closing sequence
+    doTest2(74, `### foo ### b`);
+    doTest2(75, `# foo#`); // closing sequence must be preceded by a space or tab
+    //doTest2(76, `### foo \\###\n## foo #\\##\n# foo \\#`); // Backslash-escaped # characters do not count as part of the closing sequence
+    doTest2(77, `****\n## foo\n****`); // ATX headings need not be separated from surrounding content by blank lines, and they can interrupt paragraphs
+    doTest2(78, `Foo bar\n# baz\nBar foo`);
+    doTest2(79, `## \n#\n### ###`); // ATX headings can be empty
 });
 
 

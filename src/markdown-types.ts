@@ -108,6 +108,8 @@ export interface InlineElementMap {
 	              linkTitle?:  AnyInline[];
 				  reference?:  Block<"linkDef">; };
 	hardBreak:  { nSpaces: number | false; }; // nSpaces === false means backslash
+	emphasis:   { delimiter: "*" | "_";
+                  strong: boolean; };
 }
 
 export type ExtensionInlineElementType = `ext_${ExtensionNamespace}_${string}`;
