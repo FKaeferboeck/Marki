@@ -8,7 +8,6 @@ import * as commonmark from 'commonmark';
 
 
 const parser = new MarkdownParser();
-parser.makeStartCharMap();
 
 var commonmark_reader = new commonmark.Parser();
 var commonmark_writer = new commonmark.HtmlRenderer();

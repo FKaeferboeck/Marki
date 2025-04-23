@@ -8,7 +8,7 @@ import { AnyBlock, BlockType, Block, AnyInline, InlineContent, InlineElement } f
     return (para && !B.some(b => !(b === para || b.type === "emptySpace")) ? para : undefined);
 }*/
 
-function renderBlockContent(B: AnyBlock, buf: string[] | null, mode?: "literal" | "tightListItem" | "blockquote") {
+function renderBlockContent(B: AnyBlock, buf: string[] | null, mode?: "literal" | "tightListItem" | "blockquote" | "trimmed") {
     const add = (s: string) => {
         if(!buf)    return s;
         if(s)    buf.push(s);
@@ -48,7 +48,7 @@ function renderBlockContent(B: AnyBlock, buf: string[] | null, mode?: "literal" 
         }
         s = arr.join('');
     } else if(B.inlineContent) {
-        return add(referenceRenderInline(B.inlineContent));
+        return add(referenceRenderInline(B.inlineContent, undefined, mode === "trimmed"));
     } else {
         for(let LLD = B.content || null;  LLD;  LLD = LLD.next)
             arr.push(LLD.startPart);
@@ -59,7 +59,8 @@ function renderBlockContent(B: AnyBlock, buf: string[] | null, mode?: "literal" 
 
 
 function fencedOpener(B: Block<"fenced">) {
-    const firstWord = /^\S+/.exec(B.info_string)?.[0];
+    const info = referenceRenderInline(B.info_string)
+    const firstWord = /^\S+/.exec(info)?.[0];
     if (!firstWord)
         return `<code>`;
     return `<code class="language-${firstWord}">`;
@@ -95,7 +96,7 @@ function renderBlock(B: AnyBlock, buf: string[]) {
     case "thematicBreak":
         return add(`<hr />`);
     case "paragraph":
-        return add(`<p>${strictTrim(renderBlockContent(B, null))}</p>`);
+        return add(`<p>${renderBlockContent(B, null, "trimmed")}</p>`);
     case "indentedCodeBlock":
         return add(`<pre><code>${renderBlockContent(B, null, "literal")}</code></pre>`);
     case "fenced":
@@ -172,11 +173,18 @@ function renderHTML_entity(elt: InlineElement<"htmlEntity">) {
 }
 
 
-export function referenceRenderInline(data: InlineContent, buf?: string[]) {
+export function referenceRenderInline(data: InlineContent, buf?: string[], trimmed?: boolean) {
     buf ||= [];
+    let i = -1, iE = data.length - 1;
     for(const elt of data) {
+        ++i;
         if(typeof elt === "string") {
-            buf.push(escapeXML(elt));
+            let s = escapeXML(elt);
+            if(trimmed && i === 0)
+                s = s.replace(/^[ \t]+/, '');
+            if(trimmed && i === iE)
+                s = s.replace(/[ \t]+$/, '');
+            buf.push(s);
             continue;
         }
         switch(elt.type) {

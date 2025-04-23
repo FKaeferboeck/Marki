@@ -12,7 +12,6 @@ import { standardBlockParserTraits } from '../src/block-parser';
 standardBlockParserTraits.listItem = listItem_traits;
 
 const parser = new MarkdownParser();
-parser.makeStartCharMap();
 
 var commonmark_reader = new commonmark.Parser();
 var commonmark_writer = new commonmark.HtmlRenderer();
@@ -321,8 +320,8 @@ describe('Backslash escapes', () => {
     //doTest2(20, '<https://example.com?find=\\*>');
     //doTest2(21, '<a href="/bar\\/)">');
     doTest2(22, '[foo](/bar\\* "ti\\*tle")'); // But they work in all other contexts, including URLs and link titles, link references, and info strings in fenced code blocks
-    //doTest2(23, '[foo]\n\n[foo]: /bar\\* "ti\\*tle"');
-    //doTest2(24, '``` foo\\+bar\nfoo\n```');
+    doTest2(23, '[foo]\n\n[foo]: /bar\\* "ti\\*tle"');
+    doTest2(24, '``` foo\\+bar\nfoo\n```');
 });
 
 
@@ -336,14 +335,14 @@ describe('Entity and numeric character references', () => {
     //doTest2(31, '<a href="&ouml;&ouml;.html">'); // Entity and numeric character references are recognized in any context besides code spans or code blocks
     doTest2(32, '[foo](/f&ouml;&ouml; "f&ouml;&ouml;")');
     doTest2(33, '[foo]\n\n[foo]: /f&ouml;&ouml; "f&ouml;&ouml;"');
-    /*doTest2(34, '``` f&ouml;&ouml;\nfoo\n```');
-    //doTest2(35, '`f&ouml;&ouml;`'); // Entity and numeric character references are treated as literal text in code spans and code blocks
+    doTest2(34, '``` f&ouml;&ouml;\nfoo\n```');
+    doTest2(35, '`f&ouml;&ouml;`'); // Entity and numeric character references are treated as literal text in code spans and code blocks
     doTest2(36, '    f&ouml;f&ouml;');
-    doTest2(37, '&#42;foo&#42;\n*foo*'); // Entity and numeric character references cannot be used in place of symbols indicating structure in CommonMark documents
+    //doTest2(37, '&#42;foo&#42;\n*foo*'); // Entity and numeric character references cannot be used in place of symbols indicating structure in CommonMark documents
     doTest2(38, '&#42; foo\n\n* foo');
     doTest2(39, 'foo&#10;&#10;bar');
     doTest2(40, '&#9;foo');
-    doTest2(41, '[a](url &quot;tit&quot;)');*/
+    doTest2(41, '[a](url &quot;tit&quot;)');
 });
 
 

@@ -1,6 +1,6 @@
 import { BlockParser } from "../block-parser.js";
 import { takeLinkDestination } from "../inline/link.js";
-import { AnyInline, LogicalLineData } from "../markdown-types.js";
+import { AnyInline, InlineContent, LogicalLineData } from "../markdown-types.js";
 import { BlockContinuationType, BlockTraits } from "../traits.js";
 import { BCI_TakeDelimited_IO, BlockContentIterator, makeBlockContentIterator } from "../util.js";
 
@@ -79,7 +79,15 @@ function linkDefStep(this: LinkDefParser, It: BlockContentIterator): BlockContin
             return (this.stage === 5 ? "reject" : "end"); // link definition must end after the link title
                                                           // if it doesn't but the potential link title was after a line break we accept the part before the checkpoint (== link without title)
         this.stage = 7;
-        this.B.linkTitle = [this.parts.join('\n').slice(1, -1)]
+
+        // TODO!! Improve LLD construction
+        const LLD: LogicalLineData = { logl_idx: -1,  parts: [{
+            line: 0,  character: 0,
+            type:     "TextPart",
+            content:  this.parts.join('\n').slice(1, -1)
+        }],  startIndent: 0,  startPart: '',  type: "single",  next: null };
+		this.MDP.inlineParser_standard.inlineParseLoop(makeBlockContentIterator(LLD),
+                                                       this.B.linkTitle = []);
         return "last";
     }
     return "reject"; // unreachable

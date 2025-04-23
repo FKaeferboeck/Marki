@@ -31,10 +31,8 @@ const my_result = referenceRender(blocks, true);*/
 //const commonmark_result = commonmark_writer.render(parsed) as string;
 //console.log('CommonMark:', [ commonmark_result ]);
 
-parser.makeStartCharMap();
-
 {
-  const input = '[foo]\n\n[foo]: /f&ouml;&ouml; "f&ouml;&ouml;"';
+  const input = 'aaa     \nbbb     ';
   const LS   = linify(input);
   const LLD  = lineDataAll(LS, 0);
   const diag = false;

@@ -42,10 +42,57 @@ export const standardInlineParserTraits: InlineParserTraitsList = {
 };
 
 
+class InlineParsingContext {
+	traits: InlineParserTraitsList = { };
+	startCharMap: Record<string, InlineElementType[]> = {};
+	MDP: MarkdownParser;
+
+	constructor(MDP: MarkdownParser) {
+		this.MDP = MDP;
+	}
+
+    /* During inline parsing we check for element start chars before calling their full parsers, so the order below only
+     * matters between elements that share a start char. */
+    /*inlineTryOrder: InlineElementType[] = [
+		"codeSpan"
+	];*/
+
+    getInlineParser<K extends InlineElementType>(type: K) {
+		const traits = this.traits[type];
+		if(!traits)
+			throw new Error(`Missing inline parser traits for inline element type "${type}"`)
+		return traits.creator(this.MDP);
+	}
+    
+    makeStartCharMap() {
+        this.startCharMap = {};
+        for(const t in this.traits) {
+            const to_add = this.traits[t as InlineElementType]?.startChars;
+            to_add?.forEach(sc => {
+                (this.startCharMap[sc] ||= [] as InlineElementType[]).push(t as InlineElementType);
+            });
+        }
+    }
+
+	inlineParseLoop = inlineParseLoop;
+}
+
+
+
+
 export class MarkdownParser implements BlockContainer {
 	constructor() {
 		// TODO!! Adjust traits to the desired configuration
 		//console.log(this.traitsList)
+
+		this.inlineParser_standard.traits = { ... standardInlineParserTraits };
+		this.inlineParser_standard.makeStartCharMap();
+
+		this.inlineParser_minimal.traits = {
+			escaped:    escaped_traits,
+			htmlEntity: htmlEntity_traits
+		};
+		this.inlineParser_minimal.makeStartCharMap();
 	}
 
 	reset() {
@@ -175,33 +222,8 @@ export class MarkdownParser implements BlockContainer {
 
     /******************************************************************************************************************/
 
-    inlineTraitsList: InlineParserTraitsList = { ... standardInlineParserTraits };
-
-    /* During inline parsing we check for element start chars before calling their full parsers, so the order below only
-     * matters between elements that share a start char. */
-    /*inlineTryOrder: InlineElementType[] = [
-		"codeSpan"
-	];*/
-
-    getInlineParser<K extends InlineElementType>(type: K) {
-		const traits = this.inlineTraitsList[type];
-		if(!traits)
-			throw new Error(`Missing inline parser traits for inline element type "${type}"`)
-		return traits.creator(this);
-	}
-
-    startCharMap: Record<string, InlineElementType[]> = {};
-    makeStartCharMap() {
-        this.startCharMap = {};
-        for(const t in this.inlineTraitsList) {
-            const to_add = this.inlineTraitsList[t as InlineElementType]?.startChars;
-            to_add?.forEach(sc => {
-                (this.startCharMap[sc] ||= [] as InlineElementType[]).push(t as InlineElementType);
-            });
-        }
-    }
-
-	inlineParseLoop = inlineParseLoop;
+    inlineParser_standard = new InlineParsingContext(this);
+	inlineParser_minimal  = new InlineParsingContext(this);
 };
 
 
@@ -305,7 +327,7 @@ export function processLines(this: MarkdownParser, LLD0: LogicalLineData, LLD1: 
 
 /**********************************************************************************************************************/
 
-function inlineParseLoop(this: MarkdownParser, It: BlockContentIterator, buf: InlineContent,
+function inlineParseLoop(this: InlineParsingContext, It: BlockContentIterator, buf: InlineContent,
 	                     contCbk?:  (It: BlockContentIterator, c: string | LinePart) => boolean,
 						 contCbk2?: (It: BlockContentIterator, c: string | LinePart) => boolean) {
 	let c: false | string | LinePart = false;
@@ -370,6 +392,6 @@ function inlineParseLoop(this: MarkdownParser, It: BlockContentIterator, buf: In
 function processInline(this: MarkdownParser, LLD: LogicalLineData) {
 		let It = makeBlockContentIterator(LLD);
 		const buf: InlineContent = [];
-		inlineParseLoop.call(this, It, buf);
+		this.inlineParser_standard.inlineParseLoop(It, buf);
 		return buf;
 }

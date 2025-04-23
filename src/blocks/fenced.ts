@@ -1,13 +1,13 @@
-import { LogicalLineData } from "../markdown-types.js";
+import { AnyInline, LogicalLineData } from "../markdown-types.js";
 import { BlockTraits } from "../traits.js";
-import { standardBlockStart } from "../util.js";
+import { makeBlockContentIterator, sliceLLD, standardBlockStart } from "../util.js";
 
 
 export interface FencedBlock {
 	fence_type:   "`" | "~";
 	fence_length: number; // will be 3 most commonly
 	indentation:  number;
-	info_string:  string;
+	info_string:  AnyInline[];
 }
 
 
@@ -21,7 +21,20 @@ export const fenced_traits: BlockTraits<"fenced"> = {
 
         B.fence_type   = LLD.startPart.charAt(0) as FencedBlock["fence_type"];
         B.fence_length = rexres[0].length;
-        B.info_string  = LLD.startPart.slice(B.fence_length).trim();
+
+        // process info string — it's not just verbatim text
+        const LLD_info = sliceLLD(LLD, LLD.startIndent + B.fence_length);
+        if(LLD_info.parts.length > 0)
+            LLD_info.parts = [LLD_info.parts[0]];
+        if(!(LLD_info.type === "empty" || LLD_info.type === "emptyish")) {
+            //console.log(LLD_info);
+            const It_info = makeBlockContentIterator(LLD_info);
+            It_info.skipNobrSpace();
+            this.MDP.inlineParser_minimal.inlineParseLoop(It_info, B.info_string);
+            //B.info_string  = LLD.startPart.slice(B.fence_length).trim();
+            //console.log(B.info_string)
+        }
+
         B.indentation  = LLD.startIndent; // space before the fence -> will be trimmed from content lines too
 
         if(B.fence_type === "`" && B.info_string.includes('`'))
@@ -50,6 +63,6 @@ export const fenced_traits: BlockTraits<"fenced"> = {
         fence_type:   "`",
         fence_length: 3,
         indentation:  0,
-        info_string:  ''
+        info_string:  []
     }
 };
