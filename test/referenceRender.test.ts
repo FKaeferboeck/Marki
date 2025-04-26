@@ -345,7 +345,7 @@ describe('ATX headings', () => {
     doTest2(73, `### foo ###     `); // Spaces or tabs are allowed after the closing sequence
     doTest2(74, `### foo ### b`);
     doTest2(75, `# foo#`); // closing sequence must be preceded by a space or tab
-    //doTest2(76, `### foo \\###\n## foo #\\##\n# foo \\#`); // Backslash-escaped # characters do not count as part of the closing sequence
+    doTest2(76, `### foo \\###\n## foo #\\##\n# foo \\#`); // Backslash-escaped # characters do not count as part of the closing sequence
     doTest2(77, `****\n## foo\n****`); // ATX headings need not be separated from surrounding content by blank lines, and they can interrupt paragraphs
     doTest2(78, `Foo bar\n# baz\nBar foo`);
     doTest2(79, `## \n#\n### ###`); // ATX headings can be empty

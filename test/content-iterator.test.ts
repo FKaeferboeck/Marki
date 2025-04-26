@@ -2,12 +2,12 @@ import { describe, expect, it, test } from 'vitest'
 import { linify } from '../src/parser';
 import { lineDataAll } from '../src/util';
 import { MarkdownParser } from '../src/markdown-parser';
-import { AnyInline } from '../src/markdown-types';
-import { referenceRenderInline } from '../src/renderer/referenceRenderer'
 import * as commonmark from 'commonmark';
+import { Renderer } from '../src/renderer/renderer';
 
 
 const parser = new MarkdownParser();
+const renderer = new Renderer();
 
 var commonmark_reader = new commonmark.Parser();
 var commonmark_writer = new commonmark.HtmlRenderer();
@@ -21,7 +21,7 @@ function doTest(idx: number | string, input: string, verbose = false) {
         const LLD  = lineDataAll(LS, 0);
         
         const data = parser.processInline(LLD);
-        const rendered = referenceRenderInline(data);
+        const rendered = renderer.renderInline(data, null);
         if(verbose)
             console.log(data);
 

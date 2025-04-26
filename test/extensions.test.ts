@@ -5,7 +5,7 @@ import * as commonmark from 'commonmark';
 import { collectLists, listItem_traits } from '../src/blocks/listItem';
 import { MarkdownParser } from '../src/markdown-parser';
 import { standardBlockParserTraits } from '../src/block-parser';
-import { sourceInclude_traits } from '../src/extensions/blocks/source-include';
+import { Block_SourceInclude, sourceInclude_traits } from '../src/extensions/blocks/source-include';
 import { Renderer } from '../src/renderer/renderer';
 
 
@@ -20,12 +20,12 @@ parser.tryOrder.splice(parser.tryOrder.findIndex(v => v === "paragraph"), 0, "ex
 const renderer = new Renderer();
 
 renderer.blockHandler["ext_standard_sourceInclude"] = (B_, I) => {
-    //const B = B_ as 
-    I.add(`<include ${'??'}>`);
+    const B = B_ as Block_SourceInclude;
+    I.add(`<include ${B.target}>`);
 };
 
 
-function doTest2(idx: number | string, input: string, verbose = false) {
+function doTest2(idx: number | string, input: string, target: string, verbose = false) {
     test('' + idx, () => {
         const LS   = linify(input);
         const LLD  = lineDataAll(LS, 0);
@@ -41,13 +41,13 @@ function doTest2(idx: number | string, input: string, verbose = false) {
         if(verbose)
             console.log(blocks)
 
-        expect(my_result).toEqual('<include mysource.mkd>');
+        expect(my_result).toEqual(target);
     });
 }
 
 
 describe('Source include', () => {
-    doTest2( 1,   '#include mysource.mkd');
+    doTest2( 1,   '#include mysource.mkd', '<include mysource.mkd>\n');
 
 });
 

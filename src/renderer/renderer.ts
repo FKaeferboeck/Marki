@@ -1,6 +1,6 @@
-import { parseBackslashEscapes } from "../inline-parser";
-import { AnyBlock, AnyInline, Block, BlockType, BlockType_Container, BlockType_Leaf, Block_Container, Block_Leaf, InlineContent, InlineElement, InlineElementType } from "../markdown-types";
-import { renderHTML_entity, escapeXML, escapeXML_all, urlEncode } from "./util";
+import { parseBackslashEscapes } from "../inline-parser.js";
+import { AnyBlock, AnyInline, Block, BlockType, InlineContent, InlineElement, InlineElementType } from "../markdown-types.js";
+import { renderHTML_entity, escapeXML, escapeXML_all, urlEncode } from "./util.js";
 
 interface Inserter {
     add(... S: string[]): void;
@@ -149,7 +149,8 @@ export class Renderer {
             let s = this.referenceRender(blocks, false, false);
             if(mode === "blockquote")
                 s = s.trim();
-            I?.add(s);
+            if(s)
+                I?.add(s);
             return s;
         }
     

@@ -1,4 +1,4 @@
-import { AnyInline, InlineElement } from "../markdown-types";
+import { AnyInline, InlineElement } from "../markdown-types.js";
 
 export function renderHTML_entity(elt: InlineElement<"htmlEntity">) {
     if(elt.codePoint === undefined)

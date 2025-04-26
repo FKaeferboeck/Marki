@@ -1,3 +1,4 @@
+import { Position } from "vscode-languageserver";
 import { InlinePos, LinePart_ext, LogicalLineData, LP_break, LP_break_HTML, LP_EOF } from "./markdown-types.js";
 import { HTML_Markup, LinePart, LineStructure, LogicalLineType } from "./parser.js";
 
@@ -77,6 +78,24 @@ export function sliceLLD(LLD: LogicalLineData, begin: number): LogicalLineData {
 }
 
 
+const cloneLLD = (LLD: LogicalLineData): LogicalLineData => ({ ... LLD,  parts: [ ... LLD.parts ],  next: null });
+
+export function sliceLLD_to(LLD: LogicalLineData, end: InlinePos): LogicalLineData {
+    const LLD_return = cloneLLD(LLD);
+    let LLD1 = LLD_return;
+    while(LLD != end.LLD) {
+        if(!LLD.next)
+            throw new Error('End not found');
+        LLD1 = (LLD1.next = cloneLLD(LLD = LLD.next));
+    }
+    const P1: LinePart_ext | undefined = LLD1.parts[end.part_idx];
+    LLD1.parts = LLD1.parts.slice(0, end.part_idx);
+    if(P1)
+        LLD1.parts.push({ content: P1.content.slice(0, end.char_idx),  type: P1.type } as LinePart_ext);
+    return LLD_return;
+}
+
+
 
 export function lineData(LS: LineStructure, logl_idx: number): LogicalLineData {
     const LL = LS.logical_lines[logl_idx];
@@ -119,6 +138,7 @@ export function LLDinfo(LLD: LogicalLineData | null | undefined) {
     return `[${LLD.logl_idx}:${LLD.startIndent ? `(${LLD.startIndent})+` : ''}${LLD.startPart}${LLD.isSoftContainerContinuation ? '\\SCC' : ''}]`;
 }
 
+export const isLineStart = (pos: InlinePos) => (pos.part_idx === 0 && pos.char_idx === 0);
 
 
 /**********************************************************************************************************************/
@@ -268,7 +288,7 @@ export function makeBlockContentIterator(LLD: LogicalLineData, singleLine: boole
             n -= pos.char_idx;
             if(pos.part_idx > 0) {
                 const C = curLine.parts[pos.part_idx - 1].content;
-                if(C.length > n)
+                if(C.length >= n)
                     return C[C.length - n];
             }
             return false;
@@ -359,7 +379,13 @@ export function makeBlockContentIterator(LLD: LogicalLineData, singleLine: boole
             Object.assign(P || checkpoint, pos);
         },
         goToEnd: () => {
-
+            while(curLine.next)
+                curLine = curLine.next;
+            pos.LLD = curLine;
+            pos.part_idx = curLine.parts.length; // off-end
+            pos.char_idx = 0;
+            curPart = LP_EOF;
+            curPartLength = 1;
         },
         getPosition: (P: InlinePos, n?: number) => {
             Object.assign(P, pos);
