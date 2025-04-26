@@ -42,7 +42,11 @@ export interface BlockContainer {
 }
 
 
-export interface BlockParser<K extends BlockType = BlockType> {
+export interface BlockParserBase {
+	type: BlockType;
+}
+
+export interface BlockParser<K extends BlockType = BlockType, Traits extends BlockTraits<K> = BlockTraits<K>> extends BlockParserBase {
 	type: K;
 	// Does a block of this type begin in that logical line, and can it interrupt the given currently open block?
 	beginsHere(LLD: LogicalLineData, interrupting?: BlockType | undefined): number;
@@ -59,6 +63,7 @@ export interface BlockParser<K extends BlockType = BlockType> {
 	resetBlock(): Block<K>;
 	MDP: MarkdownParser;
 	parent: BlockContainer | undefined;
+	traits: Traits;//BlockTraits<K>;
 	B: Block<K>;
 	isInterruption: boolean;
 	startLine: LogicalLineData | undefined;
@@ -66,7 +71,7 @@ export interface BlockParser<K extends BlockType = BlockType> {
 }
 
 
-export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits extends BlockTraits<K> = BlockTraits<K>> implements BlockParser<K> {
+export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits extends BlockTraits<K> = BlockTraits<K>> implements BlockParser<K, Traits> {
 	type: K;
 
 	constructor(MDP: MarkdownParser, type: K, traits: Traits, useSoftContinuations: boolean = true) {

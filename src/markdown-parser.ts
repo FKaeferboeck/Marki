@@ -1,4 +1,4 @@
-import { BlockContainer, BlockParser, BlockParser_Container, BlockParser_Standard, standardBlockParserTraits } from "./block-parser.js";
+import { BlockContainer, BlockParser, BlockParserBase, BlockParser_Container, BlockParser_Standard, standardBlockParserTraits } from "./block-parser.js";
 import { escaped_traits } from "./inline/backslash-escape.js";
 import { codeSpan_traits } from "./inline/code-span.js";
 import { emphasis_traits } from "./inline/emphasis.js";
@@ -11,12 +11,16 @@ import { BlockParserTraitsList, BlockTraits, BlockTraits_Container, InlineParser
 import { BlockContentIterator, contentSlice, LLDinfo, makeBlockContentIterator } from "./util.js";
 
 
-interface BlockParserProviderItem<K extends BlockType> {
+/*interface BlockParserProviderItem<K extends BlockType> {
 	parent: MarkdownParser;
 	parser: BlockParser<K> | undefined;
+}*/
+interface BlockParserProviderItem {
+	parent: MarkdownParser;
+	parser: BlockParserBase | undefined;
 }
 type BlockParserProviderCache = {
-	[K in BlockType]: BlockParserProviderItem<K> | undefined;
+	[K in BlockType]: BlockParserProviderItem/*<K>*/ | undefined;
 };
 
 export interface ParseState {
@@ -176,7 +180,7 @@ export class MarkdownParser implements BlockContainer {
 
 	blockParserProvider = {
 		cache: { } as BlockParserProviderCache,
-		release(P: BlockParser) {
+		release(P: BlockParserBase) {
 			if(this.cache[P.type]?.parser !== P)
 				throw new Error(`Trying to release a block parser for "${P.type}" that isn't in the cache`);
 			this.cache[P.type] = undefined;

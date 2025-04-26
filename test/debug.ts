@@ -1,8 +1,8 @@
 import { linify } from '../src/parser.js';
 import { lineDataAll } from '../src/util.js';
-import { referenceRender } from '../src/renderer/referenceRenderer.js';
 import { MarkdownParser } from '../src/markdown-parser.js';
 import { collectLists } from '../src/blocks/listItem.js';
+import { Renderer } from '../src/renderer/renderer.js';
 //import * as commonmark from 'commonmark';
 
 
@@ -43,8 +43,8 @@ const my_result = referenceRender(blocks, true);*/
   blocks.forEach(B => parser.processBlock(B));
   console.log(blocks)
 
-  
-  const my_result = referenceRender(blocks, diag);
+  const renderer = new Renderer();
+  const my_result = renderer.referenceRender(blocks, diag);
 
   //const data = parser.processInline(LLD);
   console.log(my_result);

@@ -1,7 +1,7 @@
 import { describe, expect, it, test } from 'vitest'
 import { linify } from '../src/parser';
 import { lineDataAll } from '../src/util';
-import { referenceRender } from '../src/renderer/referenceRenderer';
+import { Renderer} from '../src/renderer/renderer';
 import * as commonmark from 'commonmark';
 import { collectLists, listItem_traits } from '../src/blocks/listItem';
 import { MarkdownParser } from '../src/markdown-parser';
@@ -12,6 +12,7 @@ import { standardBlockParserTraits } from '../src/block-parser';
 standardBlockParserTraits.listItem = listItem_traits;
 
 const parser = new MarkdownParser();
+const renderer = new Renderer();
 
 var commonmark_reader = new commonmark.Parser();
 var commonmark_writer = new commonmark.HtmlRenderer();
@@ -32,7 +33,7 @@ function doTest(title: string, startNumber: number, input: (string | boolean)[])
                 parser.diagnostics = diag;
                 const blocks    = parser.processContent(LLD);
                 collectLists(blocks, diag);
-                const my_result = referenceRender(blocks, diag);
+                const my_result = renderer.referenceRender(blocks, diag);
 
                 const parsed = commonmark_reader.parse(s);
                 const commonmark_result = commonmark_writer.render(parsed) as string;
@@ -226,7 +227,7 @@ function doTest2(idx: number | string, input: string, verbose = false) {
         const blocks = parser.processContent(LLD);
         collectLists(blocks, diag);
         blocks.forEach(B => parser.processBlock(B));
-        const my_result = referenceRender(blocks, diag);
+        const my_result = renderer.referenceRender(blocks, diag);
         if(verbose)
             console.log(blocks)
 
