@@ -48,90 +48,6 @@ function doTest(title: string, startNumber: number, input: (string | boolean)[])
 }
 
 
-doTest('setext headings', 83, [
-    //`Foo *bar*\n=========\n\nFoo *bar*\n---------`, // 83
-    //`Foo *bar\nbaz*\n====`, // 84 The content of the header may span more than one line
-    //`  Foo *bar\nbaz*\t\n====`, // 85 surrounding space
-    `Foo\n-------------------------\n\nFoo\n=`, // 86 The underlining can be any length
-    `   Foo\n---\n\n  Foo\n-----\n\n  Foo\n  ===`, // 87 The heading content can be preceded by up to three spaces of indentation, and need not line up with the underlining
-    `    Foo\n    ---\n\n    Foo\n---`, // 88 Four spaces of indentation is too many
-    `Foo\n= =\n\nFoo\n--- -`, // 89 The setext heading underline cannot contain internal spaces or tabs
-    //`Foo  \n-----`, // 90 Trailing spaces or tabs in the content line do not cause a hard line break
-    `Foo\\\n----`, // 91 Nor does a backslash at the end
-    //`\`Foo\n----\n\`\n\n<a title="a lot\n---\nof dashes"/>`, // 92 indicators of block structure take precedence over indicators of inline structure
-    `> Foo\n---`, // 93 The setext heading underline cannot be a lazy continuation line in a list item or block quote
-    `> 94foo\nbar\n===`, // 94
-    `- Foo\n---`, // 95
-    `Foo\nBar\n---`, // 96 multiline heading content
-    `---\nFoo\n---\nBar\n---\nBaz`, // 97 a blank line is not required before or after setext headings
-    `\n====`, // 98 Setext headings cannot be empty
-    `---\n---`, // 99
-    `- foo\n-----`, // 100
-    `    101foo\n---`, // 101
-    `> 102foo\n-----`,
-    `103Foo\n\nbar\n---\nbaz`, // 103
-    `103Foo\nbar\n\n---\n\nbaz`, // 104
-    `105Foo\nbar\n\n* * *\nbaz`, // 105
-    //`Foo\nbar\n\\---\nbaz` // 106
-
-    /* A couple of extreme examples I added needed to add: A paragraph that serves as a lazy continuation to a block quote later gets rejected in favor of a setext header.
-       However we don't want to cancel the continuation because the reference implementation doesn't. */
-    `> (a)\nbar\n> ===`,
-    /* Even worse: We first have a lazy "===" which gets accepted as paragraph content; but when we reject the paragraph over the "---" in the next line and reparse it as a setext header
-       it would end with that "===" — but the reference implementation doesn't want us to. So we have to remember that this line used to be, and continues to be, a lazy continuation. */ 
-    `> (b)\nbar\n===\n> ---`
-]);
-
-
-doTest('indented code blocks', 107, [
-    `    a simple\n      indented code block`, // 107
-    `  - foo108\n\n    bar`, // item list takes precedence
-    `1.  foo109\n\n    - bar109`, // 109
-    //`    <a/>\n    *hi*\n\n    - one`, // The contents of a code block are literal text, and do not get parsed as Markdown
-    `    chunk1\n\n    chunk2\n  \n \n \n    chunk3`, // Here we have three chunks separated by blank lines
-    `    chunk1\n      \n      chunk2`, // Any initial spaces or tabs beyond four spaces of indentation will be included in the content, even in interior blank lines
-    `Foo\n    bar`, // An indented code block cannot interrupt a paragraph
-    `    foo\nbar`, // any non-blank line with fewer than four spaces of indentation ends the code block immediately
-    `# Heading\n    foo\nHeading\n------\n    foo\n----`, // And indented code can occur immediately before and after other kinds of blocks
-    `        foo116\n    bar`, // The first line can be preceded by more than four spaces of indentation
-    `\n    \n    foo117\n    `, // Blank lines preceding or following an indented code block are not included in it
-    `    foo  ` // 118 Trailing spaces or tabs are included in the code block’s content
-]);
-
-
-doTest('fenced code blocks', 119, [
-    /*'```\n<\n >\n```', // 119
-    '~~~\n<\n >\n~~~', // 120
-    '``\nfoo\n``', // Fewer than three backticks is not enough*/
-    '```\naaa\n~~~\n```', // The closing code fence must use the same character as the opening fence
-    '~~~\naaa\n```\n~~~', // 123
-    '````\naaa\n```\n``````', // The closing code fence must be at least as long as the opening fence
-    '~~~~\naaa\n~~~\n~~~~', // 125
-    '```', // Unclosed code blocks are closed by the end of the document
-    '`````\n\n```\naaa', // 127
-    '> ```\n> aaa\n\nbbb', // 128
-    '```\n\n  \n```', // A code block can have all empty lines as its content
-    '```\n```', // A code block can be empty
-    ' ```\n aaa\naaa\n```', // Fences can be indented
-    '  ```\naaa\n  aaa\naaa\n  ```', // 132
-    '   ```\n   aaa\n    aaa\n  aaa\n   ```', // 133
-    '    ```\n    aaa\n    ```', // Four spaces of indentation is too many
-    '```\naaa\n  ```', // Closing fences may be preceded by up to three spaces of indentation, and their indentation need not match that of the opening fence
-    '   ```\naaa\n  ```', // 136
-    '```\naaa\n    ```', // This is not a closing fence, because it is indented 4 spaces
-    //'``` ```\naaa', // Code fences (opening and closing) cannot contain internal spaces or tabs
-    '~~~~~~\naaa\n~~~ ~~', // 139
-    'foo\n```\nbar\n```\nbaz', // Fenced code blocks can interrupt paragraphs
-    'foo\n---\n~~~\nbar\n~~~\n# baz', // Other blocks can also occur before and after fenced code blocks
-    '```ruby\ndef foo(x)\n  return 3\nend\n```', // info strings
-    '~~~~    ruby startline=3 $%@#$\ndef foo(x)\n  return 3\nend\n~~~~~~~', // 143
-    '````;\n````', // 144
-    //'``` aa ```\nfoo', // Info strings for backtick code blocks cannot contain backticks
-    '~~~ aa ``` ~~~\nfoo\n~~~', // Info strings for tilde code blocks can contain backticks and tildes
-    '```\n``` aaa\n```' // 147 Closing code fences cannot have info strings
-])
-
-
 doTest('list items', 253, [
     'A paragraph\nwith two lines.\n\n    indented code\n\n> A block quote.', // 253
     '1.  A paragraph\n    with two lines.\n\n        indented code\n\n    > A block quote.', // 254
@@ -350,6 +266,93 @@ describe('ATX headings', () => {
     doTest2(78, `Foo bar\n# baz\nBar foo`);
     doTest2(79, `## \n#\n### ###`); // ATX headings can be empty
 });
+
+
+
+describe('setext headings', () => {
+    //doTest2(80, `Foo *bar*\n=========\n\nFoo *bar*\n---------`);
+    //doTest2(81, `Foo *bar\nbaz*\n====`); // The content of the header may span more than one line
+    //doTest2(82, `  Foo *bar\nbaz*\t\n====`); // surrounding space
+    doTest2(83, `Foo\n-------------------------\n\nFoo\n=`); // The underlining can be any length
+    doTest2(84, `   Foo\n---\n\n  Foo\n-----\n\n  Foo\n  ===`); // heading content can be preceded by up to three spaces of indentation, and need not line up with the underlining
+    doTest2(85, `    Foo\n    ---\n\n    Foo\n---`); // Four spaces of indentation is too many
+    doTest2(86, `Foo\n   ----      `); // setext heading underline can be preceded by up to three spaces of indentation, and may have trailing spaces or tabs
+    doTest2(87, `Foo\n    ---`); // Four spaces of indentation is too many
+    doTest2(88, `Foo\n= =\n\nFoo\n--- -`); // setext heading underline cannot contain internal spaces or tabs
+    doTest2(89, `Foo  \n-----`); // Trailing spaces or tabs in the content line do not cause a hard line break
+    doTest2(90, `Foo\\\n----`); // Nor does a backslash at the end
+    //doTest2(91, `\`Foo\n----\n\`\n\n<a title="a lot\n---\nof dashes"/>`); // indicators of block structure take precedence over indicators of inline structure
+    doTest2(92, `> Foo\n---`); // The setext heading underline cannot be a lazy continuation line in a list item or block quote
+    doTest2(93, `> foo\nbar\n===`);
+    doTest2(94, `- Foo\n---`);
+    doTest2(95, `Foo\nBar\n---`); // multiline heading content
+    doTest2(96, `---\nFoo\n---\nBar\n---\nBaz`); // a blank line is not required before or after setext headings
+    doTest2(97, `\n====`); // Setext headings cannot be empty
+    doTest2(98, `---\n---`);
+    doTest2(99, `- foo\n-----`);
+    doTest2(100, `    foo\n---`);
+    doTest2(101, `> foo\n-----`);
+    doTest2(102, `> foo\n-----`);
+    doTest2(103, `\\> foo\n------`); // if you want a heading with > foo as its literal text, you can use backslash escapes
+    doTest2(104, 'Foo\nbar\n\n---\n\nbaz'); // Authors who want interpretation 2 can put blank lines around the thematic break
+    doTest2(105, 'Foo\nbar\n* * *\nbaz'); // ... or use a thematic break that cannot count as a setext heading underline
+    doTest2(106, 'Foo\nbar\n\\---\nbaz'); // Authors who want interpretation 3 can use backslash escapes
+    /* A couple of extreme examples I needed to add: A paragraph that serves as a lazy continuation to a block quote later gets rejected in favor of a setext header.
+       However we don't want to cancel the continuation because the reference implementation doesn't. */
+    doTest2(106.1, `> (a)\nbar\n> ===`);
+    /* Even worse: We first have a lazy "===" which gets accepted as paragraph content; but when we reject the paragraph over the "---" in the next line and reparse it as a setext header
+       it would end with that "===" — but the reference implementation doesn't want us to. So we have to remember that this line used to be, and continues to be, a lazy continuation. */ 
+    doTest2(106.2, `> (b)\nbar\n===\n> ---`);
+});
+
+
+describe('indented code blocks', () => {
+    doTest2(107, `    a simple\n      indented code block`);
+    doTest2(108, `  - foo\n\n    bar`); // item list takes precedence
+    doTest2(109, `1.  foo\n\n    - bar`);
+    doTest2(110, `    <a/>\n    *hi*\n\n    - one`); // The contents of a code block are literal text, and do not get parsed as Markdown
+    doTest2(111, `    chunk1\n\n    chunk2\n  \n \n \n    chunk3`); // Here we have three chunks separated by blank lines
+    doTest2(112, `    chunk1\n      \n      chunk2`); // Any initial spaces or tabs beyond four spaces of indentation will be included in the content, even in interior blank lines
+    doTest2(113, `Foo\n    bar`); // An indented code block cannot interrupt a paragraph
+    doTest2(114, `    foo\nbar`); // any non-blank line with fewer than four spaces of indentation ends the code block immediately
+    doTest2(115, `# Heading\n    foo\nHeading\n------\n    foo\n----`); // And indented code can occur immediately before and after other kinds of blocks
+    doTest2(116, `        foo\n    bar`); // The first line can be preceded by more than four spaces of indentation
+    doTest2(117, `\n    \n    foo\n    `); // Blank lines preceding or following an indented code block are not included in it
+    doTest2(118, `    foo  `); // Trailing spaces or tabs are included in the code block’s content
+});
+
+
+describe('Fenced code blocks', () => {
+    doTest2(119, '```\n<\n >\n```');
+    doTest2(120, '~~~\n<\n >\n~~~');
+    doTest2(121, '``\nfoo\n``'); // Fewer than three backticks is not enough
+    doTest2(122, '```\naaa\n~~~\n```'); // The closing code fence must use the same character as the opening fence
+    doTest2(123, '~~~\naaa\n```\n~~~');
+    doTest2(124, '````\naaa\n```\n``````'); // The closing code fence must be at least as long as the opening fence
+    doTest2(125, '~~~~\naaa\n~~~\n~~~~');
+    doTest2(126, '```'); // Unclosed code blocks are closed by the end of the document
+    doTest2(127, '`````\n\n```\naaa');
+    doTest2(128, '> ```\n> aaa\n\nbbb');
+    doTest2(129, '```\n\n  \n```'); // A code block can have all empty lines as its content
+    doTest2(130, '```\n```'); // A code block can be empty
+    doTest2(131, ' ```\n aaa\naaa\n```'); // Fences can be indented
+    doTest2(132, '  ```\naaa\n  aaa\naaa\n  ```');
+    doTest2(133, '   ```\n   aaa\n    aaa\n  aaa\n   ```');
+    doTest2(134, '    ```\n    aaa\n    ```'); // Four spaces of indentation is too many
+    doTest2(135, '```\naaa\n  ```'); // Closing fences may be preceded by up to three spaces of indentation, and their indentation need not match that of the opening fence
+    doTest2(136, '   ```\naaa\n  ```');
+    doTest2(137, '```\naaa\n    ```'); // This is not a closing fence, because it is indented 4 spaces
+    doTest2(138, '``` ```\naaa'); // Code fences (opening and closing) cannot contain internal spaces or tabs
+    doTest2(139, '~~~~~~\naaa\n~~~ ~~');
+    doTest2(140, 'foo\n```\nbar\n```\nbaz'); // Fenced code blocks can interrupt paragraphs
+    doTest2(141, 'foo\n---\n~~~\nbar\n~~~\n# baz'); // Other blocks can also occur before and after fenced code blocks
+    doTest2(142, '```ruby\ndef foo(x)\n  return 3\nend\n```'); // info strings
+    doTest2(143, '~~~~    ruby startline=3 $%@#$\ndef foo(x)\n  return 3\nend\n~~~~~~~');
+    doTest2(144, '````;\n````');
+    doTest2(145, '``` aa ```\nfoo'); // Info strings for backtick code blocks cannot contain backticks
+    doTest2(146, '~~~ aa ``` ~~~\nfoo\n~~~'); // Info strings for tilde code blocks can contain backticks and tildes
+    doTest2(147, '```\n``` aaa\n```'); // Closing code fences cannot have info strings
+})
 
 
 describe('Link reference definitions', () => {

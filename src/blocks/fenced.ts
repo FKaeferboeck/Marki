@@ -37,9 +37,10 @@ export const fenced_traits: BlockTraits<"fenced"> = {
 
         B.indentation  = LLD.startIndent; // space before the fence -> will be trimmed from content lines too
 
-        if(B.fence_type === "`" && B.info_string.includes('`'))
+        if(B.fence_type === "`" && B.info_string.some(P => typeof P === "string" && P.includes('`'))) {
+            this.resetBlock();
             return -1;
-
+        }
         return 0;
     },
 

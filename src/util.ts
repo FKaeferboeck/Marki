@@ -1,4 +1,3 @@
-import { Position } from "vscode-languageserver";
 import { InlinePos, LinePart_ext, LogicalLineData, LP_break, LP_break_HTML, LP_EOF } from "./markdown-types.js";
 import { HTML_Markup, LinePart, LineStructure, LogicalLineType } from "./parser.js";
 
@@ -54,7 +53,7 @@ function trimStart_tabbed(s: string, n: number, preStartIndent: number) {
 export function sliceLLD(LLD: LogicalLineData, begin: number): LogicalLineData {
     const p0 = (LLD.parts.length > 0 ? trimStart_tabbed(LLD.parts[0].content as string, begin, LLD.preStartIndent || 0) : '');
     //const p0 = (' '.repeat(LLD.startIndent) + LLD.startPart).slice(begin);
-    const parts = [ ... LLD.parts ];
+    const parts = LLD.parts.map(P => ({ ... P }));
     if(p0.length > 0)
         parts[0].content = p0;
     else
@@ -414,4 +413,20 @@ const delims: Record<string, RegExp> = { '"': /\\(?=")/g,  '\'': /\\(?=')/g,
 export function removeDelimiter(s: string) {
     const rex = delims[s.charAt(0)];
     return (rex ? s.slice(1, -1).replaceAll(rex, '') : s);
+}
+
+
+export function trimEndSpace(LLD: LogicalLineData) {
+    let LLD1 = LLD;
+    while(LLD1.next)    LLD1 = LLD1.next;
+    if(LLD1.parts.length === 0)
+        return LLD;
+    const P = LLD1.parts[LLD1.parts.length - 1];
+    if(typeof P.content !== "string" || P.type !== "TextPart")
+        return LLD;
+    P.content = P.content.trimEnd();
+    if(!P.content)
+        LLD.parts.pop();
+    LLD1.type = lineTypeLP(LLD1.parts);
+    return LLD;
 }

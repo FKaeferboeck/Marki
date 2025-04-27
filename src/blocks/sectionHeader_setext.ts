@@ -1,6 +1,7 @@
 import { BlockParser_Standard } from "../block-parser.js";
 import { LogicalLineData } from "../markdown-types.js";
 import { BlockTraits } from "../traits.js";
+import { measureIndent, trimEndSpace } from "../util.js";
 
 
 export function setext_end_line(LLD: LogicalLineData) {
@@ -11,8 +12,8 @@ export function setext_end_line(LLD: LogicalLineData) {
 
 
 export const sectionHeader_setext_traits: BlockTraits<"sectionHeader_setext"> = {
-    startsHere(data: LogicalLineData, B) {
-        return 0; // because this will only be called when all other possibilities have been excluded
+    startsHere(LLD: LogicalLineData) {
+        return LLD.startIndent; // because this will only be called when all other possibilities have been excluded
     },
     continuesHere(LLD) {
         /* The following property is only set when that line was previously recognized as a soft container continuation, and the paragraph it was in was then rejected.
@@ -30,6 +31,10 @@ export const sectionHeader_setext_traits: BlockTraits<"sectionHeader_setext"> = 
         if(n < 0)    return "soft";
         this.B.level = n;
         return "last";
+    },
+
+    postprocessContentLine(LLD) {
+        return trimEndSpace(LLD);
     },
 
     allowSoftContinuations: false,
