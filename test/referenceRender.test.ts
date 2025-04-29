@@ -1,4 +1,4 @@
-import { describe, expect, it, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { linify } from '../src/parser';
 import { lineDataAll } from '../src/util';
 import { Renderer} from '../src/renderer/renderer';
@@ -6,7 +6,6 @@ import * as commonmark from 'commonmark';
 import { collectLists, listItem_traits } from '../src/blocks/listItem';
 import { MarkdownParser } from '../src/markdown-parser';
 import { standardBlockParserTraits } from '../src/block-parser';
-
 
 // As of 2025-03-12 Vitest suddenly isn't able any more to import listItem on its own. Luckily we can repair it like this.
 standardBlockParserTraits.listItem = listItem_traits;
@@ -16,119 +15,6 @@ const renderer = new Renderer();
 
 var commonmark_reader = new commonmark.Parser();
 var commonmark_writer = new commonmark.HtmlRenderer();
-
-
-function doTest(title: string, startNumber: number, input: (string | boolean)[]) {
-    const verboses: Record<number, boolean> = { };
-    describe(title, () => {
-        input.forEach((s, idx) => {
-            test('Case ' + (idx + startNumber), () => {
-                if(typeof s === "boolean") {
-                    verboses[idx + 1] = s;
-                    return;
-                }
-                const LS        = linify(s);
-                const LLD       = lineDataAll(LS, 0);
-                const diag = verboses[idx] || false;
-                parser.diagnostics = diag;
-                const blocks    = parser.processContent(LLD);
-                collectLists(blocks, diag);
-                const my_result = renderer.referenceRender(blocks, diag);
-
-                const parsed = commonmark_reader.parse(s);
-                const commonmark_result = commonmark_writer.render(parsed) as string;
-                if(diag)
-                    console.log('CommonMark:', [ commonmark_result ]);
-
-                expect(my_result).toEqual(commonmark_result);
-                //expect(my_result.length).toEqual(commonmark_result.length);
-            })
-        });
-    });
-}
-
-
-doTest('list items', 253, [
-    'A paragraph\nwith two lines.\n\n    indented code\n\n> A block quote.', // 253
-    '1.  A paragraph\n    with two lines.\n\n        indented code\n\n    > A block quote.', // 254
-    '- one\n\n two', // 255
-    '- one\n\n  two', // 256
-    ' -    one\n\n     two', // 257
-    ' -    one\n\n      two', // 258
-    '   > > 1.  one\n>>\n>>     two', // 259 nested lists
-    '>>- one\n>>\n  >  > two', // 260
-    '-one\n\n2.two', // 261
-    '- foo\n\n\n  bar', // 262
-    '1.  foo\n\n    ```\n    bar\n    ```\n\n    baz\n\n    > bam', // 263 A list item may contain any kind of block
-    '- Foo\n\n      bar\n\n\n      baz', // 264 A list item that contains an indented code block will preserve empty lines within the code block verbatim
-    '123456789. ok', // 265 ordered list start numbers must be nine digits or less
-    '1234567890. not ok', // 266
-    '0. ok', // 267
-    '003. ok', // 268
-    '-1. not ok', // 269 A start number may not be negative
-    '- foo\n\n      bar', // 270
-    '  10.  foo\n\n           bar', // 271
-    '    indented code\n\nparagraph\n\n    more code', // 272
-    '1.     indented code\n\n   paragraph\n\n       more code', // 273
-    '1.      indented code\n\n   paragraph\n\n       more code', // 274 Note that an additional space of indentation is interpreted as space inside the code block
-    '   foo\n\nbar', // 275
-    '-    foo\n\n  bar', // 276
-    '-  foo\n\n   bar', // 277
-    '-\n  foo278\n-\n  ```\n  bar\n  ```\n\n-\n    baz', // 278
-    '-   \n  foo279', // 279
-    '-\n\n  foo280', // 280 A list item can begin with at most one blank line
-    '- foo\n-\n- bar', // 281 Here is an empty bullet list item
-    '- foo\n-   \n- bar', // 282 It does not matter whether there are spaces or tabs following the list marker
-    '1. foo\n2.\n3. bar', // 283 Here is an empty ordered list item
-    '*', // 284 A list may start or end with an empty list item
-    'foo\n*\n\nfoo\n1.', // 285 However, an empty list item cannot interrupt a paragraph
-    ' 1.  A paragraph\n     with two lines.\n\n         indented code\n\n     > A block quote.', // 286
-    '  1.  A paragraph\n      with two lines.\n\n          indented code\n\n      > A block quote.', // 287
-    '   1.  A paragraph\n       with two lines.\n\n           indented code\n\n       > A block quote.', // 288
-    '    1.  A paragraph\n        with two lines.\n\n            indented code\n\n        > A block quote.', // 289 Four spaces indent gives a code block
-    '  1.  A paragraph\nwith two lines.\n\n          indented code\n\n      > A block quote.', // 290
-    '  1.  A paragraph\n    with two lines.', // 291 Indentation can be partially deleted
-    '> 1. > Blockquote\ncontinued here.', // 292 These examples show how laziness can work in nested structures
-    '> 1. > Blockquote\n> continued here.', // 293
-    '- foo\n  - bar\n    - baz\n      - boo', // 294
-    '- foo295\n - bar\n  - baz\n   - boo', // 295
-    '10) foo\n    - bar', // 296 Here we need four indention spaces, because the list marker is wider
-    '11) foo297\n   - bar', // 297 Three is not enough
-    '- - foo298', // 298 A list may be the first block in a list item
-    '1. - 2. foo299', // 299
-    '- # Foo\n- Bar\n  ---\n  baz' // 300
-]);
-
-
-doTest('lists', 301, [
-    '- foo\n- bar\n+ baz', // 301 Changing the bullet or ordered list delimiter starts a new list
-    '1. foo\n2. bar\n3) baz', // 302
-    'Foo\n- bar\n- baz', // 303 a list can interrupt a paragraph
-    'The number of windows in my house is\n14.  The number of doors is 6.', // 304
-    'The number of windows in my house is\n1.  The number of doors is 6.', // 305
-    '- foo\n\n- bar\n\n\n- baz', // 306
-    '- foo\n  - bar\n    - baz\n\n\n      bim', // 307
-    //'- foo\n- bar\n\n<!-- -->\n\n- baz\n- bim', // 308
-    //'-   foo\n\n    notcode\n\n-   foo\n\n<!-- -->\n\n    code', // 309
-    '- a\n - b\n  - c\n   - d\n  - e\n - f\n- g', // 310 List items need not be indented to the same level
-    '1. a\n\n  2. b\n\n   3. c', // 311
-    '- a\n - b\n  - c\n   - d\n    - e', // 312
-    '1. a\n\n  2. b\n\n    3. c', // 313 here 3. c is treated as in indented code block, because it is indented four spaces and preceded by a blank line
-    '- a\n- b\n\n- c', // 314 This is a loose list, because there is a blank line between two of the list items
-    '* a\n*\n\n* c', // 315 So is this, with a empty second item
-    '- a\n- b\n\n  c\n- d', // 316 loose because the second item has two paragraphs
-    //'- a\n- b\n\n  [ref]: /url\n- d', // 317
-    '- a\n- ```\n  b\n\n\n  ```\n- c', // 318
-    '- a\n  - b\n\n    c\n- d', // 319 Tight list containing a loose sublist
-    '* a\n  > b\n  >\n* c', // 320 This is a tight list, because the blank line is inside the block quote
-    '- a\n  > b\n  ```\n  c\n  ```\n- d', // 321 tight, because the consecutive block elements are not separated by blank lines
-    '- a', // 322 A single-paragraph list is tight
-    '- a\n  - b', // 323
-    '1. ```\n   foo\n   ```\n\n   bar', // 324 This list is loose, because of the blank line between the two block elements in the list item
-    '* foo\n  * bar\n\n  baz', // 325 Here the outer list is loose, the inner list tight
-    '- a\n  - b\n  - c\n\n- d\n  - e\n  - f' // 326
-]);
-
 
 
 function doTest2(idx: number | string, input: string, verbose = false) {
@@ -433,3 +319,121 @@ describe('Block quotes', () => {
     doTest2(252,   '>     code\n\n>    not code');
 });
 
+
+describe('list items', () => {
+    doTest2(253, 'A paragraph\nwith two lines.\n\n    indented code\n\n> A block quote.');
+    doTest2(254, '1.  A paragraph\n    with two lines.\n\n        indented code\n\n    > A block quote.');
+    doTest2(255, '- one\n\n two');
+    doTest2(256, '- one\n\n  two');
+    doTest2(257, ' -    one\n\n     two');
+    doTest2(258, ' -    one\n\n      two');
+    doTest2(259, '   > > 1.  one\n>>\n>>     two'); // nested lists
+    doTest2(260, '>>- one\n>>\n  >  > two');
+    doTest2(261, '-one\n\n2.two');
+    doTest2(262, '- foo\n\n\n  bar');
+    doTest2(263, '1.  foo\n\n    ```\n    bar\n    ```\n\n    baz\n\n    > bam'); // A list item may contain any kind of block
+    doTest2(264, '- Foo\n\n      bar\n\n\n      baz'); // A list item that contains an indented code block will preserve empty lines within the code block verbatim
+    doTest2(265, '123456789. ok'); // ordered list start numbers must be nine digits or less
+    doTest2(266, '1234567890. not ok');
+    doTest2(267, '0. ok');
+    doTest2(268, '003. ok');
+    doTest2(269, '-1. not ok'); // A start number may not be negative
+    doTest2(270, '- foo\n\n      bar');
+    doTest2(271, '  10.  foo\n\n           bar');
+    doTest2(272, '    indented code\n\nparagraph\n\n    more code');
+    doTest2(273, '1.     indented code\n\n   paragraph\n\n       more code');
+    doTest2(274, '1.      indented code\n\n   paragraph\n\n       more code'); // Note that an additional space of indentation is interpreted as space inside the code block
+    doTest2(275, '   foo\n\nbar');
+    doTest2(276, '-    foo\n\n  bar');
+    doTest2(277, '-  foo\n\n   bar');
+    doTest2(278, '-\n  foo278\n-\n  ```\n  bar\n  ```\n\n-\n    baz');
+    doTest2(279, '-   \n  foo279');
+    doTest2(280, '-\n\n  foo280'); // A list item can begin with at most one blank line
+    doTest2(281, '- foo\n-\n- bar'); // Here is an empty bullet list item
+    doTest2(282, '- foo\n-   \n- bar'); // It does not matter whether there are spaces or tabs following the list marker
+    doTest2(283, '1. foo\n2.\n3. bar'); // Here is an empty ordered list item
+    doTest2(284, '*'); // A list may start or end with an empty list item
+    doTest2(285, 'foo\n*\n\nfoo\n1.'); // However, an empty list item cannot interrupt a paragraph
+    doTest2(286, ' 1.  A paragraph\n     with two lines.\n\n         indented code\n\n     > A block quote.');
+    doTest2(287, '  1.  A paragraph\n      with two lines.\n\n          indented code\n\n      > A block quote.');
+    doTest2(288, '   1.  A paragraph\n       with two lines.\n\n           indented code\n\n       > A block quote.');
+    doTest2(289, '    1.  A paragraph\n        with two lines.\n\n            indented code\n\n        > A block quote.'); // Four spaces indent gives a code block
+    doTest2(290, '  1.  A paragraph\nwith two lines.\n\n          indented code\n\n      > A block quote.');
+    doTest2(291, '  1.  A paragraph\n    with two lines.'); // Indentation can be partially deleted
+    doTest2(292, '> 1. > Blockquote\ncontinued here.'); // These examples show how laziness can work in nested structures
+    doTest2(293, '> 1. > Blockquote\n> continued here.');
+    doTest2(294, '- foo\n  - bar\n    - baz\n      - boo');
+    doTest2(295, '- foo295\n - bar\n  - baz\n   - boo');
+    doTest2(296, '10) foo\n    - bar'); // Here we need four indention spaces, because the list marker is wider
+    doTest2(297, '11) foo297\n   - bar'); // Three is not enough
+    doTest2(298, '- - foo298'); // A list may be the first block in a list item
+    doTest2(299, '1. - 2. foo299');
+    doTest2(300, '- # Foo\n- Bar\n  ---\n  baz');
+});
+
+
+
+describe('lists', () => {
+    doTest2(301, '- foo\n- bar\n+ baz'); // Changing the bullet or ordered list delimiter starts a new list
+    doTest2(302, '1. foo\n2. bar\n3) baz');
+    doTest2(303, 'Foo\n- bar\n- baz'); // a list can interrupt a paragraph
+    doTest2(304, 'The number of windows in my house is\n14.  The number of doors is 6.');
+    doTest2(305, 'The number of windows in my house is\n1.  The number of doors is 6.');
+    doTest2(306, '- foo\n\n- bar\n\n\n- baz');
+    doTest2(307, '- foo\n  - bar\n    - baz\n\n\n      bim');
+    //doTest2(308, '- foo\n- bar\n\n<!-- -->\n\n- baz\n- bim');
+    //doTest2(309, '-   foo\n\n    notcode\n\n-   foo\n\n<!-- -->\n\n    code');
+    doTest2(310, '- a\n - b\n  - c\n   - d\n  - e\n - f\n- g'); // List items need not be indented to the same level
+    doTest2(311, '1. a\n\n  2. b\n\n   3. c');
+    doTest2(312, '- a\n - b\n  - c\n   - d\n    - e');
+    doTest2(313, '1. a\n\n  2. b\n\n    3. c'); // here 3. c is treated as in indented code block, because it is indented four spaces and preceded by a blank line
+    doTest2(314, '- a\n- b\n\n- c'); // This is a loose list, because there is a blank line between two of the list items
+    doTest2(315, '* a\n*\n\n* c'); // So is this, with a empty second item
+    doTest2(316, '- a\n- b\n\n  c\n- d'); // loose because the second item has two paragraphs
+    //doTest2(317, '- a\n- b\n\n  [ref]: /url\n- d');
+    doTest2(318, '- a\n- ```\n  b\n\n\n  ```\n- c');
+    doTest2(319, '- a\n  - b\n\n    c\n- d'); // Tight list containing a loose sublist
+    doTest2(320, '* a\n  > b\n  >\n* c'); // This is a tight list, because the blank line is inside the block quote
+    doTest2(321, '- a\n  > b\n  ```\n  c\n  ```\n- d'); // tight, because the consecutive block elements are not separated by blank lines
+    doTest2(322, '- a'); // A single-paragraph list is tight
+    doTest2(323, '- a\n  - b');
+    doTest2(324, '1. ```\n   foo\n   ```\n\n   bar'); // This list is loose, because of the blank line between the two block elements in the list item
+    doTest2(325, '* foo\n  * bar\n\n  baz'); // Here the outer list is loose, the inner list tight
+    doTest2(326, '- a\n  - b\n  - c\n\n- d\n  - e\n  - f');
+});
+
+
+describe('Inlines', () => {
+    doTest2(327, '`hi`lo`');
+});
+
+
+describe('Code spans', () => {
+    doTest2(328, '`foo`'); // This is a simple code span
+    doTest2(329, '`` foo ` bar ``');
+    doTest2(330, '` `` `'); // the motivation for stripping leading and trailing spaces
+    doTest2(331, '`  ``  `'); // Note that only one space is stripped
+    doTest2(332, '` a`'); // The stripping only happens if the space is on both sides of the string
+    doTest2(333, '` b `'); // Only spaces, and not unicode whitespace in general, are stripped in this way
+    doTest2(334, '` `\n`  `'); // No stripping occurs if the code span contains only spaces
+    doTest2(335, '``\nfoo\nbar  \nbaz\n``'); // Line endings are treated like spaces
+    doTest2(336, '``\nfoo \n``');
+    doTest2(337, '`foo   bar \nbaz`'); // Interior spaces are not collapsed
+    doTest2(338, '`foo\`bar`'); // backslash escapes do not work in code spans
+    doTest2(339, '``foo`bar``');
+    doTest2(340, '` foo `` bar `');
+    doTest2(341, '*foo`*`'); // Code span backticks have higher precedence than any other inline constructs
+    //doTest2(342, '[not a `link](/foo`)'); // And this is not parsed as a link
+    doTest2(343, '`<a href="`">`'); // Code spans, HTML tags, and autolinks have the same precedence. Thus, this is code
+    doTest2(344, '<a href="`">`'); // But this is an HTML tag
+    doTest2(345, '`<https://foo.bar.`baz>`'); // And this is code
+    //doTest2(346, '<https://foo.bar.`baz>`'); // But this is an autolink
+    doTest2(347, '```foo``'); // When a backtick string is not closed by a matching backtick string, we just have literal backticks
+    doTest2(348, '`foo');
+    doTest2(349, '`foo``bar``'); // opening and closing backtick strings need to be equal in length
+});
+
+
+/*describe('Emphasis & strong emphasis', () => {
+    doTest2(350, '*foo bar*'); // Rule 1
+});*/
