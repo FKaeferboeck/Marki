@@ -68,6 +68,7 @@ export type BlockParserTraitsList = Partial<{
 
 export interface InlineElementTraits<T extends InlineElementType = ExtensionInlineElementType> {
     startChars: string[]; // characters where inline element can possibly start — doesn't have to be a sufficient condition
+    mode?: "normal" | "delimited"; // default is "normal"
 
     // The implementation can modify startPos to e.g. an earlier position if the inline item wants to backtrack
     // Use this feature with caution! It cannot collide with an already parsed earlier inline item.

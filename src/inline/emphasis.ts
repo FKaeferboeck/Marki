@@ -8,16 +8,23 @@ export const emphasis_traits: InlineElementTraits<"emphasis"> = {
     startChars: [ '*', '_' ],
 
     parse(It, pos0) {
-        
-
-        return false;
+        const delim_char = It.nextChar();
+        let delim_size = 1;
+        while (It.peekChar() === delim_char) {
+            ++delim_size;
+            It.nextChar();
+        }
+        this.B.delimiter     = delim_char as "*" | "_";
+        this.B.delimiterSize = delim_size;
+        return this.B;
     },
     
     creator(MDP) { return new InlineParser_Standard<"emphasis">(MDP, this); },
 
     defaultElementInstance: {
-        type:      "emphasis",
-        delimiter: "*",
-        strong:    false
+        type:          "emphasis",
+        delimiter:     "*",
+        delimiterSize: 0,
+        strong:        false
     }
 };

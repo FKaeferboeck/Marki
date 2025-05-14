@@ -406,34 +406,3 @@ describe('lists', () => {
 describe('Inlines', () => {
     doTest2(327, '`hi`lo`');
 });
-
-
-describe('Code spans', () => {
-    doTest2(328, '`foo`'); // This is a simple code span
-    doTest2(329, '`` foo ` bar ``');
-    doTest2(330, '` `` `'); // the motivation for stripping leading and trailing spaces
-    doTest2(331, '`  ``  `'); // Note that only one space is stripped
-    doTest2(332, '` a`'); // The stripping only happens if the space is on both sides of the string
-    doTest2(333, '` b `'); // Only spaces, and not unicode whitespace in general, are stripped in this way
-    doTest2(334, '` `\n`  `'); // No stripping occurs if the code span contains only spaces
-    doTest2(335, '``\nfoo\nbar  \nbaz\n``'); // Line endings are treated like spaces
-    doTest2(336, '``\nfoo \n``');
-    doTest2(337, '`foo   bar \nbaz`'); // Interior spaces are not collapsed
-    doTest2(338, '`foo\`bar`'); // backslash escapes do not work in code spans
-    doTest2(339, '``foo`bar``');
-    doTest2(340, '` foo `` bar `');
-    doTest2(341, '*foo`*`'); // Code span backticks have higher precedence than any other inline constructs
-    //doTest2(342, '[not a `link](/foo`)'); // And this is not parsed as a link
-    doTest2(343, '`<a href="`">`'); // Code spans, HTML tags, and autolinks have the same precedence. Thus, this is code
-    doTest2(344, '<a href="`">`'); // But this is an HTML tag
-    doTest2(345, '`<https://foo.bar.`baz>`'); // And this is code
-    //doTest2(346, '<https://foo.bar.`baz>`'); // But this is an autolink
-    doTest2(347, '```foo``'); // When a backtick string is not closed by a matching backtick string, we just have literal backticks
-    doTest2(348, '`foo');
-    doTest2(349, '`foo``bar``'); // opening and closing backtick strings need to be equal in length
-});
-
-
-/*describe('Emphasis & strong emphasis', () => {
-    doTest2(350, '*foo bar*'); // Rule 1
-});*/

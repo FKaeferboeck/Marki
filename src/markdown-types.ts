@@ -109,6 +109,7 @@ export interface InlineElementMap {
 				  reference?:  Block<"linkDef">; };
 	hardBreak:  { nSpaces: number | false; }; // nSpaces === false means backslash
 	emphasis:   { delimiter: "*" | "_";
+				  delimiterSize: number;
                   strong: boolean; };
 }
 
