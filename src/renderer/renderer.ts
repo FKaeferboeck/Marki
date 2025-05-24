@@ -1,5 +1,5 @@
 import { parseBackslashEscapes } from "../inline-parser.js";
-import { AnyBlock, AnyInline, Block, BlockType, InlineContent, InlineElement, InlineElementType } from "../markdown-types.js";
+import { AnyBlock, AnyInline, Block, BlockType, Delimiter, InlineContent, inlineContentCategory, InlineElement, InlineElementType } from "../markdown-types.js";
 import { renderHTML_entity, escapeXML, escapeXML_all, urlEncode } from "./util.js";
 
 interface Inserter {
@@ -182,20 +182,43 @@ export class Renderer {
         let i = -1, iE = data.length - 1;
         for(const elt of data) {
             ++i;
-            if(typeof elt === "string") {
-                let s = escapeXML(elt);
+            switch(inlineContentCategory(elt))
+            {
+            case "text":
+                let s = escapeXML(elt as string);
                 if(trimmed && i === 0)
                     s = s.replace(/^[ \t]+/, '');
                 if(trimmed && i === iE)
                     s = s.replace(/[ \t]+$/, '');
                 I.add(s);
                 continue;
+            case "delim":
+                this.renderDelimiter(I, elt as Delimiter)
+                break;
+            case "anyI":
+                const H = this.inlineHandler[(elt as InlineElement<InlineElementType>).type];
+                if(H)
+                    (H as any)(elt, I);
+                break;
             }
-            const H = this.inlineHandler[elt.type];
-            if(H)
-                (H as any)(elt, I);
         }
         return I.join('');
+    }
+
+    renderDelimiter(I: Inserter, delim: Delimiter) {
+        if("endDelim" in delim)
+            return; // TODO!!
+        if(delim.closing?.actualized)
+            delim.closing.actualized.forEach(x => this.insertDelimiterTag(I, delim.type, x, true));
+        if(delim.remaining > 0)
+            I.add(delim.delim.slice(0, delim.remaining));
+        if(delim.opening?.actualized)
+            delim.opening.actualized.forEach(x => this.insertDelimiterTag(I, delim.type, x, false));
+    }
+
+    insertDelimiterTag(I: Inserter, type: string, weight: number, closing: boolean) {
+        const tags = ['?', 'em', 'strong'];
+        I.add(`<${closing ? '/' : ''}${tags[weight]}>`);
     }
 }
 

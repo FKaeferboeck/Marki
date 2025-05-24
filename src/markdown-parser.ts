@@ -1,26 +1,23 @@
 import { BlockContainer, BlockParser, BlockParserBase, BlockParser_Container, BlockParser_Standard, standardBlockParserTraits } from "./block-parser.js";
+import { parseDelimiter } from "./delimiter-processing.js";
 import { escaped_traits } from "./inline/backslash-escape.js";
 import { codeSpan_traits } from "./inline/code-span.js";
-import { emphasis_traits } from "./inline/emphasis.js";
+import { emphasis_traits_asterisk, emphasis_traits_underscore } from "./inline/emphasis.js";
 import { hardBreak_traits } from "./inline/hard-break.js";
 import { htmlEntity_traits } from "./inline/html-entity.js";
 import { link_traits } from "./inline/link.js";
-import { AnyBlock, AnyInline, Block, BlockBase, BlockType, BlockType_Container, InlineContent, InlineElementType, LogicalLineData, isContainer } from "./markdown-types.js";
+import { AnyBlock, AnyInline, Block, BlockBase, BlockType, BlockType_Container, Delimiter, InlineContent, InlineElement, InlineElementType, LogicalLineData, isContainer } from "./markdown-types.js";
 import { LinePart, LineStructure } from "./parser.js";
-import { BlockParserTraitsList, BlockTraits, BlockTraits_Container, InlineParserTraitsList } from "./traits.js";
+import { BlockParserTraitsList, BlockTraits, BlockTraits_Container, DelimiterTraits, InlineParserTraitsList } from "./traits.js";
 import { BlockContentIterator, contentSlice, LLDinfo, makeBlockContentIterator } from "./util.js";
 
 
-/*interface BlockParserProviderItem<K extends BlockType> {
-	parent: MarkdownParser;
-	parser: BlockParser<K> | undefined;
-}*/
 interface BlockParserProviderItem {
 	parent: MarkdownParser;
 	parser: BlockParserBase | undefined;
 }
 type BlockParserProviderCache = {
-	[K in BlockType]: BlockParserProviderItem/*<K>*/ | undefined;
+	[K in BlockType]: BlockParserProviderItem | undefined;
 };
 
 export interface ParseState {
@@ -43,32 +40,31 @@ export const standardInlineParserTraits: InlineParserTraitsList = {
 	codeSpan:   codeSpan_traits,
 	link:       link_traits,
 	hardBreak:  hardBreak_traits,
-	htmlEntity: htmlEntity_traits,
-	emphasis:   emphasis_traits
+	htmlEntity: htmlEntity_traits
 };
 
+export const standardDelimiterTraits: Record<string, DelimiterTraits> = {
+	emph_asterisk:   emphasis_traits_asterisk,
+	emph_underscore: emphasis_traits_underscore
+}
 
-class InlineParsingContext {
+
+class InlineParserProvider {
 	traits: InlineParserTraitsList = { };
-	startCharMap: Record<string, InlineElementType[]> = {};
+	delims: Record<string, DelimiterTraits> = { };
+	startCharMap: Record<string, (InlineElementType | DelimiterTraits)[]> = { };
 	MDP: MarkdownParser;
 
-	constructor(MDP: MarkdownParser) {
-		this.MDP = MDP;
-	}
+	constructor(MDP: MarkdownParser) { this.MDP = MDP; }
 
-    /* During inline parsing we check for element start chars before calling their full parsers, so the order below only
-     * matters between elements that share a start char. */
-    /*inlineTryOrder: InlineElementType[] = [
-		"codeSpan"
-	];*/
-
-    getInlineParser<K extends InlineElementType>(type: K) {
+	getInlineParser<K extends InlineElementType>(type: K) {
 		const traits = this.traits[type];
 		if(!traits)
 			throw new Error(`Missing inline parser traits for inline element type "${type}"`)
 		return traits.creator(this.MDP);
 	}
+
+	//addTraits(InlineElementTraits)
     
     makeStartCharMap() {
         this.startCharMap = {};
@@ -78,7 +74,32 @@ class InlineParsingContext {
                 (this.startCharMap[sc] ||= [] as InlineElementType[]).push(t as InlineElementType);
             });
         }
+		for(const t in this.delims) {
+            this.delims[t].startChars.forEach(sc => {
+                (this.startCharMap[sc] ||= []).push(this.delims[t]);
+            });
+        }
     }
+}
+
+
+export class InlineParsingContext {
+	provider: InlineParserProvider;
+	startCharMap: Record<string, (InlineElementType | DelimiterTraits)[]>;
+	delimiterStack: Delimiter[] = []
+	MDP: MarkdownParser;
+
+	constructor(provider: InlineParserProvider) {
+		this.provider = provider;
+		this.MDP = provider.MDP;
+		this.startCharMap = provider.startCharMap;
+	}
+
+    /* During inline parsing we check for element start chars before calling their full parsers, so the order below only
+     * matters between elements that share a start char. */
+    /*inlineTryOrder: InlineElementType[] = [
+		"codeSpan"
+	];*/
 
 	inlineParseLoop = inlineParseLoop;
 }
@@ -92,12 +113,14 @@ export class MarkdownParser implements BlockContainer {
 		//console.log(this.traitsList)
 
 		this.inlineParser_standard.traits = { ... standardInlineParserTraits };
+		this.inlineParser_standard.delims = { ... standardDelimiterTraits };
 		this.inlineParser_standard.makeStartCharMap();
 
 		this.inlineParser_minimal.traits = {
 			escaped:    escaped_traits,
 			htmlEntity: htmlEntity_traits
 		};
+		this.inlineParser_minimal.delims = { ... standardDelimiterTraits };
 		this.inlineParser_minimal.makeStartCharMap();
 	}
 
@@ -228,8 +251,8 @@ export class MarkdownParser implements BlockContainer {
 
     /******************************************************************************************************************/
 
-    inlineParser_standard = new InlineParsingContext(this);
-	inlineParser_minimal  = new InlineParsingContext(this);
+    inlineParser_standard = new InlineParserProvider(this);
+	inlineParser_minimal  = new InlineParserProvider(this);
 };
 
 
@@ -350,8 +373,15 @@ function inlineParseLoop(this: InlineParsingContext, It: BlockContentIterator, b
 			It.setCheckPoint(checkpoint1);
 			let found = false;
 			for(const t of this.startCharMap[c]) {
-				const P = this.getInlineParser(t);
-				const elt = P.parse(It, checkpoint1);
+				let elt: InlineElement<InlineElementType> | Delimiter | false = false;
+				if(typeof t === "string") {
+					const P = this.provider.getInlineParser(t);
+					elt = P.parse(It, checkpoint1);
+				} else { // it's a delimiter
+					elt = parseDelimiter(It, checkpoint1, t);
+					if(!elt)
+						It.setPosition(checkpoint1);
+				}
 				if(elt) {
 					const flush = contentSlice(checkpoint, checkpoint1, false);
 					if(flush)
@@ -396,8 +426,9 @@ function inlineParseLoop(this: InlineParsingContext, It: BlockContentIterator, b
 
 
 function processInline(this: MarkdownParser, LLD: LogicalLineData) {
-		let It = makeBlockContentIterator(LLD);
-		const buf: InlineContent = [];
-		this.inlineParser_standard.inlineParseLoop(It, buf);
-		return buf;
+	let It = makeBlockContentIterator(LLD);
+	const buf: InlineContent = [];
+	const context = new InlineParsingContext(this.inlineParser_standard);
+	context.inlineParseLoop(It, buf);
+	return buf;
 }

@@ -1,5 +1,6 @@
 import { BlockParser } from "../block-parser.js";
 import { takeLinkDestination } from "../inline/link.js";
+import { InlineParsingContext } from "../markdown-parser.js";
 import { AnyInline, InlineContent, LogicalLineData } from "../markdown-types.js";
 import { BlockContinuationType, BlockTraits } from "../traits.js";
 import { BCI_TakeDelimited_IO, BlockContentIterator, makeBlockContentIterator } from "../util.js";
@@ -86,8 +87,10 @@ function linkDefStep(this: LinkDefParser, It: BlockContentIterator): BlockContin
             type:     "TextPart",
             content:  this.parts.join('\n').slice(1, -1)
         }],  startIndent: 0,  startPart: '',  type: "single",  next: null };
-		this.MDP.inlineParser_standard.inlineParseLoop(makeBlockContentIterator(LLD),
-                                                       this.B.linkTitle = []);
+
+        const context = new InlineParsingContext(this.MDP.inlineParser_standard);
+        context.inlineParseLoop(makeBlockContentIterator(LLD),
+                                this.B.linkTitle = []);
         return "last";
     }
     return "reject"; // unreachable

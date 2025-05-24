@@ -1,3 +1,4 @@
+import { InlineParsingContext } from "../markdown-parser.js";
 import { AnyInline, LogicalLineData } from "../markdown-types.js";
 import { BlockTraits } from "../traits.js";
 import { makeBlockContentIterator, sliceLLD, standardBlockStart } from "../util.js";
@@ -30,7 +31,9 @@ export const fenced_traits: BlockTraits<"fenced"> = {
             //console.log(LLD_info);
             const It_info = makeBlockContentIterator(LLD_info);
             It_info.skipNobrSpace();
-            this.MDP.inlineParser_minimal.inlineParseLoop(It_info, B.info_string);
+
+            const context = new InlineParsingContext(this.MDP.inlineParser_minimal);
+            context.inlineParseLoop(It_info, B.info_string);
             //B.info_string  = LLD.startPart.slice(B.fence_length).trim();
             //console.log(B.info_string)
         }

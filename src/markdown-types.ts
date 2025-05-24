@@ -67,7 +67,7 @@ export type BlockBase<K extends BlockType> = {
 	logical_line_start:  number;
 	logical_line_extent: number;
 	content?:            LogicalLineData;
-	inlineContent?:      AnyInline[]; // same as "content", but inline parsed
+	inlineContent?:      InlineContent; // same as "content", but inline parsed
 };
 
 export interface BlockBase_Container_additions {
@@ -95,6 +95,33 @@ export const isContainer = (B: AnyBlock): B is AnyContainerBlock => ("isContaine
 
 
 /**********************************************************************************************************************/
+
+export interface Delimiter_nested {
+	type:     string;
+	delim:    string;
+	endDelim: string;
+	active:   boolean;
+	closers?: number[]; // an array of 1s and 2s denoting a nesting of closing </emph> and </strong> tags
+	openers?: number[]; // an array of 1s and 2s denoting a nesting of opening <emph> and <strong> tags
+}
+
+export interface DelimiterSide {
+	active:      boolean;
+	actualized?: number[]; // an array of 1s and 2s denoting a nesting of opening or closing <emph> and <strong> tags
+}
+
+export interface Delimiter_emph {
+	type:      string;
+	delim:     string;
+	opening?:  DelimiterSide;
+	closing?:  DelimiterSide;
+	remaining: number;
+}
+
+export type Delimiter = Delimiter_nested | Delimiter_emph;
+
+
+
 
 export interface InlineElementMap {
 	escaped:    { character: string; };
@@ -125,4 +152,7 @@ export type InlineElement<K extends InlineElementType> = (K extends keyof Inline
 
 export type AnyInline = string | (InlineElementType extends infer U ? (U extends keyof InlineElementMap ? InlineElement<U> : never) : never);
 
-export type InlineContent = (string | AnyInline)[];
+export type InlineContentElement = string | AnyInline | Delimiter;
+export type InlineContent        = InlineContentElement[];
+
+export const inlineContentCategory = (elt: InlineContentElement) => (typeof elt === "string" ? "text" : "delim" in elt ? "delim" : "anyI");

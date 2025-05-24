@@ -2,7 +2,7 @@ import { BlockParser } from "./block-parser.js";
 import { BlockParser_Container } from "./blocks/blockQuote.js";
 import { InlineParser } from "./inline-parser.js";
 import { MarkdownParser } from "./markdown-parser.js";
-import { BlockType, ExtensionBlockType, BlockBase, Block_Container, LogicalLineData, BlockType_Container, Block, InlineElementType, ExtensionInlineElementType, InlineElement, InlinePos, BlockIndividualData } from "./markdown-types.js";
+import { BlockType, ExtensionBlockType, BlockBase, Block_Container, LogicalLineData, BlockType_Container, Block, InlineElementType, ExtensionInlineElementType, InlineElement, InlinePos, BlockIndividualData, Delimiter } from "./markdown-types.js";
 import { BlockContentIterator } from "./util.js";
 
 
@@ -76,6 +76,20 @@ export interface InlineElementTraits<T extends InlineElementType = ExtensionInli
 
     creator: (MDP: MarkdownParser) => InlineParser<T>;
     defaultElementInstance: InlineElement<T>;
+}
+
+
+type DelimiterCategory = "emphLoose" | "emphStrict" | "paired";
+
+export interface DelimiterTraits {
+    name:       string;
+    startChars: string[]; // characters with which this delimiter can possibly start — doesn't have to be a sufficient condition
+    category:   DelimiterCategory;
+
+    // Do not check for prefixes/suffixes yourself! It gets done automatically depending on the delimiter category
+    parseDelimiter(It: BlockContentIterator, startPos: InlinePos): Delimiter | false;
+
+    //creator: (MDP: MarkdownParser) => InlineParser<T>;
 }
 
 

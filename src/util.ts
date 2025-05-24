@@ -215,7 +215,8 @@ export interface BlockContentIterator {
     peekChar(): string | false;
     peekItem(): string | LinePart | false;
 
-    peekBack(n: number): string | false;
+    peekForward(n: number): string | false;
+    peekBack   (n: number): string | false;
 
     prevCharInPart(): false | string;
     nextChar(): false | string;
@@ -282,6 +283,20 @@ export function makeBlockContentIterator(LLD: LogicalLineData, singleLine: boole
             return It.peekChar();
         },
 
+        peekForward: (n: number) => {
+            n += pos.char_idx;
+            if(n < curPartLength)
+                return curPart.content[n];
+            
+            let p_i = pos.part_idx, C = curPart.content;
+            do {
+                if(p_i + 1 >= curLine.parts.length)
+                    return '';
+                n -= C.length;
+                C = curLine.parts[++p_i].content;
+            } while(n >= C.length);
+            return C[n];
+        },
         peekBack: (n: number) => {
             if(pos.char_idx >= n)    return curPart.content[pos.char_idx - n];
             n -= pos.char_idx;

@@ -6,6 +6,7 @@ import * as commonmark from 'commonmark';
 import { collectLists, listItem_traits } from '../src/blocks/listItem';
 import { MarkdownParser } from '../src/markdown-parser';
 import { standardBlockParserTraits } from '../src/block-parser';
+import { pairUpDelimiters } from '../src/delimiter-processing';
 
 // As of 2025-03-12 Vitest suddenly isn't able any more to import listItem on its own. Luckily we can repair it like this.
 standardBlockParserTraits.listItem = listItem_traits;
@@ -28,7 +29,11 @@ function doTest2(idx: number | string, input: string, verbose = false) {
         parser.diagnostics = diag;
         const blocks = parser.processContent(LLD);
         collectLists(blocks, diag);
-        blocks.forEach(B => parser.processBlock(B));
+        blocks.forEach(B => {
+            parser.processBlock(B);
+            if(B.inlineContent)
+                pairUpDelimiters(B.inlineContent);
+        });
         const my_result = renderer.referenceRender(blocks, diag);
         if(verbose)
             console.log(blocks)
@@ -70,9 +75,9 @@ describe('Backslash escapes', () => {
 \\# not a heading
 \\[foo]: /url "not a reference"
 \\&ouml; not a character entity`);
-    //doTest2(15, '\\\\*emphasis*'); // If a backslash is itself escaped, the following character is not
+    doTest2(15, '\\\\*emphasis*'); // If a backslash is itself escaped, the following character is not
     doTest2(16, 'foo\\\nbar'); // A backslash at the end of the line is a hard line break
-    //doTest2(17, '`` \\[\\` ``'); // Backslash escapes do not work in code blocks, code spans, autolinks, or raw HTML
+    doTest2(17, '`` \\[\\` ``'); // Backslash escapes do not work in code blocks, code spans, autolinks, or raw HTML
     doTest2(18, '    \\[\\]');
     doTest2(19, '~~~\n\\[\\]\n~~~');
     //doTest2(20, '<https://example.com?find=\\*>');
@@ -123,7 +128,7 @@ describe('thematic breaks', () => {
     doTest2(53, `-     -      -      -`);
     doTest2(54, `- - - -    `); // Spaces and tabs are allowed at the end
     doTest2(55, `_ _ _ _ a\n\na------\n\n---a---`); // However, no other characters may occur in the line
-    //doTest2(56, ` *-*`); // It is required that all of the characters other than spaces or tabs be the same. So, this is not a thematic break
+    doTest2(56, ` *-*`); // It is required that all of the characters other than spaces or tabs be the same. So, this is not a thematic break
     doTest2(57, `- foo\n***\n- bar`); // Thematic breaks do not need blank lines before or after
     doTest2(58, `Foo\n***\nbar`); // Thematic breaks can interrupt a paragraph
     doTest2(59, `Foo\n---\nbar`); // setext heading takes precedence
@@ -137,7 +142,7 @@ describe('ATX headings', () => {
     doTest2(63, `####### foo`); // More than six # characters is not a heading
     doTest2(64, `#5 bolt\n\n#hashtag`); // space after # required
     doTest2(65, `\\## foo`); // This is not a heading, because the first # is escaped
-    //doTest2(66, `# foo *bar* \\*baz\\*`); // Contents are parsed as inlines
+    doTest2(66, `# foo *bar* \\*baz\\*`); // Contents are parsed as inlines
     doTest2(67, `#                  foo                     `); // Leading and trailing spaces or tabs are ignored in parsing inline content
     doTest2(68, ` ### foo\n  ## foo\n   # foo`); // Up to three spaces of indentation are allowed
     doTest2(69, `    # foo`);      // Four spaces of indentation is too many
@@ -156,9 +161,9 @@ describe('ATX headings', () => {
 
 
 describe('setext headings', () => {
-    //doTest2(80, `Foo *bar*\n=========\n\nFoo *bar*\n---------`);
-    //doTest2(81, `Foo *bar\nbaz*\n====`); // The content of the header may span more than one line
-    //doTest2(82, `  Foo *bar\nbaz*\t\n====`); // surrounding space
+    doTest2(80, `Foo *bar*\n=========\n\nFoo *bar*\n---------`);
+    doTest2(81, `Foo *bar\nbaz*\n====`); // The content of the header may span more than one line
+    doTest2(82, `  Foo *bar\nbaz*\t\n====`); // surrounding space
     doTest2(83, `Foo\n-------------------------\n\nFoo\n=`); // The underlining can be any length
     doTest2(84, `   Foo\n---\n\n  Foo\n-----\n\n  Foo\n  ===`); // heading content can be preceded by up to three spaces of indentation, and need not line up with the underlining
     doTest2(85, `    Foo\n    ---\n\n    Foo\n---`); // Four spaces of indentation is too many
