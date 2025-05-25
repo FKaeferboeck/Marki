@@ -6,6 +6,7 @@ import * as commonmark from 'commonmark';
 import { Renderer } from '../src/renderer/renderer';
 import { standardBlockParserTraits } from '../src/block-parser';
 import { listItem_traits, collectLists } from '../src/blocks/listItem';
+import { pairUpDelimiters } from '../src/delimiter-processing';
 
 // As of 2025-03-12 Vitest suddenly isn't able any more to import listItem on its own. Luckily we can repair it like this.
 standardBlockParserTraits.listItem = listItem_traits;
@@ -28,7 +29,11 @@ function doTest(idx: number | string, input: string, verbose = false) {
         parser.diagnostics = diag;
         const blocks = parser.processContent(LLD);
         collectLists(blocks, diag);
-        blocks.forEach(B => parser.processBlock(B));
+        blocks.forEach(B => {
+            parser.processBlock(B);
+            if(B.inlineContent)
+                pairUpDelimiters(B.inlineContent);
+        });
         const my_result = renderer.referenceRender(blocks, diag);
         if(verbose)
             console.log(blocks)
@@ -68,9 +73,156 @@ describe('Code spans', () => {
 });
 
 
-/*describe('Emphasis & strong emphasis', () => {
-    doTest(350, '*foo bar*'); // Rule 1
-});*/
+describe('Emphasis & strong emphasis', () => {
+    /* Role 1 */
+    doTest(350, '*foo bar*');
+    doTest(351, 'a * foo bar*'); // This is not emphasis, because the opening * is followed by whitespace, and hence not part of a left-flanking delimiter run
+    doTest(352, 'a*"foo"*'); // This is not emphasis, because the opening * is preceded by an alphanumeric and followed by punctuation, and hence not part of a left-flanking delimiter run
+    doTest(353, '*\u00A0a\u00A0*'); // Unicode nonbreaking spaces count as whitespace, too
+    doTest(354, '*$*alpha.\n\n*£*bravo.\n\n*€*charlie.'); // Unicode symbols count as punctuation, too
+    doTest(355, 'foo*bar*'); // Intraword emphasis with * is permitted
+    doTest(356, '5*6*78');
+    /* Rule 2 */
+    doTest(357, '_foo bar_');
+    doTest(358, '_ foo bar_'); // This is not emphasis, because the opening _ is followed by whitespace
+    doTest(359, 'a_"foo"_'); // This is not emphasis, because the opening _ is preceded by an alphanumeric and followed by punctuation
+    doTest(360, 'foo_bar_'); // Emphasis with _ is not allowed inside words
+    doTest(361, '5_6_78');
+    doTest(362, 'пристаням_стремятся_');
+    doTest(363, 'aa_"bb"_cc'); // Here _ does not generate emphasis, because the first delimiter run is right-flanking and the second left-flanking
+    doTest(364, 'foo-_(bar)_'); // This is emphasis, even though the opening delimiter is both left- and right-flanking, because it is preceded by punctuation
+    /* Rule 3 */
+    doTest(365, '_foo*'); // This is not emphasis, because the closing delimiter does not match the opening delimiter
+    doTest(366, '*foo bar *'); // This is not emphasis, because the closing * is preceded by whitespace
+    doTest(367, '*foo bar\n*'); // A line ending also counts as whitespace
+    doTest(368, '*(*foo)'); // This is not emphasis, because the second * is preceded by punctuation and followed by an alphanumeric
+    doTest(369, '*(*foo*)*'); // The point of this restriction is more easily appreciated with this example
+    doTest(370, '*foo*bar'); // Intraword emphasis with * is allowed
+    /* Rule 4 */
+    doTest(371, '_foo bar _'); // This is not emphasis, because the closing _ is preceded by whitespace
+    doTest(372, '_(_foo)'); // This is not emphasis, because the second _ is preceded by punctuation and followed by an alphanumeric
+    doTest(373, '_(_foo_)_'); // This is emphasis within emphasis
+    doTest(374, '_foo_bar'); // Intraword emphasis is disallowed for _
+    doTest(375, '_пристаням_стремятся');
+    doTest(376, '_foo_bar_baz_');
+    doTest(377, '_(bar)_.'); // This is emphasis, even though the closing delimiter is both left- and right-flanking, because it is followed by punctuation
+    /* Rule 5 */
+    doTest(378, '**foo bar**');
+    doTest(379, '** foo bar**'); // This is not strong emphasis, because the opening delimiter is followed by whitespace
+    doTest(380, 'a**"foo"**'); // This is not strong emphasis, because the opening ** is preceded by an alphanumeric and followed by punctuation
+    doTest(381, 'foo**bar**'); // Intraword strong emphasis with ** is permitted
+    /* Rule 6 */
+    doTest(382, '__foo bar__');
+    doTest(383, '__ foo bar__'); // This is not strong emphasis, because the opening delimiter is followed by whitespace
+    doTest(384, '__\nfoo bar__'); // A line ending counts as whitespace
+    doTest(385, 'a__"foo"__'); // This is not strong emphasis, because the opening __ is preceded by an alphanumeric and followed by punctuation
+    doTest(386, 'foo__bar__'); // Intraword strong emphasis is forbidden with __
+    doTest(387, '5__6__78');
+    doTest(388, 'пристаням__стремятся__');
+    doTest(389, '__foo, __bar__, baz__');
+    doTest(390, 'foo-__(bar)__'); // This is strong emphasis, even though the opening delimiter is both left- and right-flanking, because it is preceded by punctuation
+    /* Rule 7 */
+    doTest(391, '**foo bar **'); // This is not strong emphasis, because the closing delimiter is preceded by whitespace
+    doTest(392, '**(**foo)'); // This is not strong emphasis, because the second ** is preceded by punctuation and followed by an alphanumeric
+    doTest(393, '*(**foo**)*'); // The point of this restriction is more easily appreciated with these examples
+    doTest(394, '**Gomphocarpus (*Gomphocarpus physocarpus*, syn.\n*Asclepias physocarpa*)**');
+    doTest(395, '**foo "*bar*" foo**');
+    doTest(396, '**foo**bar'); // Intraword emphasis
+    /* Rule 8 */
+    doTest(397, '__foo bar __'); // This is not strong emphasis, because the closing delimiter is preceded by whitespace
+    doTest(398, '__(__foo)'); // This is not strong emphasis, because the second __ is preceded by punctuation and followed by an alphanumeric
+    doTest(399, '_(__foo__)_'); // The point of this restriction is more easily appreciated with this example
+    doTest(400, '__foo__bar'); // Intraword strong emphasis is forbidden with __
+    doTest(401, '__пристаням__стремятся');
+    doTest(402, '__foo__bar__baz__');
+    doTest(403, '__(bar)__.'); // This is strong emphasis, even though the closing delimiter is both left- and right-flanking, because it is followed by punctuation
+    /* Rule 9 */
+    doTest(404, '*foo [bar](/url)*'); // Any nonempty sequence of inline elements can be the contents of an emphasized span
+    doTest(405, '*foo\nbar*');
+    doTest(406, '_foo __bar__ baz_'); // In particular, emphasis and strong emphasis can be nested inside emphasis
+    doTest(407, '_foo _bar_ baz_');
+    doTest(408, '__foo_ bar_');
+    doTest(409, '*foo *bar**');
+    doTest(410, '*foo **bar** baz*');
+    doTest(411, '*foo**bar**baz*'); // special case "multiples of 3"
+    doTest(412, '*foo**bar*');
+    doTest(413, '***foo** bar*'); // The same condition ensures that the following cases are all strong emphasis nested inside emphasis, even when the interior whitespace is omitted
+    doTest(414, '*foo **bar***');
+    doTest(415, '*foo**bar***');
+    doTest(416, 'foo***bar***baz'); // When the lengths of the interior closing and opening delimiter runs are both multiples of 3, though, they can match to create emphasis
+    doTest(417, 'foo******bar*********baz');
+    doTest(418, '*foo **bar *baz* bim** bop*'); // Indefinite levels of nesting are possible
+    //doTest(419, '*foo [*bar*](/url)*'); // 
+    doTest(420, '** is not an empty emphasis'); // There can be no empty emphasis or strong emphasis
+    doTest(421, '**** is not an empty strong emphasis');
+    /* Rule 10 */
+    doTest(422, '**foo [bar](/url)**'); // Any nonempty sequence of inline elements can be the contents of an strongly emphasized span
+    doTest(423, '**foo\nbar**');
+    doTest(424, '__foo _bar_ baz__'); // In particular, emphasis and strong emphasis can be nested inside strong emphasis
+    doTest(425, '__foo __bar__ baz__');
+    doTest(426, '____foo__ bar__');
+    doTest(427, '**foo **bar****');
+    doTest(428, '**foo *bar* baz**');
+    doTest(429, '**foo*bar*baz**');
+    doTest(430, '***foo* bar**');
+    doTest(431, '**foo *bar***');
+    doTest(432, '**foo *bar **baz**\nbim* bop**'); // Indefinite levels of nesting are possible
+    //doTest(433, '**foo [*bar*](/url)**');
+    doTest(434, '__ is not an empty emphasis'); // There can be no empty emphasis or strong emphasis
+    doTest(435, '____ is not an empty strong emphasis');
+    /* Rule 11 */
+    doTest(436, 'foo ***');
+    doTest(437, 'foo *\**');
+    doTest(438, 'foo *_*');
+    doTest(439, 'foo *****');
+    doTest(440, 'foo **\***');
+    doTest(441, 'foo **_**');
+    doTest(442, '**foo*'); // Note that when delimiters do not match evenly, Rule 11 determines that the excess literal * characters will appear outside of the emphasis, rather than inside it
+    doTest(443, '*foo**');
+    doTest(444, '***foo**');
+    doTest(445, '****foo*');
+    doTest(446, '**foo***');
+    doTest(447, '*foo****');
+    /* Rule 12 */
+    doTest(448, 'foo ___');
+    doTest(449, 'foo _\__');
+    doTest(450, 'foo _*_');
+    doTest(451, 'foo _____');
+    doTest(452, 'foo __\___');
+    doTest(453, 'foo __*__');
+    doTest(454, '__foo_');
+    doTest(455, '_foo__'); // Note that when delimiters do not match evenly, Rule 12 determines that the excess literal _ characters will appear outside of the emphasis, rather than inside it
+    doTest(456, '___foo__');
+    doTest(457, '____foo_');
+    doTest(458, '__foo___');
+    doTest(459, '_foo____');
+    doTest(460, '**foo**'); // Rule 13 implies that if you want emphasis nested directly inside emphasis, you must use different delimiters
+    doTest(461, '*_foo_*');
+    doTest(462, '__foo__');
+    doTest(463, '_*foo*_');
+    doTest(464, '****foo****'); // However, strong emphasis within strong emphasis is possible without switching delimiters
+    doTest(465, '____foo____');
+    doTest(466, '******foo******'); // Rule 13 can be applied to arbitrarily long sequences of delimiters
+    /* Rule 14 */
+    doTest(467, '***foo***');
+    doTest(468, '_____foo_____');
+    /* Rule 15 */
+    doTest(469, '*foo _bar* baz_');
+    doTest(470, '*foo __bar *baz bim__ bam*');
+    /* Rule 16 */
+    doTest(471, '**foo **bar baz**');
+    doTest(472, '*foo *bar baz*');
+    /* Rule 17 */
+    doTest(473, '*[bar*](/url)');
+    doTest(474, '_foo [bar_](/url)');
+    /*doTest(475, '*<img src="foo" title="*"/>');
+    doTest(476, '**<a href="**">');
+    doTest(477, '__<a href="__">');
+    doTest(478, '*a `*`*');
+    doTest(479, '_a `_`_');
+    doTest(480, '**a<https://foo.bar/?q=**>');
+    doTest(481, '__a<https://foo.bar/?q=__>');*/
+});
 
 
 describe('Inline: Links', () => {

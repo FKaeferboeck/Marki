@@ -9,9 +9,11 @@ import { pairUpDelimiters } from '../src/delimiter-processing.js';
 
 const parser = new MarkdownParser();
 
+const x = /\s/.test('\u00A0');
+
 
 {
-  const input = 'aaa_bbb_  \naaa._bbb_  \naaa._.bbb_  ';
+  const input = '*\u00A0a\u00A0*';
   const LS   = linify(input);
   const LLD  = lineDataAll(LS, 0);
   const diag = false;

@@ -74,6 +74,15 @@ export function makeDelimiter(delim: string, expected_end_delim: string | number
 
 const isEmphDelim = (elt: InlineContentElement): elt is Delimiter_emph => (typeof elt === "object" && "delim" in elt && !("endDelim" in elt));
 
+function rule9allows(D0: Delimiter_emph, D1: Delimiter_emph) {
+    /* CommonMark: If one of the delimiters can both open and close emphasis, then the sum of the lengths of the delimiter runs containing
+     *             the opening and closing delimiters must not be a multiple of 3 unless both lengths are multiples of 3. */
+    if(!((D0.opening && D0.closing) || (D1.opening && D1.closing)))
+        return true;
+    const n0 = D0.delim.length,  n1 = D1.delim.length;
+    return (((n0 + n1) % 3) !== 0 || (n0 % 3) + (n1 % 3) === 0);
+}
+
 
 export function pairUpDelimiters(content: InlineContent) {
     const N = content.length;
@@ -93,10 +102,11 @@ export function pairUpDelimiters(content: InlineContent) {
         /* CommonMark: Now, look back in the stack (staying above stack_bottom and the openers_bottom for this delimiter type)
          *             for the first matching potential opener (“matching” means same delimiter). */
         const D1 = content[curPos] as Delimiter_emph & { closing: DelimiterSide; };
+        const n1 = D1.delim.length;
         let i_opener = curPos - 1;
         for(;  i_opener >= stack_bottom;  --i_opener) {
             const elt = content[i_opener];
-            if(isEmphDelim(elt) && elt.opening?.active && elt.type === D1.type && elt.remaining > 0)
+            if(isEmphDelim(elt) && elt.opening?.active && elt.type === D1.type && elt.remaining > 0 && rule9allows(elt, D1))
                 break;
         }
         if(i_opener < stack_bottom) {
@@ -113,6 +123,16 @@ export function pairUpDelimiters(content: InlineContent) {
         (D1.closing.actualized ||= []).push(isStrong);
 
         /* CommonMark: Remove any delimiters between the opener and closer from the delimiter stack. */
+        // For the reason why this is relevant see CommonMark examples (469) and (470).
+        while(++i_opener < curPos) {
+            let D = content[i_opener];
+            if(isEmphDelim(D)) {
+                if(D.opening)
+                    D.opening.active = false;
+                if(D.closing)
+                    D.closing.active = false;
+            }
+        }
 
         /* CommonMark: Remove 1 (for regular emph) or 2 (for strong emph) delimiters from the opening and closing text nodes.
          *             If they become empty as a result, remove them and remove the corresponding element of the delimiter stack.

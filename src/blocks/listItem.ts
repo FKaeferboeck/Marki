@@ -25,7 +25,7 @@ export const listItem_traits: BlockTraits_Container<"listItem"> = {
     startsHere(LLD: LogicalLineData, B, interrupting?) {
         if(!standardBlockStart(LLD))
             return -1;
-        const rexres = /^([\-+*]|\d{1,9}[).])(\s+|$)/.exec(LLD.startPart);
+        const rexres = /^([\-+*]|\d{1,9}[).])([ \t]+|$)/.exec(LLD.startPart);
         if(!rexres)
             return -1;
         B.marker = rexres[1].slice(-1) as ListItem["marker"];

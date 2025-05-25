@@ -4,6 +4,8 @@ import { BlockContentIterator } from "../util.js";
 
 function parseDelimiter(It: BlockContentIterator) {
     const delim_char = It.nextChar();
+    if(It.peekBack(2) === delim_char)
+        return false;
     if(!delim_char) // impossible, we checked the startChar right before this
         return false;
     let delim_size = 1;
