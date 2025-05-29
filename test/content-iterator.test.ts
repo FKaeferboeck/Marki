@@ -336,8 +336,8 @@ describe('Inline: Hard line breaks', () => {
     doTest(635, 'foo       \nbaz'); // More than two spaces can be used
     doTest(636, 'foo  \n     bar'); // Leading spaces at the beginning of the next line are ignored
     doTest(637, 'foo\\\n     bar');
-    //doTest(638, '*foo  \nbar*'); // Hard line breaks can occur inside emphasis, links, and other constructs that allow inline content
-    //doTest(639, '*foo\\\nbar*');
+    doTest(638, '*foo  \nbar*'); // Hard line breaks can occur inside emphasis, links, and other constructs that allow inline content
+    doTest(639, '*foo\\\nbar*');
     doTest(640, '`code  \nspan`'); // Hard line breaks do not occur inside code spans
     doTest(641, '`code\\\nspan`');
     //doTest(642, '<a href="foo  \nbar">'); // ... or HTML tags

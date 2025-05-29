@@ -6,14 +6,10 @@ import { Renderer } from '../src/renderer/renderer.js';
 import { pairUpDelimiters } from '../src/delimiter-processing.js';
 //import * as commonmark from 'commonmark';
 
-
 const parser = new MarkdownParser();
 
-const x = /\s/.test('\u00A0');
-
-
 {
-  const input = '*\u00A0a\u00A0*';
+  const input = '![X]p';
   const LS   = linify(input);
   const LLD  = lineDataAll(LS, 0);
   const diag = false;

@@ -96,13 +96,14 @@ export const isContainer = (B: AnyBlock): B is AnyContainerBlock => ("isContaine
 
 /**********************************************************************************************************************/
 
-export interface Delimiter_nested {
-	type:     string;
-	delim:    string;
-	endDelim: string;
-	active:   boolean;
-	closers?: number[]; // an array of 1s and 2s denoting a nesting of closing </emph> and </strong> tags
-	openers?: number[]; // an array of 1s and 2s denoting a nesting of opening <emph> and <strong> tags
+export interface Delimiter_nestable {
+	type:               string;
+	delim:              string;
+	endDelimStartChar?: string; // stored here instead of in the traits class because we allow it to be dynamically dependent on the opening delimiter
+	isOpener:           boolean;
+	partnerDelim?:      Delimiter_nestable;
+	follower?:          AnyInline; // a DelimFollower inline element that "owns" this delimited section
+	active:             boolean;
 }
 
 export interface DelimiterSide {
@@ -118,9 +119,9 @@ export interface Delimiter_emph {
 	remaining: number;
 }
 
-export type Delimiter = Delimiter_nested | Delimiter_emph;
+export type Delimiter = Delimiter_nestable | Delimiter_emph;
 
-
+export const isNestableDelimiter = (elt: InlineElement<InlineElementType> | Delimiter): elt is Delimiter_nestable => ("isOpener" in elt);
 
 
 export interface InlineElementMap {
@@ -138,6 +139,11 @@ export interface InlineElementMap {
 	emphasis:   { delimiter: "*" | "_";
 				  delimiterSize: number;
                   strong: boolean; };
+	image:      { linkType:    "inline" | "reference" | "collapsed" | "shortcut";
+	              linkLabel:   string; //InlineContent;
+	              destination: AnyInline[];
+	              linkTitle?:  AnyInline[];
+				  reference?:  Block<"linkDef">; };
 }
 
 export type ExtensionInlineElementType = `ext_${ExtensionNamespace}_${string}`;
@@ -146,6 +152,7 @@ export type InlineElementType = keyof InlineElementMap | ExtensionInlineElementT
 
 export interface InlineElementBase<K extends InlineElementType> {
 	type: K;
+	followedDelimiter?: Delimiter_nestable;
 }
 
 export type InlineElement<K extends InlineElementType> = (K extends keyof InlineElementMap ? InlineElementMap[K] & InlineElementBase<K> : never);

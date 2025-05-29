@@ -1,4 +1,4 @@
-import { InlineParsingContext } from "../markdown-parser.js";
+import { InlineParsingContext } from "../inline-parsing-context.js";
 import { AnyInline, LogicalLineData } from "../markdown-types.js";
 import { BlockTraits } from "../traits.js";
 import { makeBlockContentIterator, sliceLLD, standardBlockStart } from "../util.js";

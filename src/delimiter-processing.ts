@@ -1,12 +1,12 @@
-import { Delimiter_emph, Delimiter, InlinePos, InlineContent, InlineContentElement, DelimiterSide } from "./markdown-types";
-import { DelimiterTraits } from "./traits";
-import { BlockContentIterator } from "./util";
+import { Delimiter_emph, Delimiter, InlinePos, InlineContent, InlineContentElement, DelimiterSide, Delimiter_nestable, isNestableDelimiter } from "./markdown-types.js";
+import { DelimiterTraits } from "./traits.js";
+import { BlockContentIterator } from "./util.js";
 
 const rex_whitespace = /^\s$/;
 const rex_special = /^[\s\p{P}\p{S}]$/u;
 
 
-function checkDelimiterContext(D: Delimiter_emph, T: DelimiterTraits, It: BlockContentIterator) {
+function checkEmphDelimiterContext(D: Delimiter_emph, T: DelimiterTraits, It: BlockContentIterator) {
     let c = It.peekBack(D.delim.length + 1);
     const white_before   = (!c || rex_whitespace.test(c)),
           special_before = (!c || rex_special.test(c));
@@ -44,12 +44,31 @@ function checkDelimiterContext(D: Delimiter_emph, T: DelimiterTraits, It: BlockC
 }
 
 
-export function parseDelimiter(It: BlockContentIterator, checkpoint1: InlinePos, T: DelimiterTraits) {
-    const delim = T.parseDelimiter(It, checkpoint1);
+export function parseDelimiter(It: BlockContentIterator, checkpoint1: InlinePos, T: DelimiterTraits, toClose: Delimiter_nestable | undefined,) {
+    let delim: false | Delimiter = false;
+    if(toClose) {
+        let endDelim: string | false = false;
+        if(!T.parseCloser)
+            endDelim = It.nextChar(); // skip the closing delimiter (it's assumed to be a single character when parseCloser() is not defined)
+        else if(!(endDelim = T.parseCloser(It, checkpoint1)))
+            return false;
+        // opening and closing delimiter get double-linked
+        delim = {
+            type:         toClose.type,
+            delim:        endDelim || '',
+            isOpener:     false,
+            partnerDelim: toClose,
+            active:       true
+        };
+        toClose.partnerDelim = delim;
+    }
+    else
+        delim = T.parseDelimiter(It, checkpoint1);
+
     if(!delim)
         return false;
     delim.type = T.name;
-    if(!("endDelim" in delim) && !checkDelimiterContext(delim, T, It))
+    if(!isNestableDelimiter(delim) && !checkEmphDelimiterContext(delim, T, It))
         return false;
     return delim;
 }
@@ -59,8 +78,8 @@ export function makeDelimiter(delim: string, expected_end_delim: string | number
     if(typeof expected_end_delim === "string")
         return {
             type: '?',
-            delim,  endDelim: expected_end_delim,
-            active: true
+            delim,  endDelimStartChar: expected_end_delim,
+            isOpener: true,  active: true
         };
     else
         return {

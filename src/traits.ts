@@ -2,7 +2,7 @@ import { BlockParser } from "./block-parser.js";
 import { BlockParser_Container } from "./blocks/blockQuote.js";
 import { InlineParser } from "./inline-parser.js";
 import { MarkdownParser } from "./markdown-parser.js";
-import { BlockType, ExtensionBlockType, BlockBase, Block_Container, LogicalLineData, BlockType_Container, Block, InlineElementType, ExtensionInlineElementType, InlineElement, InlinePos, BlockIndividualData, Delimiter } from "./markdown-types.js";
+import { BlockType, ExtensionBlockType, BlockBase, Block_Container, LogicalLineData, BlockType_Container, Block, InlineElementType, ExtensionInlineElementType, InlineElement, InlinePos, BlockIndividualData, Delimiter, Delimiter_nestable } from "./markdown-types.js";
 import { BlockContentIterator } from "./util.js";
 
 
@@ -89,10 +89,29 @@ export interface DelimiterTraits {
     // Do not check for prefixes/suffixes yourself! It gets done automatically depending on the delimiter category
     parseDelimiter(It: BlockContentIterator, startPos: InlinePos): Delimiter | false;
 
+    // Called when a nested delimiter of this type is open and encounters its end character.
+    // This method is often not necessary – use it when the end delimiter is more than just one character.
+    parseCloser?(It: BlockContentIterator, startPos: InlinePos): string | false;
+
     //creator: (MDP: MarkdownParser) => InlineParser<T>;
+}
+
+export interface DelimFollowerTraits<T extends InlineElementType = ExtensionInlineElementType> {
+    startDelims: string[]; // list of delimiter names; a closing delimiter of this type serves as a start char for this type of inline element
+
+    // The implementation can modify startPos to e.g. an earlier position if the inline item wants to backtrack
+    // Use this feature with caution! It cannot collide with an already parsed earlier inline item.
+    parse(this: InlineParser<T>, endOfStartDelim: Delimiter_nestable,
+          It: BlockContentIterator, startPos: InlinePos): InlineElement<T> | false;
+
+    creator: (MDP: MarkdownParser) => InlineParser<T>;
+    defaultElementInstance: InlineElement<T>;
 }
 
 
 export type InlineParserTraitsList = Partial<{
-    [K in InlineElementType]:  InlineElementTraits<K>;
+    [K in InlineElementType]:  (InlineElementTraits<K> | DelimFollowerTraits<K>);
 }>;
+
+export const isDelimFollowerTraits = <K extends InlineElementType>(t: InlineElementTraits<K> | DelimFollowerTraits<K>): t is DelimFollowerTraits<K> =>
+    ("startDelims" in t);

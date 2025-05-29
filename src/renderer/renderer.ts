@@ -1,5 +1,5 @@
 import { parseBackslashEscapes } from "../inline-parser.js";
-import { AnyBlock, AnyInline, Block, BlockType, Delimiter, InlineContent, inlineContentCategory, InlineElement, InlineElementType } from "../markdown-types.js";
+import { AnyBlock, AnyInline, Block, BlockType, Delimiter, InlineContent, inlineContentCategory, InlineElement, InlineElementType, isNestableDelimiter } from "../markdown-types.js";
 import { renderHTML_entity, escapeXML, escapeXML_all, urlEncode } from "./util.js";
 
 interface Inserter {
@@ -18,7 +18,7 @@ export type BlockHandlerList = Partial<{
 }>;
 
 export type InlineHandlerList = Partial<{
-    [K in InlineElementType]: (B: InlineElement<K>, ins: Inserter) => void;
+    [K in InlineElementType]: (B: InlineElement<K>, ins: Inserter, data: InlineContent, i: number) => void | number;
 }>;
 
 
@@ -38,6 +38,21 @@ function posInList(B: Block<"listItem">) {
              isLast:  B === C[C.length - 1] };
 }
 
+
+function delimitedSection(data: InlineContent, i0: number) {
+    const elt = data[i0];
+    if(!elt || inlineContentCategory(elt) !== "anyI")
+        return false;
+    const closingDelim = (elt as InlineElement<InlineElementType>).followedDelimiter?.partnerDelim;
+    if(!closingDelim)
+        return false;
+    let i1 = i0, iN = data.length;
+    while(++i1 < iN && data[i1] !== closingDelim) ;
+    return {
+        contents:   data.slice(i0 + 1, i1),
+        closingIdx: i1
+    };
+}
 
 
 export class Renderer {
@@ -115,7 +130,16 @@ export class Renderer {
             I.add('</a>');
         },
         "hardBreak":  (elt, I) => I.add('<br />\n'),
-        "htmlEntity": (elt, I) => I.add(escapeXML(renderHTML_entity(elt)))
+        "htmlEntity": (elt, I) => I.add(escapeXML(renderHTML_entity(elt))),
+        "image":      (elt, I, data, i) => {
+            const sec = delimitedSection(data, i);
+            if(sec) {
+                I.add('<img alt="');
+                this.renderInline(sec.contents, I);
+                I.add(`" />`);
+                return sec.closingIdx;
+            }
+        }
     };
 
     renderBlock(B: AnyBlock, I: Inserter) {
@@ -179,9 +203,8 @@ export class Renderer {
     renderInline(data: InlineContent, I: Inserter | null, trimmed?: boolean) {
         if(!I)
             I = new EasyInserter();
-        let i = -1, iE = data.length - 1;
-        for(const elt of data) {
-            ++i;
+        for(let i = 0, iE = data.length - 1;  i <= iE;  ++i) {
+            const elt = data[i];
             switch(inlineContentCategory(elt))
             {
             case "text":
@@ -193,12 +216,16 @@ export class Renderer {
                 I.add(s);
                 continue;
             case "delim":
-                this.renderDelimiter(I, elt as Delimiter)
+                const delim = elt as Delimiter;
+                this.renderDelimiter(I, delim);
                 break;
             case "anyI":
                 const H = this.inlineHandler[(elt as InlineElement<InlineElementType>).type];
-                if(H)
-                    (H as any)(elt, I);
+                if(!H)
+                    break;
+                const i1 = (H as any)(elt, I, data, i);
+                if(typeof i1 === "number")
+                    i = i1;
                 break;
             }
         }
@@ -206,8 +233,11 @@ export class Renderer {
     }
 
     renderDelimiter(I: Inserter, delim: Delimiter) {
-        if("endDelim" in delim)
+        if(isNestableDelimiter(delim)) {
+            I.add(delim.delim);
+            
             return; // TODO!!
+        }
         if(delim.closing?.actualized)
             delim.closing.actualized.forEach(x => this.insertDelimiterTag(I, delim.type, x, true));
         if(delim.remaining > 0)

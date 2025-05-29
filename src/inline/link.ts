@@ -5,7 +5,8 @@ import { InlineElementTraits } from "../traits.js";
 import { BlockContentIterator, contentSlice, removeDelimiter } from "../util.js";
 
 
-function acceptable(MDP: MarkdownParser, B: InlineElement<"link">) {
+
+export function acceptable<T extends "link" | "image">(MDP: MarkdownParser, B: InlineElement<T>) {
     switch(B.linkType) {
     case "reference":
         return B;
@@ -123,7 +124,7 @@ export const link_traits: InlineElementTraits<"link"> = {
 
 
 
-function untilSpaceOrStop(It: BlockContentIterator) {
+export function untilSpaceOrStop(It: BlockContentIterator) {
     let c: false | string = false;
     let nesting = 1;
     while(true) {

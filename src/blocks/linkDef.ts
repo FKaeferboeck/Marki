@@ -1,7 +1,7 @@
 import { BlockParser } from "../block-parser.js";
+import { InlineParsingContext } from "../inline-parsing-context.js";
 import { takeLinkDestination } from "../inline/link.js";
-import { InlineParsingContext } from "../markdown-parser.js";
-import { AnyInline, InlineContent, LogicalLineData } from "../markdown-types.js";
+import { AnyInline, LogicalLineData } from "../markdown-types.js";
 import { BlockContinuationType, BlockTraits } from "../traits.js";
 import { BCI_TakeDelimited_IO, BlockContentIterator, makeBlockContentIterator } from "../util.js";
 

@@ -1,15 +1,16 @@
 import { BlockContainer, BlockParser, BlockParserBase, BlockParser_Container, BlockParser_Standard, standardBlockParserTraits } from "./block-parser.js";
-import { parseDelimiter } from "./delimiter-processing.js";
+import { InlineParserProvider, processInline } from "./inline-parsing-context.js";
 import { escaped_traits } from "./inline/backslash-escape.js";
 import { codeSpan_traits } from "./inline/code-span.js";
 import { emphasis_traits_asterisk, emphasis_traits_underscore } from "./inline/emphasis.js";
 import { hardBreak_traits } from "./inline/hard-break.js";
 import { htmlEntity_traits } from "./inline/html-entity.js";
+import { bang_bracket_traits, image_traits } from "./inline/image.js";
 import { link_traits } from "./inline/link.js";
-import { AnyBlock, AnyInline, Block, BlockBase, BlockType, BlockType_Container, Delimiter, InlineContent, InlineElement, InlineElementType, LogicalLineData, isContainer } from "./markdown-types.js";
-import { LinePart, LineStructure } from "./parser.js";
+import { AnyBlock, Block, BlockBase, BlockType, BlockType_Container, LogicalLineData, isContainer } from "./markdown-types.js";
+import { LineStructure } from "./parser.js";
 import { BlockParserTraitsList, BlockTraits, BlockTraits_Container, DelimiterTraits, InlineParserTraitsList } from "./traits.js";
-import { BlockContentIterator, contentSlice, LLDinfo, makeBlockContentIterator } from "./util.js";
+import { LLDinfo } from "./util.js";
 
 
 interface BlockParserProviderItem {
@@ -40,71 +41,15 @@ export const standardInlineParserTraits: InlineParserTraitsList = {
 	codeSpan:   codeSpan_traits,
 	link:       link_traits,
 	hardBreak:  hardBreak_traits,
-	htmlEntity: htmlEntity_traits
+	htmlEntity: htmlEntity_traits,
+	image:      image_traits
 };
 
 export const standardDelimiterTraits: Record<string, DelimiterTraits> = {
 	emph_asterisk:   emphasis_traits_asterisk,
-	emph_underscore: emphasis_traits_underscore
+	emph_underscore: emphasis_traits_underscore,
+	bang_bracket:    bang_bracket_traits // ![ ... ] — in CommonMark only used for image descriptions
 }
-
-
-class InlineParserProvider {
-	traits: InlineParserTraitsList = { };
-	delims: Record<string, DelimiterTraits> = { };
-	startCharMap: Record<string, (InlineElementType | DelimiterTraits)[]> = { };
-	MDP: MarkdownParser;
-
-	constructor(MDP: MarkdownParser) { this.MDP = MDP; }
-
-	getInlineParser<K extends InlineElementType>(type: K) {
-		const traits = this.traits[type];
-		if(!traits)
-			throw new Error(`Missing inline parser traits for inline element type "${type}"`)
-		return traits.creator(this.MDP);
-	}
-
-	//addTraits(InlineElementTraits)
-    
-    makeStartCharMap() {
-        this.startCharMap = {};
-        for(const t in this.traits) {
-            const to_add = this.traits[t as InlineElementType]?.startChars;
-            to_add?.forEach(sc => {
-                (this.startCharMap[sc] ||= [] as InlineElementType[]).push(t as InlineElementType);
-            });
-        }
-		for(const t in this.delims) {
-            this.delims[t].startChars.forEach(sc => {
-                (this.startCharMap[sc] ||= []).push(this.delims[t]);
-            });
-        }
-    }
-}
-
-
-export class InlineParsingContext {
-	provider: InlineParserProvider;
-	startCharMap: Record<string, (InlineElementType | DelimiterTraits)[]>;
-	delimiterStack: Delimiter[] = []
-	MDP: MarkdownParser;
-
-	constructor(provider: InlineParserProvider) {
-		this.provider = provider;
-		this.MDP = provider.MDP;
-		this.startCharMap = provider.startCharMap;
-	}
-
-    /* During inline parsing we check for element start chars before calling their full parsers, so the order below only
-     * matters between elements that share a start char. */
-    /*inlineTryOrder: InlineElementType[] = [
-		"codeSpan"
-	];*/
-
-	inlineParseLoop = inlineParseLoop;
-}
-
-
 
 
 export class MarkdownParser implements BlockContainer {
@@ -350,85 +295,4 @@ export function processLines(this: MarkdownParser, LLD0: LogicalLineData, LLD1: 
 	}
 	if(this.diagnostics)    console.log(`Out!`)
 	return PP;
-}
-
-
-
-/**********************************************************************************************************************/
-
-function inlineParseLoop(this: InlineParsingContext, It: BlockContentIterator, buf: InlineContent,
-	                     contCbk?:  (It: BlockContentIterator, c: string | LinePart) => boolean,
-						 contCbk2?: (It: BlockContentIterator, c: string | LinePart) => boolean) {
-	let c: false | string | LinePart = false;
-	const checkpoint = It.newCheckpoint(), checkpoint1 = It.newCheckpoint();
-	let returnVal = "EOF";
-
-	while(c = It.peekItem()) {
-		if(contCbk?.(It, c) === false) {
-			returnVal = "byCbk";
-			break;
-		}
-
-		if(typeof c === "string" && this.startCharMap[c]) {
-			It.setCheckPoint(checkpoint1);
-			let found = false;
-			for(const t of this.startCharMap[c]) {
-				let elt: InlineElement<InlineElementType> | Delimiter | false = false;
-				if(typeof t === "string") {
-					const P = this.provider.getInlineParser(t);
-					elt = P.parse(It, checkpoint1);
-				} else { // it's a delimiter
-					elt = parseDelimiter(It, checkpoint1, t);
-					if(!elt)
-						It.setPosition(checkpoint1);
-				}
-				if(elt) {
-					const flush = contentSlice(checkpoint, checkpoint1, false);
-					if(flush)
-						buf.push(flush);
-					buf.push(elt);
-					It.setCheckPoint(checkpoint);
-					found = true;
-					break;
-				}
-			}
-			if(found)
-				continue;
-		}
-
-		if(contCbk2?.(It, c) === false) {
-			returnVal = "byCbk";
-			break;
-		}
-
-		if(typeof c !== "string") {
-			It.setCheckPoint(checkpoint1);
-			const flush = contentSlice(checkpoint, checkpoint1, false);
-			if(flush)
-				buf.push(flush);
-			const elt: AnyInline = { type: "html",  stuff: c.content };
-			if(c.type === "HTML_Tag" && c.continues)
-				elt.continues = true;
-			buf.push(elt);
-			It.nextItem();
-			It.setCheckPoint(checkpoint);
-			continue;
-		}
-
-		It.nextItem();
-	}
-	const flush = contentSlice(checkpoint, It.pos, false);
-	if(flush)
-		buf.push(flush);
-	return returnVal;
-}
-
-
-
-function processInline(this: MarkdownParser, LLD: LogicalLineData) {
-	let It = makeBlockContentIterator(LLD);
-	const buf: InlineContent = [];
-	const context = new InlineParsingContext(this.inlineParser_standard);
-	context.inlineParseLoop(It, buf);
-	return buf;
 }
