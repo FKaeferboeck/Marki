@@ -9,7 +9,7 @@ import { pairUpDelimiters } from '../src/delimiter-processing.js';
 const parser = new MarkdownParser();
 
 {
-  const input = '![X]p';
+  const input = '![foo] \n[]\n\n[foo]: /url "title"';
   const LS   = linify(input);
   const LLD  = lineDataAll(LS, 0);
   const diag = false;

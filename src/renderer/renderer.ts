@@ -1,13 +1,15 @@
 import { parseBackslashEscapes } from "../inline-parser.js";
 import { AnyBlock, AnyInline, Block, BlockType, Delimiter, InlineContent, inlineContentCategory, InlineElement, InlineElementType, isNestableDelimiter } from "../markdown-types.js";
+import { InlineHandlerList, InlineRenderer, renderInline } from "./inline-renderer.js";
 import { renderHTML_entity, escapeXML, escapeXML_all, urlEncode } from "./util.js";
+import { inlineRenderer_plain } from "./utility-renderers.js";
 
-interface Inserter {
+export interface Inserter {
     add(... S: string[]): void;
     join(sep: string): string;
 }
 
-class EasyInserter implements Inserter {
+export class EasyInserter implements Inserter {
     buf: string[] = [];
     add(... S: string[]) { this.buf.push(... S); }
     join(sep: string) { return this.buf.join(sep); }
@@ -17,13 +19,9 @@ export type BlockHandlerList = Partial<{
     [K in BlockType]: (B: Block<K>, ins: Inserter) => void;
 }>;
 
-export type InlineHandlerList = Partial<{
-    [K in InlineElementType]: (B: InlineElement<K>, ins: Inserter, data: InlineContent, i: number) => void | number;
-}>;
-
 
 function fencedOpener(this: Renderer, B: Block<"fenced">) {
-    const info = this.renderInline(B.info_string, null)
+    const info = this.inlineRenderer.render(B.info_string, new EasyInserter());
     const firstWord = /^\S+/.exec(info)?.[0];
     if (!firstWord)
         return `<code>`;
@@ -56,6 +54,11 @@ function delimitedSection(data: InlineContent, i0: number) {
 
 
 export class Renderer {
+    inlineRenderer: InlineRenderer;
+
+    constructor() {
+        this.inlineRenderer = new InlineRenderer(this.inlineHandler);
+    }
 
     referenceRender(content: AnyBlock[], verbose?: boolean, appendSpace: boolean = true) {
         const I = new EasyInserter();
@@ -129,16 +132,17 @@ export class Renderer {
             //I.add(elt.linkLabel);
             I.add('</a>');
         },
-        "hardBreak":  (elt, I) => I.add('<br />\n'),
+        "hardBreak":  (elt, I) => I.add(elt.nSpaces === 1 ? '\n' : '<br />\n'),
         "htmlEntity": (elt, I) => I.add(escapeXML(renderHTML_entity(elt))),
-        "image":      (elt, I, data, i) => {
-            const sec = delimitedSection(data, i);
-            if(sec) {
-                I.add('<img alt="');
-                this.renderInline(sec.contents, I);
-                I.add(`" />`);
-                return sec.closingIdx;
-            }
+        "image":      function(elt, I) {
+            const dest  = elt.reference?.destination || elt.destination;
+            const title = elt.linkTitle || elt.reference?.linkTitle;
+            I.add(`<img src="${dest.join('+')}"`);
+            I.add(` alt="${renderInline(elt.linkLabelContents, inlineRenderer_plain)}"`);
+            if(title?.length)
+                I.add(` title="${renderInline(title, inlineRenderer_plain)}"`);
+            I.add(' />');
+            return elt.linkLabelContents.length + 2;
         }
     };
 
@@ -187,7 +191,7 @@ export class Renderer {
             }
             s = arr.join('');
         } else if(B.inlineContent) {
-            const s1 = this.renderInline(B.inlineContent, null, mode === "trimmed");
+            const s1 = this.inlineRenderer.render(B.inlineContent, new EasyInserter(), mode === "trimmed");
             I?.add(s1);
             return s1;
         } else {
@@ -199,56 +203,5 @@ export class Renderer {
         I?.add(s);
         return s1;
     }
-
-    renderInline(data: InlineContent, I: Inserter | null, trimmed?: boolean) {
-        if(!I)
-            I = new EasyInserter();
-        for(let i = 0, iE = data.length - 1;  i <= iE;  ++i) {
-            const elt = data[i];
-            switch(inlineContentCategory(elt))
-            {
-            case "text":
-                let s = escapeXML(elt as string);
-                if(trimmed && i === 0)
-                    s = s.replace(/^[ \t]+/, '');
-                if(trimmed && i === iE)
-                    s = s.replace(/[ \t]+$/, '');
-                I.add(s);
-                continue;
-            case "delim":
-                const delim = elt as Delimiter;
-                this.renderDelimiter(I, delim);
-                break;
-            case "anyI":
-                const H = this.inlineHandler[(elt as InlineElement<InlineElementType>).type];
-                if(!H)
-                    break;
-                const i1 = (H as any)(elt, I, data, i);
-                if(typeof i1 === "number")
-                    i = i1;
-                break;
-            }
-        }
-        return I.join('');
-    }
-
-    renderDelimiter(I: Inserter, delim: Delimiter) {
-        if(isNestableDelimiter(delim)) {
-            I.add(delim.delim);
-            
-            return; // TODO!!
-        }
-        if(delim.closing?.actualized)
-            delim.closing.actualized.forEach(x => this.insertDelimiterTag(I, delim.type, x, true));
-        if(delim.remaining > 0)
-            I.add(delim.delim.slice(0, delim.remaining));
-        if(delim.opening?.actualized)
-            delim.opening.actualized.forEach(x => this.insertDelimiterTag(I, delim.type, x, false));
-    }
-
-    insertDelimiterTag(I: Inserter, type: string, weight: number, closing: boolean) {
-        const tags = ['?', 'em', 'strong'];
-        I.add(`<${closing ? '/' : ''}${tags[weight]}>`);
-    }
-}
+} // class Renderer
 

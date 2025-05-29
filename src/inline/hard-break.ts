@@ -20,7 +20,7 @@ export const hardBreak_traits: InlineElementTraits<"hardBreak"> = {
             return this.B;
         };
         for(n = 1;  It.peekBack(n) === ' ';  ++n);
-        if(--n < 2)
+        if(--n < /*2*/1)
             return false;
         It.getPosition(pos0, -n);
         It.nextChar();

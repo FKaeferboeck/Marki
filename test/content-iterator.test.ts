@@ -278,7 +278,7 @@ describe('Inline: Links', () => {
 });
 
 
-/*describe('Inline: Images', () => {
+describe('Inline: Images', () => {
     doTest(572, '![foo](/url "title")');
     doTest(573, '![foo *bar*]\n\n[foo *bar*]: train.jpg "train & tracks"');
     doTest(574, '![foo ![bar](/url)](/url2)');
@@ -301,7 +301,7 @@ describe('Inline: Links', () => {
     doTest(591, '![Foo]\n\n[foo]: /url "title"'); // The link labels are case-insensitive
     doTest(592, '!\[foo]\n\n[foo]: /url "title"'); // If you just want a literal ! followed by bracketed text, you can backslash-escape the opening [
     doTest(593, '\![foo]\n\n[foo]: /url "title"'); // If you want a link after a literal !, backslash-escape the !
-});*/
+});
 
 
 /*describe('Inline: Autolinks', () => {

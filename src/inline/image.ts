@@ -1,5 +1,5 @@
 import { T } from "vitest/dist/chunks/environment.d.C8UItCbf.js";
-import { makeDelimiter } from "../delimiter-processing.js";
+import { makeDelimiter, reassembleContent } from "../delimiter-processing.js";
 import { parseBackslashEscapes, InlineParser_Standard, InlineParser } from "../inline-parser.js";
 import { InlinePos, InlineElement, Delimiter_nestable } from "../markdown-types.js";
 import { DelimFollowerTraits, DelimiterTraits, InlineElementTraits } from "../traits.js";
@@ -25,11 +25,12 @@ export const bang_bracket_traits: DelimiterTraits = {
 export const image_traits: DelimFollowerTraits<"image"> = {
     startDelims: [ bang_bracket_traits.name ],
 
-    parse(this: InlineParser<"image">, endOfStartDelim: Delimiter_nestable, It: BlockContentIterator, startPos: InlinePos): InlineElement<"image"> | false {
+    parse(this: InlineParser<"image">, openingDelim: Delimiter_nestable, It: BlockContentIterator, startPos: InlinePos): InlineElement<"image"> | false {
         const B = this.B;
-        //this.B.linkLabel = label.slice(1, -1);
+        B.linkLabelContents = this.getDelimitedContent(openingDelim);
+        B.linkLabel = reassembleContent(B.linkLabelContents);
 
-        /*let c = It.peekChar();
+        let c = It.peekChar();
         if(c === "(") { // link destination present -> it is an inline link
             It.nextChar();
             It.skip({ ' ': true,  '\n': true });
@@ -54,8 +55,8 @@ export const image_traits: DelimFollowerTraits<"image"> = {
         }
 
         if(c === '[') { // reference link, full or collapsed
-            It.nextChar();
-            if(It.peekChar() === ']') {
+            if(It.peekForward(1) === ']') {
+                It.nextChar();
                 It.nextChar();
                 B.linkType = "collapsed";
                 return acceptable(this.MDP, B);
@@ -70,16 +71,16 @@ export const image_traits: DelimFollowerTraits<"image"> = {
 
         // shortcut reference link
         B.linkType = "shortcut";
-        return acceptable(this.MDP, B);*/
-        return B;
+        return acceptable(this.MDP, B);
     },
     
     creator(MDP) { return new InlineParser_Standard<"image">(MDP, this); },
 
     defaultElementInstance: {
-        type:        "image",
-        linkType:    "inline",
-        linkLabel:   '',
-        destination: []
+        type:              "image",
+        linkType:          "inline",
+        linkLabelContents: [],
+        linkLabel:         '',
+        destination:       []
     }
 };

@@ -156,6 +156,7 @@ function inlineParse_try(this: InlineParsingContext, t: InlineElementType | Deli
     if(typeof t === "string") {
         const P = this.provider.getInlineParser(t, openDelim);
         if(openDelim) {
+            P.setBuf(buf);
             elt = P.parseFollowingDelim(openDelim, It, checkpoint1);
             if(elt) {
                 const i0 = buf.indexOf(openDelim);

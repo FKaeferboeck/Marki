@@ -139,11 +139,12 @@ export interface InlineElementMap {
 	emphasis:   { delimiter: "*" | "_";
 				  delimiterSize: number;
                   strong: boolean; };
-	image:      { linkType:    "inline" | "reference" | "collapsed" | "shortcut";
-	              linkLabel:   string; //InlineContent;
-	              destination: AnyInline[];
-	              linkTitle?:  AnyInline[];
-				  reference?:  Block<"linkDef">; };
+	image:      { linkType:          "inline" | "reference" | "collapsed" | "shortcut";
+		          linkLabelContents: InlineContent;
+	              linkLabel:         string;
+	              destination:       AnyInline[];
+	              linkTitle?:        AnyInline[];
+				  reference?:        Block<"linkDef">; };
 }
 
 export type ExtensionInlineElementType = `ext_${ExtensionNamespace}_${string}`;

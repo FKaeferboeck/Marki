@@ -1,7 +1,7 @@
 import { backslashEscapeds } from "./inline/backslash-escape.js";
 import { parseHTML_entities } from "./inline/html-entity.js";
 import { MarkdownParser } from "./markdown-parser.js";
-import { AnyInline, Delimiter_nestable, ExtensionInlineElementType, InlineElement, InlineElementType, InlinePos } from "./markdown-types.js";
+import { AnyInline, Delimiter_nestable, ExtensionInlineElementType, InlineContent, InlineElement, InlineElementType, InlinePos } from "./markdown-types.js";
 import { DelimFollowerTraits, InlineElementTraits } from "./traits.js";
 import { BlockContentIterator } from "./util.js";
 
@@ -15,6 +15,9 @@ export interface InlineParser<K extends InlineElementType = ExtensionInlineEleme
 
     parseFollowingDelim(D: Delimiter_nestable, It: BlockContentIterator, startCheckpoint: InlinePos): false | InlineElement<K>;
 
+    setBuf(buf: InlineContent): void;
+    getDelimitedContent(D: Delimiter_nestable): InlineContent; // for use in parseFollowingDelim()
+
     MDP: MarkdownParser;
     B: InlineElement<K>;
 }
@@ -22,6 +25,7 @@ export interface InlineParser<K extends InlineElementType = ExtensionInlineEleme
 
 export class InlineParser_Standard<K extends InlineElementType = ExtensionInlineElementType> {
     type: K;
+    buf?: InlineContent;
 
     constructor(MDP: MarkdownParser, traits: InlineElementTraits<K> | DelimFollowerTraits<K>) {
         this.type   = traits.defaultElementInstance.type as K;
@@ -49,6 +53,18 @@ export class InlineParser_Standard<K extends InlineElementType = ExtensionInline
         } else
             It.setPosition(startCheckpoint); // rewind position
         return elt;
+    }
+
+    setBuf(buf: InlineContent) { this.buf = buf; }
+    getDelimitedContent(D: Delimiter_nestable) {
+        if(!this.buf)
+            throw new Error('InlineParser:buf not set');
+        if(!(D.isOpener && D.partnerDelim))
+            throw new Error('InlineParser:getDelimitedContent: given delimiter invalid for this purpose');
+        const i0 = this.buf.indexOf(D), iN = this.buf.length;
+        let i1 = i0;
+        while(++i1 < iN && this.buf[i1] !== D.partnerDelim) ;
+        return this.buf.slice(i0 + 1, i1);
     }
 
     MDP: MarkdownParser;

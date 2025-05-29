@@ -160,3 +160,12 @@ export function pairUpDelimiters(content: InlineContent) {
         D1.remaining -= isStrong;
     }
 }
+
+
+export function reassembleContent(C: InlineContent) {
+    return C.map((V, i) => {
+        if(typeof V === "string")
+            return V;
+        return (V as Delimiter).delim;
+    }).join('');
+}

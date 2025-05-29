@@ -9,7 +9,12 @@ import { BlockContentIterator, contentSlice, removeDelimiter } from "../util.js"
 export function acceptable<T extends "link" | "image">(MDP: MarkdownParser, B: InlineElement<T>) {
     switch(B.linkType) {
     case "reference":
-        return B;
+        {
+            const L = MDP.findLinkDef(B.destination[0] as string); // TODO!! Improve!
+            if(!L)    return false; // link not found
+            B.reference = L;
+            return B;
+        }
     case "collapsed":
     case "shortcut":
         {
