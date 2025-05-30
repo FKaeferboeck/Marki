@@ -81,6 +81,59 @@ export const bracket_traits: DelimiterTraits = {
 };
 
 
+export function parseLinkDestination(It: BlockContentIterator) {
+    const X: {
+        destination: AnyInline[];
+        linkTitle?:  AnyInline[];
+    } = { destination: [] };
+    
+    if(It.nextChar() !== '(')
+        return false;
+
+    It.skip({ ' ': true,  '\n': true });
+    const bracketed = It.regexInPart(/^<(?:\\[<>]|[^<>])*>/);
+    if(bracketed)
+        parseBackslashEscapes(bracketed[0].slice(1, -1), X.destination);
+    else {
+        if(It.peekChar() === '<')
+            return false;
+        const chkp = It.newCheckpoint();
+        if(untilSpaceOrStop(It) === "invalid")
+            return false;
+        parseBackslashEscapes(contentSlice(chkp, It.pos, true), X.destination);
+        It.skip({ ' ': true,  '\n': true });
+        const title = It.takeDelimited({ '"': '"',  '\'': '\'',  '(': ')' });
+        if(title)
+            parseBackslashEscapes(removeDelimiter(title), X.linkTitle = []);
+    }
+    It.skip({ ' ': true,  '\n': true });
+    return (It.nextChar() === ')' && X);
+}
+
+
+export function referenceLinkExtra(It: BlockContentIterator) { // reference link, full or collapsed
+    if(It.peekChar() !== '[')
+        return false;
+    let X: {
+        linkType:    "collapsed" | "reference",
+        destination: AnyInline[];
+    } = { linkType: "collapsed",  destination: [] };
+
+    if(It.peekForward(1) === ']') {
+        It.nextChar();
+        It.nextChar();
+        return X;
+    }
+    const ref = It.takeDelimited({ '[': ']' });
+    if(ref === false)
+        return false;
+    X.linkType = (ref ? "reference" : "collapsed");
+    ///*parseBackslashEscapes*/(removeDelimiter(ref), X.destination);
+    X.destination = [ removeDelimiter(ref) ];
+    return X;
+}
+
+
 
 export const link_traits: DelimFollowerTraits<"link"> = {
     startDelims: [ bracket_traits.name ],
@@ -98,44 +151,28 @@ export const link_traits: DelimFollowerTraits<"link"> = {
         if(containsElement(B.linkLabelContents, "link"))
             return false;
         B.linkLabel = reassembleContent(B.linkLabelContents);
+        const cpt = It.newCheckpoint();
 
-        let c = It.peekChar();
-        if(c === "(") { // link destination present -> it is an inline link
-            It.nextChar();
-            It.skip({ ' ': true,  '\n': true });
-            B.linkType = "inline";
-            const bracketed = It.regexInPart(/^<(?:\\[<>]|[^<>])*>/);
-            if(bracketed)
-                parseBackslashEscapes(bracketed[0].slice(1, -1), B.destination);
-            else {
-                if(It.peekChar() === '<')
-                    return false;
-                const chkp = It.newCheckpoint();
-                if(untilSpaceOrStop(It) === "invalid")
-                    return false;
-                parseBackslashEscapes(contentSlice(chkp, It.pos, true), B.destination);
-                It.skip({ ' ': true,  '\n': true });
-                const title = It.takeDelimited({ '"': '"',  '\'': '\'',  '(': ')' });
-                if(title)
-                    parseBackslashEscapes(removeDelimiter(title), B.linkTitle = []);
+        if(It.peekChar() === '(') { // inline link
+            const X = parseLinkDestination(It);
+            if(X) {
+                B.destination = X.destination;
+                if(X.linkTitle)
+                    B.linkTitle = X.linkTitle;
+                B.linkType = "inline";
+                return ret(B);
             }
-            It.skip({ ' ': true,  '\n': true });
-            return ret(It.nextChar() === ')' && B);
+            It.setPosition(cpt); // rewind
         }
-
-        if(c === '[') { // reference link, full or collapsed
-            if(It.peekForward(1) === ']') {
-                It.nextChar();
-                It.nextChar();
-                B.linkType = "collapsed";
+        
+        if(It.peekChar() === '[') { // reference link, full or collapsed
+            const X = referenceLinkExtra(It);
+            if(X) {
+                B.linkType    = X.linkType;
+                B.destination = X.destination;
                 return ret(acceptable(this.MDP, B));
             }
-            const ref = It.takeDelimited({ '[': ']' });
-            if(ref === false)
-                return false;
-            B.linkType = (ref ? "reference" : "collapsed");
-            parseBackslashEscapes(removeDelimiter(ref), B.destination);
-            return ret(acceptable(this.MDP, B));
+            It.setPosition(cpt); // rewind
         }
 
         // shortcut reference link

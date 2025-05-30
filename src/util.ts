@@ -358,7 +358,8 @@ export function makeBlockContentIterator(LLD: LogicalLineData, singleLine: boole
         },
 
         takeDelimited: (allowedDelimiters: Record<string, string>, delim_io?: BCI_TakeDelimited_IO) => {
-            let c = It.peekChar(), c0 = c;
+            let c = It.peekChar();
+            let escaped = false;
             let delim = delim_io?.delim || c;
             const endDelim = delim && allowedDelimiters[delim];
             if(!endDelim)
@@ -370,12 +371,12 @@ export function makeBlockContentIterator(LLD: LogicalLineData, singleLine: boole
                 delim_io.delim = c as string;
             
             while(c = It.nextChar()) {
-                if((c === delim || c === endDelim) && c0 !== '\\') {
+                if((c === delim || c === endDelim) && !escaped) {
                     if(delim_io)
                         delim_io.isOpen = false;
                     return contentSlice(chkp, It.pos, true);
                 }
-                c0 = c;
+                escaped = (c === '\\' && !escaped);
             }
             if(delim_io?.isOpen)
                 return contentSlice(chkp, It.pos, true);
@@ -427,7 +428,7 @@ const delims: Record<string, RegExp> = { '"': /\\(?=")/g,  '\'': /\\(?=')/g,
                                          '(': /\\(?=[()])/g,  '<': /\\(?=[<>])/g,  '[': /\\(?=[\[\]])/g,  '{': /\\(?=[{}])/g };
 export function removeDelimiter(s: string) {
     const rex = delims[s.charAt(0)];
-    return (rex ? s.slice(1, -1).replaceAll(rex, '') : s);
+    return (rex ? s.slice(1, -1)/*.replaceAll(rex, '')*/ : s);
 }
 
 

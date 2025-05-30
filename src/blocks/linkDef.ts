@@ -40,6 +40,8 @@ function linkDefStep(this: LinkDefParser, It: BlockContentIterator): BlockContin
         // now we finished parsing the label
         this.stage = 2;
         this.B.linkLabel = this.parts.join('\n').slice(1, -1);
+        if(/^[ \t\r\n]*$/.test(this.B.linkLabel))
+            return "reject";
         It.skipNobrSpace();
         if(!It.peekChar()) // line break after link label
             return 0;

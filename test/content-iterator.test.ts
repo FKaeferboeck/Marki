@@ -294,10 +294,10 @@ describe('Inline: Links', () => {
     doTest(546, '[foo][ref[]\n\n[ref[]: /uri'); // Link labels cannot contain brackets, unless they are backslash-escaped
     doTest(547, '[foo][ref[bar]]\n\n[ref[bar]]: /uri');
     doTest(548, '[[[foo]]]\n\n[[[foo]]]: /url');
-    //doTest(549, '[foo][ref\\[]\n\n[ref\\[]: /uri');
-    //doTest(550, '[bar\\\\]: /uri\n\n[bar\\\\]'); // Note that in this example ] is not backslash-escaped
-    //doTest(551, '[]\n\n[]: /uri'); // A link label must contain at least one character that is not a space, tab, or line ending
-    //doTest(552, '[\n ]\n\n[\n ]: /uri');
+    doTest(549, '[foo][ref\\[]\n\n[ref\\[]: /uri');
+    doTest(550, '[bar\\\\]: /uri\n\n[bar\\\\]'); // Note that in this example ] is not backslash-escaped
+    doTest(551, '[]\n\n[]: /uri'); // A link label must contain at least one character that is not a space, tab, or line ending
+    doTest(552, '[\n ]\n\n[\n ]: /uri');
     /* collapsed reference link */
     doTest(553, '[foo][]\n\n[foo]: /url "title"');
     doTest(554, '[*foo* bar][]\n\n[*foo* bar]: /url "title"'); // 
@@ -315,7 +315,7 @@ describe('Inline: Links', () => {
     doTest(565, '[foo][bar]\n\n[foo]: /url1\n[bar]: /url2'); // Full and collapsed references take precedence over shortcut references
     doTest(566, '[foo][]\n\n[foo]: /url1');
     doTest(567, '[foo]()\n\n[foo]: /url1'); // Inline links also take precedence
-    //doTest(568, '[foo](not a link)\n\n[foo]: /url1');
+    doTest(568, '[foo](not a link)\n\n[foo]: /url1');
     doTest(569, '[foo][bar][baz]\n\n[baz]: /url'); // In the following case [bar][baz] is parsed as a reference, [foo] as normal text
     doTest(570, '[foo][bar][baz]\n\n[baz]: /url1\n[bar]: /url2'); // Here, though, [foo][bar] is parsed as a reference, since [bar] is defined
     doTest(571, '[foo][bar][baz]\n\n[baz]: /url1\n[foo]: /url2'); // Here [foo] is not parsed as a shortcut reference, because it is followed by a link label (even though [bar] is not defined)
