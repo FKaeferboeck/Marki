@@ -1,8 +1,8 @@
 import { T } from "vitest/dist/chunks/environment.d.C8UItCbf.js";
-import { makeDelimiter, reassembleContent } from "../delimiter-processing.js";
+import { makeDelimiter, pairUpDelimiters, reassembleContent } from "../delimiter-processing.js";
 import { parseBackslashEscapes, InlineParser_Standard, InlineParser } from "../inline-parser.js";
 import { InlinePos, InlineElement, Delimiter_nestable } from "../markdown-types.js";
-import { DelimFollowerTraits, DelimiterTraits, InlineElementTraits } from "../traits.js";
+import { DelimFollowerTraits, DelimiterTraits } from "../traits.js";
 import { BlockContentIterator, contentSlice, removeDelimiter } from "../util.js";
 import { acceptable, untilSpaceOrStop } from "./link.js";
 
@@ -28,6 +28,7 @@ export const image_traits: DelimFollowerTraits<"image"> = {
     parse(this: InlineParser<"image">, openingDelim: Delimiter_nestable, It: BlockContentIterator, startPos: InlinePos): InlineElement<"image"> | false {
         const B = this.B;
         B.linkLabelContents = this.getDelimitedContent(openingDelim);
+        pairUpDelimiters(B.linkLabelContents);
         B.linkLabel = reassembleContent(B.linkLabelContents);
 
         let c = It.peekChar();

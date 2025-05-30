@@ -130,11 +130,12 @@ export interface InlineElementMap {
                   valid: boolean; }
 	html:       { stuff: string;  continues?: boolean; };
 	codeSpan:   { content: string; };
-	link:       { linkType:    "inline" | "reference" | "collapsed" | "shortcut";
-	              linkLabel:   string; //InlineContent;
-	              destination: AnyInline[];
-	              linkTitle?:  AnyInline[];
-				  reference?:  Block<"linkDef">; };
+	link:       { linkType:          "inline" | "reference" | "collapsed" | "shortcut";
+		          linkLabelContents: InlineContent;
+	              linkLabel:         string;
+	              destination:       AnyInline[];
+	              linkTitle?:        AnyInline[];
+				  reference?:        Block<"linkDef">; };
 	hardBreak:  { nSpaces: number | false; }; // nSpaces === false means backslash
 	emphasis:   { delimiter: "*" | "_";
 				  delimiterSize: number;

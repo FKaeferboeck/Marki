@@ -245,7 +245,7 @@ describe('Inline: Links', () => {
     doTest(498, '[link](foo\\(and\\(bar\\))');
     doTest(499, '[link](<foo(and(bar)>)');
     doTest(500, '[link](foo\\)\:)'); // Parentheses and other symbols can also be escaped, as usual in Markdown
-    //doTest(501, '[link](#fragment)\n\n[link](https://example.com#fragment)\n\n[link](https://example.com?foo=3#frag)'); // A link can contain fragment identifiers and queries
+    doTest(501, '[link](#fragment)\n\n[link](https://example.com#fragment)\n\n[link](https://example.com?foo=3#frag)'); // A link can contain fragment identifiers and queries
     doTest(502, '[link](foo\\bar)'); // Note that a backslash before a non-escapable character is just a backslash
     doTest(503, '[link](foo%20b&auml;)');
     doTest(504, '[link]("title")');
@@ -256,25 +256,69 @@ describe('Inline: Links', () => {
     doTest(509, '[link](/url \'title "and" title\')'); // But it is easy to work around this by using a different quote type
     doTest(510, '[link](   /uri\n  "title"  )'); // Spaces, tabs, and up to one line ending is allowed around the destination and title
     doTest(511, '[linki] (/uri)'); // But it is not allowed between the link text and the following parenthesis (it could be a shortcut reference link if defined)
-    /*doTest(512, '[link [foo [bar]]](/uri)'); // The link text may contain balanced brackets, but not unbalanced ones, unless they are escaped
+    doTest(512, '[link [foo [bar]]](/uri)'); // The link text may contain balanced brackets, but not unbalanced ones, unless they are escaped
     doTest(513, '[linki] bar](/uri)');
     doTest(514, '[linki [bar](/uri)');
     doTest(515, '[link \\[bar](/uri)');
-    //doTest(516, '[link *foo **bar** `#`*](/uri)'); // The link text may contain inline content
-    //doTest(517, '[![moon](moon.jpg)](/uri)');
-    //doTest(518, '[foo [bar](/uri)](/uri)'); // However, links may not contain other links, at any level of nesting
+    doTest(516, '[link *foo **bar** `#`*](/uri)'); // The link text may contain inline content
+    doTest(517, '[![moon](moon.jpg)](/uri)');
+    doTest(518, '[foo [bar](/uri)](/uri)'); // However, links may not contain other links, at any level of nesting
     doTest(519, '[foo *[bar [baz](/uri)](/uri)*](/uri)');
     doTest(520, '![[[foo](uri1)](uri2)](uri3)');
     doTest(521, '*[foo*](/uri)'); // These cases illustrate the precedence of link text grouping over emphasis grouping
     doTest(522, '[foo *bar](baz*)');
-    doTest(523, '*foo [bar* baz]'); // Note that brackets that *aren’t* part of links do not take precedence
+    doTest(523, '*foo [bar* baz]'); // Note that brackets that *aren't* part of links do not take precedence
     doTest(524, '[foo <bar attr="](baz)">'); // These cases illustrate the precedence of HTML tags, code spans, and autolinks over link grouping
     doTest(525, '[foo`](/uri)`');
-    doTest(526, '[foo<https://example.com/?search=](uri)>');
-    /*doTest(527, ''); // 
-    doTest(528, ''); // 
-    doTest(529, ''); // 
-    doTest(530, ''); // */
+    //doTest(526, '[foo<https://example.com/?search=](uri)>');
+    /* full reference links */
+    doTest(527, '[foo][bar]\n\n[bar]: /url "title"');
+    doTest(528, '[link [foo [bar]]][ref]\n\n[ref]: /uri'); // The link text may contain balanced brackets, but not unbalanced ones, unless they are escaped
+    doTest(529, '[link \[bar][ref]\n\n[ref]: /uri');
+    doTest(530, '[link *foo **bar** `#`*][ref]\n\n[ref]: /uri'); // The link text may contain inline content
+    doTest(531, '[![moon](moon.jpg)][ref]\n\n[ref]: /uri');
+    doTest(532, '[foo [bar](/uri)][ref]\n\n[ref]: /uri'); // However, links may not contain other links, at any level of nesting
+    doTest(533, '[foo *bar [baz][ref]*][ref]\n\n[ref]: /uri');
+    doTest(534, '*[foo*][ref]\n\n[ref]: /uri'); // The following cases illustrate the precedence of link text grouping over emphasis grouping
+    doTest(535, '[foo *bar][ref]*\n\n[ref]: /uri');
+    //doTest(536, '[foo <bar attr="][ref]">\n\n[ref]: /uri'); // These cases illustrate the precedence of HTML tags, code spans, and autolinks over link grouping
+    doTest(537, '[foo`][ref]`\n\n[ref]: /uri');
+    //doTest(538, '[foo<https://example.com/?search=][ref]>\n\n[ref]: /uri');
+    doTest(539, '[foo][BaR]\n\n[bar]: /url "title"'); // Matching is case-insensitive
+    //doTest(540, '[ẞ]\n\n[SS]: /url'); // Unicode case fold is used
+    //doTest(541, '[Foo\n  bar]: /url\n\n[Baz][Foo bar]'); // Consecutive internal spaces, tabs, and line endings are treated as one space for purposes of determining matching
+    doTest(542, '[foo] [bar]\n\n[bar]: /url "title"'); // No spaces, tabs, or line endings are allowed between the link text and the link label
+    doTest(543, '[foo]\n[bar]\n\n[bar]: /url "title"');
+    doTest(544, '[foo]: /url1\n\n[foo]: /url2\n\n[bar][foo]'); // When there are multiple matching link reference definitions, the first is used
+    doTest(545, '[bar][foo\\!]\n\n[foo!]: /url'); // matching is performed on normalized strings, not parsed inline content
+    doTest(546, '[foo][ref[]\n\n[ref[]: /uri'); // Link labels cannot contain brackets, unless they are backslash-escaped
+    doTest(547, '[foo][ref[bar]]\n\n[ref[bar]]: /uri');
+    doTest(548, '[[[foo]]]\n\n[[[foo]]]: /url');
+    //doTest(549, '[foo][ref\\[]\n\n[ref\\[]: /uri');
+    //doTest(550, '[bar\\\\]: /uri\n\n[bar\\\\]'); // Note that in this example ] is not backslash-escaped
+    //doTest(551, '[]\n\n[]: /uri'); // A link label must contain at least one character that is not a space, tab, or line ending
+    //doTest(552, '[\n ]\n\n[\n ]: /uri');
+    /* collapsed reference link */
+    doTest(553, '[foo][]\n\n[foo]: /url "title"');
+    doTest(554, '[*foo* bar][]\n\n[*foo* bar]: /url "title"'); // 
+    doTest(555, '[Foo][]\n\n[foo]: /url "title"'); // The link labels are case-insensitive
+    doTest(556, '[foo] \n[]\n\n[foo]: /url "title"'); // As with full reference links, spaces, tabs, or line endings are not allowed between the two sets of brackets
+    /* shortcut reference link */
+    doTest(557, '[foo]\n\n[foo]: /url "title"');
+    doTest(558, '[*foo* bar]\n\n[*foo* bar]: /url "title"');
+    doTest(559, '[[*foo* bar]]\n\n[*foo* bar]: /url "title"');
+    doTest(560, '[[bar [foo]\n\n[foo]: /url');
+    doTest(561, '[Foo]\n\n[foo]: /url "title"'); // The link labels are case-insensitive
+    doTest(562, '[foo] bar\n\n[foo]: /url'); // A space after the link text should be preserved
+    doTest(563, '\\[foo]\n\n[foo]: /url "title"'); // If you just want bracketed text, you can backslash-escape the opening bracket to avoid links
+    doTest(564, '[foo*]: /url\n\n*[foo*]'); // Note that this is a link, because a link label ends with the first following closing bracket
+    doTest(565, '[foo][bar]\n\n[foo]: /url1\n[bar]: /url2'); // Full and collapsed references take precedence over shortcut references
+    doTest(566, '[foo][]\n\n[foo]: /url1');
+    doTest(567, '[foo]()\n\n[foo]: /url1'); // Inline links also take precedence
+    //doTest(568, '[foo](not a link)\n\n[foo]: /url1');
+    doTest(569, '[foo][bar][baz]\n\n[baz]: /url'); // In the following case [bar][baz] is parsed as a reference, [foo] as normal text
+    doTest(570, '[foo][bar][baz]\n\n[baz]: /url1\n[bar]: /url2'); // Here, though, [foo][bar] is parsed as a reference, since [bar] is defined
+    doTest(571, '[foo][bar][baz]\n\n[baz]: /url1\n[foo]: /url2'); // Here [foo] is not parsed as a shortcut reference, because it is followed by a link label (even though [bar] is not defined)
 });
 
 

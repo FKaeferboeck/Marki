@@ -6,7 +6,7 @@ import { emphasis_traits_asterisk, emphasis_traits_underscore } from "./inline/e
 import { hardBreak_traits } from "./inline/hard-break.js";
 import { htmlEntity_traits } from "./inline/html-entity.js";
 import { bang_bracket_traits, image_traits } from "./inline/image.js";
-import { link_traits } from "./inline/link.js";
+import { bracket_traits, link_traits } from "./inline/link.js";
 import { AnyBlock, Block, BlockBase, BlockType, BlockType_Container, LogicalLineData, isContainer } from "./markdown-types.js";
 import { LineStructure } from "./parser.js";
 import { BlockParserTraitsList, BlockTraits, BlockTraits_Container, DelimiterTraits, InlineParserTraitsList } from "./traits.js";
@@ -48,6 +48,7 @@ export const standardInlineParserTraits: InlineParserTraitsList = {
 export const standardDelimiterTraits: Record<string, DelimiterTraits> = {
 	emph_asterisk:   emphasis_traits_asterisk,
 	emph_underscore: emphasis_traits_underscore,
+	bracket:         bracket_traits,
 	bang_bracket:    bang_bracket_traits // ![ ... ] — in CommonMark only used for image descriptions
 }
 

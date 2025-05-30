@@ -1,8 +1,8 @@
 import { parseBackslashEscapes } from "../inline-parser.js";
-import { AnyBlock, AnyInline, Block, BlockType, Delimiter, InlineContent, inlineContentCategory, InlineElement, InlineElementType, isNestableDelimiter } from "../markdown-types.js";
+import { AnyBlock, AnyInline, Block, BlockType, InlineContent, inlineContentCategory, InlineElement, InlineElementType } from "../markdown-types.js";
 import { InlineHandlerList, InlineRenderer, renderInline } from "./inline-renderer.js";
 import { renderHTML_entity, escapeXML, escapeXML_all, urlEncode } from "./util.js";
-import { inlineRenderer_plain } from "./utility-renderers.js";
+import { getInlineRenderer_plain } from "./utility-renderers.js";
 
 export interface Inserter {
     add(... S: string[]): void;
@@ -118,17 +118,15 @@ export class Renderer {
         "escaped":    (elt, I) => I.add(escapeXML(elt.character)),
         "codeSpan":   (elt, I) => I.add(`<code>${escapeXML(elt.content)}</code>`),
         "html":       (elt, I) => I.add(elt.stuff),
-        "link":       (elt, I) => {
-            //console.log(elt.reference)
-            const dst   = elt.reference?.destination || elt.destination;
+        "link":       function(elt, I) {
+            const dest  = elt.reference?.destination || elt.destination;
             const title = elt.reference?.linkTitle   || elt.linkTitle;
             const title_s = (title && title.length > 0 ? escapeXML_all(title) : undefined);
-            I.add(`<a href="${urlEncode(dst)}"${title_s ? ` title="${title_s}"` : ''}>`);
-            //referenceRenderInline(elt.linkLabel, buf);
-            //console.log(`{${elt.linkLabel}}`);
-            const buf2: AnyInline[] = [];
+            I.add(`<a href="${urlEncode(dest)}"${title_s ? ` title="${title_s}"` : ''}>`);
+            /*const buf2: AnyInline[] = [];
             parseBackslashEscapes(elt.linkLabel, buf2);
-            I.add(... buf2.map(s => (typeof s === "string" ? s : s.type === "escaped" ? s.character : '??')));
+            I.add(... buf2.map(s => (typeof s === "string" ? s : s.type === "escaped" ? s.character : '??')));*/
+            this.render(elt.linkLabelContents, I);
             //I.add(elt.linkLabel);
             I.add('</a>');
         },
@@ -136,13 +134,13 @@ export class Renderer {
         "htmlEntity": (elt, I) => I.add(escapeXML(renderHTML_entity(elt))),
         "image":      function(elt, I) {
             const dest  = elt.reference?.destination || elt.destination;
-            const title = elt.linkTitle || elt.reference?.linkTitle;
+            const title = elt.reference?.linkTitle   || elt.linkTitle;
             I.add(`<img src="${dest.join('+')}"`);
+            const inlineRenderer_plain = getInlineRenderer_plain();
             I.add(` alt="${renderInline(elt.linkLabelContents, inlineRenderer_plain)}"`);
             if(title?.length)
                 I.add(` title="${renderInline(title, inlineRenderer_plain)}"`);
             I.add(' />');
-            return elt.linkLabelContents.length + 2;
         }
     };
 

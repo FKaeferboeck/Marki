@@ -1,4 +1,6 @@
 import { Delimiter_emph, Delimiter, InlinePos, InlineContent, InlineContentElement, DelimiterSide, Delimiter_nestable, isNestableDelimiter } from "./markdown-types.js";
+import { renderInline } from "./renderer/inline-renderer.js";
+import { getInlineRenderer_reassemble } from "./renderer/utility-renderers.js";
 import { DelimiterTraits } from "./traits.js";
 import { BlockContentIterator } from "./util.js";
 
@@ -85,8 +87,7 @@ export function makeDelimiter(delim: string, expected_end_delim: string | number
         return {
             type: '?',
             delim,
-            remaining: expected_end_delim,
-            active: true
+            remaining: expected_end_delim
         };
 }
 
@@ -162,10 +163,4 @@ export function pairUpDelimiters(content: InlineContent) {
 }
 
 
-export function reassembleContent(C: InlineContent) {
-    return C.map((V, i) => {
-        if(typeof V === "string")
-            return V;
-        return (V as Delimiter).delim;
-    }).join('');
-}
+export const reassembleContent = (C: InlineContent) => renderInline(C, getInlineRenderer_reassemble());

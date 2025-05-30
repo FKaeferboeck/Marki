@@ -1,9 +1,9 @@
-import { InlineParser_Standard, parseBackslashEscapes } from "../inline-parser.js";
+import { makeDelimiter, pairUpDelimiters, reassembleContent } from "../delimiter-processing.js";
+import { InlineParser, InlineParser_Standard, parseBackslashEscapes } from "../inline-parser.js";
 import { MarkdownParser } from "../markdown-parser.js";
-import { AnyInline, InlineElement } from "../markdown-types.js";
-import { InlineElementTraits } from "../traits.js";
+import { AnyInline, Delimiter_nestable, InlineContent, InlineElement, InlineElementType, InlinePos } from "../markdown-types.js";
+import { DelimFollowerTraits, DelimiterTraits } from "../traits.js";
 import { BlockContentIterator, contentSlice, removeDelimiter } from "../util.js";
-
 
 
 export function acceptable<T extends "link" | "image">(MDP: MarkdownParser, B: InlineElement<T>) {
@@ -60,18 +60,44 @@ export function takeLinkTitle(It: BlockContentIterator, linkTitle: AnyInline[]) 
 }
 
 
-export const link_traits: InlineElementTraits<"link"> = {
+export const containsElement = (C: InlineContent, t: InlineElementType) => C.some(elt => {
+    if(typeof elt === "string")
+        return false;
+    // TODO!! Make recursive for indirect contains
+    return (elt.type === t);
+});
+
+
+
+export const bracket_traits: DelimiterTraits = {
+    name: "bracket",
     startChars: [ '[' ],
+    category: "emphLoose",
 
-    parse(It) {
-        if(It.peekChar() !== '[')
-            return false;
+    parseDelimiter(It: BlockContentIterator) {
+        It.nextChar(); // '['
+        return makeDelimiter('[', ']');
+    }
+};
+
+
+
+export const link_traits: DelimFollowerTraits<"link"> = {
+    startDelims: [ bracket_traits.name ],
+
+    parse(this: InlineParser<"link">, openingDelim: Delimiter_nestable, It: BlockContentIterator, startPos: InlinePos): InlineElement<"link"> | false {
+        const ret = (B: InlineElement<"link"> | false) => {
+            if(B === false)
+                return false;
+            pairUpDelimiters(B.linkLabelContents);
+            return B;
+        };
+
         const B = this.B;
-
-        const label = It.takeDelimited({ '[': ']' });
-        if(!label)
+        B.linkLabelContents = this.getDelimitedContent(openingDelim);
+        if(containsElement(B.linkLabelContents, "link"))
             return false;
-        this.B.linkLabel = label.slice(1, -1);
+        B.linkLabel = reassembleContent(B.linkLabelContents);
 
         let c = It.peekChar();
         if(c === "(") { // link destination present -> it is an inline link
@@ -94,39 +120,39 @@ export const link_traits: InlineElementTraits<"link"> = {
                     parseBackslashEscapes(removeDelimiter(title), B.linkTitle = []);
             }
             It.skip({ ' ': true,  '\n': true });
-            return (It.nextChar() === ')' && B);
+            return ret(It.nextChar() === ')' && B);
         }
 
         if(c === '[') { // reference link, full or collapsed
-            It.nextChar();
-            if(It.peekChar() === ']') {
+            if(It.peekForward(1) === ']') {
+                It.nextChar();
                 It.nextChar();
                 B.linkType = "collapsed";
-                return acceptable(this.MDP, B);
+                return ret(acceptable(this.MDP, B));
             }
             const ref = It.takeDelimited({ '[': ']' });
             if(ref === false)
                 return false;
             B.linkType = (ref ? "reference" : "collapsed");
             parseBackslashEscapes(removeDelimiter(ref), B.destination);
-            return acceptable(this.MDP, B);
+            return ret(acceptable(this.MDP, B));
         }
 
         // shortcut reference link
         B.linkType = "shortcut";
-        return acceptable(this.MDP, B);
+        return ret(acceptable(this.MDP, B));
     },
     
     creator(MDP) { return new InlineParser_Standard<"link">(MDP, this); },
 
     defaultElementInstance: {
-        type:        "link",
-        linkType:    "inline",
-        linkLabel:   '',
-        destination: []
+        type:              "link",
+        linkType:          "inline",
+        linkLabelContents: [],
+        linkLabel:         '',
+        destination:       []
     }
 };
-
 
 
 export function untilSpaceOrStop(It: BlockContentIterator) {

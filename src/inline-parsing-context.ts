@@ -163,6 +163,7 @@ function inlineParse_try(this: InlineParsingContext, t: InlineElementType | Deli
                 if(i0 < 0)
                     throw new Error('Opening delimiter not found where it should be!');
                 buf[i0] = elt; // The delimiter-following element replaces the opening delimiter in the inline content array, this makes it much easier to render.
+                buf.splice(i0 + 1); // Remove delimited content from primary sequence, it's contained somewhere in the delimiter-following element instead.
                 It.setCheckPoint(checkpoint);
                 return true;
             }

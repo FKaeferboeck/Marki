@@ -38,9 +38,7 @@ export class InlineRenderer {
                 const H = this.inlineHandler[(elt as InlineElement<InlineElementType>).type];
                 if(!H)
                     break;
-                const i1 = (H as any).call(this, elt, I, data, i);
-                if(typeof i1 === "number")
-                    i += i1 - 1;
+                (H as any).call(this, elt, I, data, i);
                 break;
             }
         }
