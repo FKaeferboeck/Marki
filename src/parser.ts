@@ -259,11 +259,11 @@ export function linify_(text: string, pos: Position, inCmt: false | HTML_Markup[
 				curEntity = startEntity(i, "XML_Comment");
 				i += 3;
 			}
-			else if(/^<[\/:A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\u{10000}-\u{EFFFF}]/u.test(text.slice(i, i + 2))) { // html tag (we are very loose with the syntax)
+			/*else if(/^<[\/:A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\u{10000}-\u{EFFFF}]/u.test(text.slice(i, i + 2))) { // html tag (we are very loose with the syntax)
 				finishEntity(i, true);
 				curEntity = startEntity(i, "HTML_Tag");
 				i += 1;
-			}
+			}*/
 			break;
 		case '-':
 			if(text.startsWith('-->', i) && isCmt(curEntity)) {

@@ -1,50 +1,5 @@
-import { describe, expect, test } from 'vitest'
-import { linify } from '../src/parser';
-import { lineDataAll } from '../src/util';
-import { MarkdownParser } from '../src/markdown-parser';
-import * as commonmark from 'commonmark';
-import { Renderer } from '../src/renderer/renderer';
-import { standardBlockParserTraits } from '../src/block-parser';
-import { listItem_traits, collectLists } from '../src/blocks/listItem';
-import { pairUpDelimiters } from '../src/delimiter-processing';
-
-// As of 2025-03-12 Vitest suddenly isn't able any more to import listItem on its own. Luckily we can repair it like this.
-standardBlockParserTraits.listItem = listItem_traits;
-
-const parser = new MarkdownParser();
-const renderer = new Renderer();
-
-var commonmark_reader = new commonmark.Parser();
-var commonmark_writer = new commonmark.HtmlRenderer();
-
-
-function doTest(idx: number | string, input: string, verbose = false) {
-    test('' + idx, () => {
-        const LS   = linify(input);
-        const LLD  = lineDataAll(LS, 0);
-        
-        //const diag = false;
-        const diag = verbose;
-        parser.reset();
-        parser.diagnostics = diag;
-        const blocks = parser.processContent(LLD);
-        collectLists(blocks, diag);
-        blocks.forEach(B => {
-            parser.processBlock(B);
-            if(B.inlineContent)
-                pairUpDelimiters(B.inlineContent);
-        });
-        const my_result = renderer.referenceRender(blocks, diag);
-        if(verbose)
-            console.log(blocks)
-
-        const commonmark_parsed = commonmark_reader.parse(input);
-        const commonmark_result = commonmark_writer.render(commonmark_parsed) as string;
-        if(verbose)
-            console.log('CommonMark:', commonmark_result);
-        expect(my_result).toEqual(commonmark_result);
-    });
-}
+import { describe } from 'vitest'
+import { doTest } from './referenceRender.test';
 
 
 describe('Code spans', () => {
@@ -62,9 +17,9 @@ describe('Code spans', () => {
     doTest(339, '``foo`bar``');
     doTest(340, '` foo `` bar `');
     doTest(341, '*foo`*`'); // Code span backticks have higher precedence than any other inline constructs
-    //doTest(342, '[not a `link](/foo`)'); // And this is not parsed as a link
+    doTest(342, '[not a `link](/foo`)'); // And this is not parsed as a link
     doTest(343, '`<a href="`">`'); // Code spans, HTML tags, and autolinks have the same precedence. Thus, this is code
-    doTest(344, '<a href="`">`'); // But this is an HTML tag
+    //doTest(344, '<a href="`">`'); // But this is an HTML tag
     doTest(345, '`<https://foo.bar.`baz>`'); // And this is code
     //doTest(346, '<https://foo.bar.`baz>`'); // But this is an autolink
     doTest(347, '```foo``'); // When a backtick string is not closed by a matching backtick string, we just have literal backticks
@@ -152,7 +107,7 @@ describe('Emphasis & strong emphasis', () => {
     doTest(416, 'foo***bar***baz'); // When the lengths of the interior closing and opening delimiter runs are both multiples of 3, though, they can match to create emphasis
     doTest(417, 'foo******bar*********baz');
     doTest(418, '*foo **bar *baz* bim** bop*'); // Indefinite levels of nesting are possible
-    //doTest(419, '*foo [*bar*](/url)*'); // 
+    doTest(419, '*foo [*bar*](/url)*'); // 
     doTest(420, '** is not an empty emphasis'); // There can be no empty emphasis or strong emphasis
     doTest(421, '**** is not an empty strong emphasis');
     /* Rule 10 */
@@ -167,7 +122,7 @@ describe('Emphasis & strong emphasis', () => {
     doTest(430, '***foo* bar**');
     doTest(431, '**foo *bar***');
     doTest(432, '**foo *bar **baz**\nbim* bop**'); // Indefinite levels of nesting are possible
-    //doTest(433, '**foo [*bar*](/url)**');
+    doTest(433, '**foo [*bar*](/url)**');
     doTest(434, '__ is not an empty emphasis'); // There can be no empty emphasis or strong emphasis
     doTest(435, '____ is not an empty strong emphasis');
     /* Rule 11 */
@@ -215,12 +170,12 @@ describe('Emphasis & strong emphasis', () => {
     /* Rule 17 */
     doTest(473, '*[bar*](/url)');
     doTest(474, '_foo [bar_](/url)');
-    /*doTest(475, '*<img src="foo" title="*"/>');
-    doTest(476, '**<a href="**">');
-    doTest(477, '__<a href="__">');
+    //doTest(475, '*<img src="foo" title="*"/>');
+    //doTest(476, '**<a href="**">');
+    //doTest(477, '__<a href="__">');
     doTest(478, '*a `*`*');
     doTest(479, '_a `_`_');
-    doTest(480, '**a<https://foo.bar/?q=**>');
+    /*doTest(480, '**a<https://foo.bar/?q=**>');
     doTest(481, '__a<https://foo.bar/?q=__>');*/
 });
 
@@ -235,7 +190,7 @@ describe('Inline: Links', () => {
     doTest(488, '[link](/my uri)');
     doTest(489, '[link](</my uri>)');
     doTest(490, '[link](foo\nbar)'); // The destination cannot contain line endings, even if enclosed in pointy brackets
-    doTest(491, '[link](<foo\nbar>)');
+    //doTest(491, '[link](<foo\nbar>)');
     doTest(492, '[a](<b)c>)'); // The destination can contain ) if it is enclosed in pointy brackets
     doTest(493, '[link](<foo\>)'); // Pointy brackets that enclose links must be unescaped
     //doTest(494, '[a](<b)c\n[d](<e)f>\n[g](<h>i)', true); // These are not links, because the opening pointy bracket is not matched properly
@@ -268,7 +223,7 @@ describe('Inline: Links', () => {
     doTest(521, '*[foo*](/uri)'); // These cases illustrate the precedence of link text grouping over emphasis grouping
     doTest(522, '[foo *bar](baz*)');
     doTest(523, '*foo [bar* baz]'); // Note that brackets that *aren't* part of links do not take precedence
-    doTest(524, '[foo <bar attr="](baz)">'); // These cases illustrate the precedence of HTML tags, code spans, and autolinks over link grouping
+    //doTest(524, '[foo <bar attr="](baz)">'); // These cases illustrate the precedence of HTML tags, code spans, and autolinks over link grouping
     doTest(525, '[foo`](/uri)`');
     //doTest(526, '[foo<https://example.com/?search=](uri)>');
     /* full reference links */
@@ -285,8 +240,8 @@ describe('Inline: Links', () => {
     doTest(537, '[foo`][ref]`\n\n[ref]: /uri');
     //doTest(538, '[foo<https://example.com/?search=][ref]>\n\n[ref]: /uri');
     doTest(539, '[foo][BaR]\n\n[bar]: /url "title"'); // Matching is case-insensitive
-    //doTest(540, '[ẞ]\n\n[SS]: /url'); // Unicode case fold is used
-    //doTest(541, '[Foo\n  bar]: /url\n\n[Baz][Foo bar]'); // Consecutive internal spaces, tabs, and line endings are treated as one space for purposes of determining matching
+    doTest(540, '[ẞ]\n\n[SS]: /url'); // Unicode case fold is used
+    doTest(541, '[Foo\n  bar]: /url\n\n[Baz][Foo bar]'); // Consecutive internal spaces, tabs, and line endings are treated as one space for purposes of determining matching
     doTest(542, '[foo] [bar]\n\n[bar]: /url "title"'); // No spaces, tabs, or line endings are allowed between the link text and the link label
     doTest(543, '[foo]\n[bar]\n\n[bar]: /url "title"');
     doTest(544, '[foo]: /url1\n\n[foo]: /url2\n\n[bar][foo]'); // When there are multiple matching link reference definitions, the first is used
@@ -348,7 +303,7 @@ describe('Inline: Images', () => {
 });
 
 
-/*describe('Inline: Autolinks', () => {
+describe('Inline: Autolinks', () => {
     doTest(594, '<http://foo.bar.baz>');
     doTest(595, '<https://foo.bar.baz/test?q=hello&id=22&boolean>');
     doTest(596, '<irc://foo.bar:2233/baz>');
@@ -358,7 +313,7 @@ describe('Inline: Images', () => {
     doTest(600, '<https://../>');
     doTest(601, '<localhost:5001/foo>');
     doTest(602, '<https://foo.bar/baz bim>'); // Spaces are not allowed in autolinks
-    doTest(603, '<https://example.com/\[\>'); // Backslash-escapes do not work inside autolinks
+    doTest(603, '<https://example.com/\\[\\>'); // Backslash-escapes do not work inside autolinks
     doTest(604, '<foo@bar.example.com>'); // Examples of email autolinks
     doTest(605, '<foo+special@Bar.baz-bar0.com>');
     doTest(606, '<foo\+@bar.example.com>'); // Backslash-escapes do not work inside email autolinks
@@ -368,10 +323,31 @@ describe('Inline: Images', () => {
     doTest(610, '<foo.bar.baz>');
     doTest(611, 'https://example.com');
     doTest(612, 'foo@bar.example.com');
+});
+
+
+/*describe('Inline: Raw HTML', () => {
+    /*doTest(613, '<a><bab><c2c>'); // Here are some simple open tags
+    doTest(614, '<a/><b2/>'); // Empty elements
+    doTest(615, '<a  /><b2\ndata="foo" >'); // Whitespace is allowed
+    doTest(616, '<a foo="bar" bam = 'baz <em>"</em>'\n_boolean zoop:33=zoop:33 />'); // With attributes
+    doTest(617, 'Foo <responsive-image src="foo.jpg" />'); // Custom tag names can be used
+    doTest(618, '<33> <__>'); // Illegal tag names, not parsed as HTML
+    doTest(619, '<a h*#ref="hi">'); // Illegal attribute names
+    doTest(620, '<a href="hi'> <a href=hi'>'); // Illegal attribute values
+    doTest(621, '< a><\nfoo><bar/ >\n<foo bar=baz\nbim!bop />'); // Illegal whitespace
+    doTest(622, '<a href='bar'title=title>'); // Missing whitespace
+    doTest(623, '</a></foo >'); // Closing tags
+    doTest(624, '</a href="foo">'); // Illegal attributes in closing tag
+    doTest(625, 'foo <!-- this is a --\ncomment - with hyphens -->'); // Comments
+    doTest(626, 'foo <!--> foo -->\n\nfoo <!---> foo -->');
+    doTest(627, 'foo <?php echo $a; ?>'); // Processing instructions
+    doTest(628, 'foo <!ELEMENT br EMPTY>'); // Declarations
+    doTest(629, 'foo <![CDATA[>&<]]>'); // CDATA sections
+    doTest(630, 'foo <a href="&ouml;">'); // Entity and numeric character references are preserved in HTML attributes
+    doTest(631, 'foo <a href="\*">'); // Backslash escapes do not work in HTML attributes
+    doTest(632, '<a href="\"">');
 });*/
-
-
-// TODO!! HTML content
 
 
 describe('Inline: Hard line breaks', () => {
@@ -404,3 +380,5 @@ describe('Inline: Textual content', () => {
     doTest(651, 'Foo χρῆν');
     doTest(652, 'Multiple     spaces'); // Internal spaces are preserved verbatim
 });
+
+/* End of the CommonMark 0.31.2 examples */

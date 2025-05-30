@@ -141,6 +141,14 @@ export class Renderer {
             if(title?.length)
                 I.add(` title="${renderInline(title, inlineRenderer_plain)}"`);
             I.add(' />');
+        },
+        "autolink": (elt, I) => {
+            if(elt.email)
+                I.add(`<a href="mailto:${elt.email}">${elt.email}</a>`);
+            else {
+                const URI = escapeXML(elt.URI);
+                I.add(`<a href="${elt.scheme}:${urlEncode([URI])}">${elt.scheme}:${URI}</a>`);
+            }
         }
     };
 

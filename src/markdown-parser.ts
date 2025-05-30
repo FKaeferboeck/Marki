@@ -1,5 +1,6 @@
 import { BlockContainer, BlockParser, BlockParserBase, BlockParser_Container, BlockParser_Standard, standardBlockParserTraits } from "./block-parser.js";
 import { InlineParserProvider, processInline } from "./inline-parsing-context.js";
+import { autolink_traits } from "./inline/autolink.js";
 import { escaped_traits } from "./inline/backslash-escape.js";
 import { codeSpan_traits } from "./inline/code-span.js";
 import { emphasis_traits_asterisk, emphasis_traits_underscore } from "./inline/emphasis.js";
@@ -42,7 +43,8 @@ export const standardInlineParserTraits: InlineParserTraitsList = {
 	link:       link_traits,
 	hardBreak:  hardBreak_traits,
 	htmlEntity: htmlEntity_traits,
-	image:      image_traits
+	image:      image_traits,
+	autolink:   autolink_traits
 };
 
 export const standardDelimiterTraits: Record<string, DelimiterTraits> = {
@@ -187,11 +189,14 @@ export class MarkdownParser implements BlockContainer {
 
 	private linkDefs: Record<string, Block<"linkDef">> = { };
 	registerLinkDef(B: Block<"linkDef">) {
-		const label = B.linkLabel.toLowerCase();
+		/* CommonMark: "Consecutive internal spaces, tabs, and line endings are treated as one space for purposes of determining matching" */
+		// Note: CommonMark prescribes "Unicode case fold", but the reference implementation just does this ".toLowerCase().toUpperCase()"
+		//       procedure, so apparently that's good enough.
+		const label = B.linkLabel.trim().replace(/[ \t\r\n]+/g, ' ').toLowerCase().toUpperCase();
 		this.linkDefs[label] ||= B; // ||= because the first occurance of a link label takes precedence
 	}
 	findLinkDef(label: string): Block<"linkDef"> | undefined {
-		label = label.toLowerCase();
+		label = label.trim().replace(/[ \t\r\n]+/g, ' ').toLowerCase().toUpperCase();
 		return this.linkDefs[label];
 	}
 

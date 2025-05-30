@@ -41,7 +41,8 @@ export const urlEncode = (S: AnyInline[]) => {
         default:            return '';
         }
     }).join('');
-    return joined.replaceAll(/[^A-Za-z\d-._~!#$&'()*+,/:l=?@\[\]]/g, (c, i: number) => {
+    return joined.replaceAll(/[^A-Za-z\d-._~!#$&'()*+,/:;=?@]/g, (c, i: number) => {
+    //return joined.replaceAll(/[^A-Za-z\d-._~!#$&'()*+,/:;=?@\[\]]/g, (c, i: number) => {
         if(c === '%' && /^%[\dA-F]{2}/.test(joined.slice(i, i + 3)))
             return c; // skip already present character code
         const n = c.charCodeAt(0);
