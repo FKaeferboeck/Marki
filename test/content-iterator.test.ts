@@ -326,14 +326,14 @@ describe('Inline: Autolinks', () => {
 });
 
 
-/*describe('Inline: Raw HTML', () => {
-    /*doTest(613, '<a><bab><c2c>'); // Here are some simple open tags
+describe('Inline: Raw HTML', () => {
+    doTest(613, '<a><bab><c2c>'); // Here are some simple open tags
     doTest(614, '<a/><b2/>'); // Empty elements
     doTest(615, '<a  /><b2\ndata="foo" >'); // Whitespace is allowed
-    doTest(616, '<a foo="bar" bam = 'baz <em>"</em>'\n_boolean zoop:33=zoop:33 />'); // With attributes
-    doTest(617, 'Foo <responsive-image src="foo.jpg" />'); // Custom tag names can be used
+    /*doTest(616, '<a foo="bar" bam = 'baz <em>"</em>'\n_boolean zoop:33=zoop:33 />'); // With attributes
+    doTest(617, 'Foo <responsive-image src="foo.jpg" />'); // Custom tag names can be used*/
     doTest(618, '<33> <__>'); // Illegal tag names, not parsed as HTML
-    doTest(619, '<a h*#ref="hi">'); // Illegal attribute names
+    /*doTest(619, '<a h*#ref="hi">'); // Illegal attribute names
     doTest(620, '<a href="hi'> <a href=hi'>'); // Illegal attribute values
     doTest(621, '< a><\nfoo><bar/ >\n<foo bar=baz\nbim!bop />'); // Illegal whitespace
     doTest(622, '<a href='bar'title=title>'); // Missing whitespace
@@ -346,8 +346,8 @@ describe('Inline: Autolinks', () => {
     doTest(629, 'foo <![CDATA[>&<]]>'); // CDATA sections
     doTest(630, 'foo <a href="&ouml;">'); // Entity and numeric character references are preserved in HTML attributes
     doTest(631, 'foo <a href="\*">'); // Backslash escapes do not work in HTML attributes
-    doTest(632, '<a href="\"">');
-});*/
+    doTest(632, '<a href="\"">');*/
+});
 
 
 describe('Inline: Hard line breaks', () => {

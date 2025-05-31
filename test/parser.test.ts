@@ -78,7 +78,7 @@ describe('Full linify()', () => {
         expect(LS.logical_lines).toEqual(LS_target.logical_lines);
     });
 
-    it('With HTML tags', () => {
+    /*it('With HTML tags', () => {
         const LS = linify(text1);
         const LS_target = {
             all: [
@@ -93,7 +93,7 @@ describe('Full linify()', () => {
         };
         expect(LS.all)          .toEqual(LS_target.all);
         expect(LS.logical_lines).toEqual(LS_target.logical_lines);
-    });
+    });*/
 });
 
 

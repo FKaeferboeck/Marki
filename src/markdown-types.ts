@@ -147,6 +147,7 @@ export interface InlineElementMap {
 	              linkTitle?:        AnyInline[];
 				  reference?:        Block<"linkDef">; };
 	autolink:   { scheme: string;  URI: string;  email?: string; };
+	rawHTML:    { tag: string; };
 }
 
 export type ExtensionInlineElementType = `ext_${ExtensionNamespace}_${string}`;

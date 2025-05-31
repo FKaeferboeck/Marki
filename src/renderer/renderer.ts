@@ -149,7 +149,8 @@ export class Renderer {
                 const URI = escapeXML(elt.URI);
                 I.add(`<a href="${elt.scheme}:${urlEncode([URI])}">${elt.scheme}:${URI}</a>`);
             }
-        }
+        },
+        "rawHTML": (elt, I) => I.add(elt.tag)
     };
 
     renderBlock(B: AnyBlock, I: Inserter) {

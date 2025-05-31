@@ -8,6 +8,7 @@ import { hardBreak_traits } from "./inline/hard-break.js";
 import { htmlEntity_traits } from "./inline/html-entity.js";
 import { bang_bracket_traits, image_traits } from "./inline/image.js";
 import { bracket_traits, link_traits } from "./inline/link.js";
+import { rawHTML_traits } from "./inline/raw-html.js";
 import { AnyBlock, Block, BlockBase, BlockType, BlockType_Container, LogicalLineData, isContainer } from "./markdown-types.js";
 import { LineStructure } from "./parser.js";
 import { BlockParserTraitsList, BlockTraits, BlockTraits_Container, DelimiterTraits, InlineParserTraitsList } from "./traits.js";
@@ -44,7 +45,8 @@ export const standardInlineParserTraits: InlineParserTraitsList = {
 	hardBreak:  hardBreak_traits,
 	htmlEntity: htmlEntity_traits,
 	image:      image_traits,
-	autolink:   autolink_traits
+	autolink:   autolink_traits,
+	rawHTML:    rawHTML_traits
 };
 
 export const standardDelimiterTraits: Record<string, DelimiterTraits> = {
