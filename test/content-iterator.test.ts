@@ -19,9 +19,9 @@ describe('Code spans', () => {
     doTest(341, '*foo`*`'); // Code span backticks have higher precedence than any other inline constructs
     doTest(342, '[not a `link](/foo`)'); // And this is not parsed as a link
     doTest(343, '`<a href="`">`'); // Code spans, HTML tags, and autolinks have the same precedence. Thus, this is code
-    //doTest(344, '<a href="`">`'); // But this is an HTML tag
+    doTest(344, '<a href="`">`'); // But this is an HTML tag
     doTest(345, '`<https://foo.bar.`baz>`'); // And this is code
-    //doTest(346, '<https://foo.bar.`baz>`'); // But this is an autolink
+    doTest(346, '<https://foo.bar.`baz>`'); // But this is an autolink
     doTest(347, '```foo``'); // When a backtick string is not closed by a matching backtick string, we just have literal backticks
     doTest(348, '`foo');
     doTest(349, '`foo``bar``'); // opening and closing backtick strings need to be equal in length
@@ -170,13 +170,13 @@ describe('Emphasis & strong emphasis', () => {
     /* Rule 17 */
     doTest(473, '*[bar*](/url)');
     doTest(474, '_foo [bar_](/url)');
-    //doTest(475, '*<img src="foo" title="*"/>');
-    //doTest(476, '**<a href="**">');
-    //doTest(477, '__<a href="__">');
+    doTest(475, '*<img src="foo" title="*"/>');
+    doTest(476, '**<a href="**">');
+    doTest(477, '__<a href="__">');
     doTest(478, '*a `*`*');
     doTest(479, '_a `_`_');
-    /*doTest(480, '**a<https://foo.bar/?q=**>');
-    doTest(481, '__a<https://foo.bar/?q=__>');*/
+    doTest(480, '**a<https://foo.bar/?q=**>');
+    doTest(481, '__a<https://foo.bar/?q=__>');
 });
 
 
@@ -190,10 +190,10 @@ describe('Inline: Links', () => {
     doTest(488, '[link](/my uri)');
     doTest(489, '[link](</my uri>)');
     doTest(490, '[link](foo\nbar)'); // The destination cannot contain line endings, even if enclosed in pointy brackets
-    //doTest(491, '[link](<foo\nbar>)');
+    doTest(491, '[link](<foo\nbar>)');
     doTest(492, '[a](<b)c>)'); // The destination can contain ) if it is enclosed in pointy brackets
     doTest(493, '[link](<foo\>)'); // Pointy brackets that enclose links must be unescaped
-    //doTest(494, '[a](<b)c\n[d](<e)f>\n[g](<h>i)', true); // These are not links, because the opening pointy bracket is not matched properly
+    doTest(494, '[a](<b)c\n[d](<e)f>\n[g](<h>i)'); // These are not links, because the opening pointy bracket is not matched properly
     doTest(495, '[link](\\(fo\\))'); // Parentheses inside the link destination may be escaped
     doTest(496, '[link](foo(and(bar)))'); // Any number of parentheses are allowed without escaping, as long as they are balanced
     doTest(497, '[link](foo(and(bar))'); // However, if you have unbalanced parentheses, you need to escape or use the <...> form
@@ -223,9 +223,9 @@ describe('Inline: Links', () => {
     doTest(521, '*[foo*](/uri)'); // These cases illustrate the precedence of link text grouping over emphasis grouping
     doTest(522, '[foo *bar](baz*)');
     doTest(523, '*foo [bar* baz]'); // Note that brackets that *aren't* part of links do not take precedence
-    //doTest(524, '[foo <bar attr="](baz)">'); // These cases illustrate the precedence of HTML tags, code spans, and autolinks over link grouping
+    doTest(524, '[foo <bar attr="](baz)">'); // These cases illustrate the precedence of HTML tags, code spans, and autolinks over link grouping
     doTest(525, '[foo`](/uri)`');
-    //doTest(526, '[foo<https://example.com/?search=](uri)>');
+    doTest(526, '[foo<https://example.com/?search=](uri)>');
     /* full reference links */
     doTest(527, '[foo][bar]\n\n[bar]: /url "title"');
     doTest(528, '[link [foo [bar]]][ref]\n\n[ref]: /uri'); // The link text may contain balanced brackets, but not unbalanced ones, unless they are escaped
@@ -236,9 +236,9 @@ describe('Inline: Links', () => {
     doTest(533, '[foo *bar [baz][ref]*][ref]\n\n[ref]: /uri');
     doTest(534, '*[foo*][ref]\n\n[ref]: /uri'); // The following cases illustrate the precedence of link text grouping over emphasis grouping
     doTest(535, '[foo *bar][ref]*\n\n[ref]: /uri');
-    //doTest(536, '[foo <bar attr="][ref]">\n\n[ref]: /uri'); // These cases illustrate the precedence of HTML tags, code spans, and autolinks over link grouping
+    doTest(536, '[foo <bar attr="][ref]">\n\n[ref]: /uri'); // These cases illustrate the precedence of HTML tags, code spans, and autolinks over link grouping
     doTest(537, '[foo`][ref]`\n\n[ref]: /uri');
-    //doTest(538, '[foo<https://example.com/?search=][ref]>\n\n[ref]: /uri');
+    doTest(538, '[foo<https://example.com/?search=][ref]>\n\n[ref]: /uri');
     doTest(539, '[foo][BaR]\n\n[bar]: /url "title"'); // Matching is case-insensitive
     doTest(540, '[ẞ]\n\n[SS]: /url'); // Unicode case fold is used
     doTest(541, '[Foo\n  bar]: /url\n\n[Baz][Foo bar]'); // Consecutive internal spaces, tabs, and line endings are treated as one space for purposes of determining matching
@@ -330,23 +330,23 @@ describe('Inline: Raw HTML', () => {
     doTest(613, '<a><bab><c2c>'); // Here are some simple open tags
     doTest(614, '<a/><b2/>'); // Empty elements
     doTest(615, '<a  /><b2\ndata="foo" >'); // Whitespace is allowed
-    /*doTest(616, '<a foo="bar" bam = 'baz <em>"</em>'\n_boolean zoop:33=zoop:33 />'); // With attributes
-    doTest(617, 'Foo <responsive-image src="foo.jpg" />'); // Custom tag names can be used*/
+    doTest(616, '<a foo="bar" bam = \'baz <em>"</em>\'\n_boolean zoop:33=zoop:33 />'); // With attributes
+    doTest(617, 'Foo <responsive-image src="foo.jpg" />'); // Custom tag names can be used
     doTest(618, '<33> <__>'); // Illegal tag names, not parsed as HTML
-    /*doTest(619, '<a h*#ref="hi">'); // Illegal attribute names
-    doTest(620, '<a href="hi'> <a href=hi'>'); // Illegal attribute values
+    doTest(619, '<a h*#ref="hi">'); // Illegal attribute names
+    doTest(620, '<a href="hi\'> <a href=hi\'>'); // Illegal attribute values
     doTest(621, '< a><\nfoo><bar/ >\n<foo bar=baz\nbim!bop />'); // Illegal whitespace
-    doTest(622, '<a href='bar'title=title>'); // Missing whitespace
+    doTest(622, '<a href=\'bar\'title=title>'); // Missing whitespace
     doTest(623, '</a></foo >'); // Closing tags
     doTest(624, '</a href="foo">'); // Illegal attributes in closing tag
     doTest(625, 'foo <!-- this is a --\ncomment - with hyphens -->'); // Comments
-    doTest(626, 'foo <!--> foo -->\n\nfoo <!---> foo -->');
+    //doTest(626, 'foo <!--> foo -->\n\nfoo <!---> foo -->');
     doTest(627, 'foo <?php echo $a; ?>'); // Processing instructions
     doTest(628, 'foo <!ELEMENT br EMPTY>'); // Declarations
     doTest(629, 'foo <![CDATA[>&<]]>'); // CDATA sections
     doTest(630, 'foo <a href="&ouml;">'); // Entity and numeric character references are preserved in HTML attributes
-    doTest(631, 'foo <a href="\*">'); // Backslash escapes do not work in HTML attributes
-    doTest(632, '<a href="\"">');*/
+    doTest(631, 'foo <a href="\\*">'); // Backslash escapes do not work in HTML attributes
+    doTest(632, '<a href="\\"">');
 });
 
 
@@ -360,8 +360,8 @@ describe('Inline: Hard line breaks', () => {
     doTest(639, '*foo\\\nbar*');
     doTest(640, '`code  \nspan`'); // Hard line breaks do not occur inside code spans
     doTest(641, '`code\\\nspan`');
-    //doTest(642, '<a href="foo  \nbar">'); // ... or HTML tags
-    //doTest(643, '<a href="foo\\\nbar">');
+    doTest(642, '<a href="foo  \nbar">'); // ... or HTML tags
+    doTest(643, '<a href="foo\\\nbar">');
     doTest(644, 'foo\\'); // Neither syntax for hard line breaks works at the end of a paragraph or other block element
     doTest(645, 'foo  ');
     doTest(646, '### foo\\');
@@ -371,7 +371,7 @@ describe('Inline: Hard line breaks', () => {
 
 describe('Inline: soft line breaks', () => {
     doTest(648, 'foo\nbaz');
-    //doTest(649, 'foo \n baz'); // Spaces at the end of the line and beginning of the next line are removed
+    doTest(649, 'foo \n baz'); // Spaces at the end of the line and beginning of the next line are removed
 });
 
 

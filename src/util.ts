@@ -4,6 +4,7 @@ import { HTML_Markup, LinePart, LineStructure, LogicalLineType } from "./parser.
 const breakable: Partial<Record<LinePart_ext["type"], boolean>> = { "HTML_Tag": true,  "XML_Comment": true };
 const isHTML_Markup = (P: LinePart_ext): P is HTML_Markup => breakable[P.type] || false;
 
+const spaces: Record<string, boolean> = { ' ': true,  '\t': true,  '\n': true };
 
 
 export function measureIndent(s: string, preStartIndent: number = 0) {
@@ -224,8 +225,11 @@ export interface BlockContentIterator {
 
     skip(chars: Record<string, boolean>) : number;
     skipNobrSpace(): number;
+    skipXMLspace(): boolean; // returns if anything was skipped
 
-    regexInPart(rex: RegExp): RegExpMatchArray | false; // advances iterator by the given regex if it matches, but only within the current line part
+    regexInPart(rexes: RegExp): false | RegExpMatchArray;
+    regexInPart(...rexes: (RegExp | boolean)[]): false | (RegExpMatchArray | boolean)[];
+
     takeDelimited(allowedDelimiters: Record<string, string>, delim_io?: BCI_TakeDelimited_IO): string | false;
 
     setPosition        (P:  InlinePos): void;
@@ -335,6 +339,16 @@ export function makeBlockContentIterator(LLD: LogicalLineData, singleLine: boole
             return skipped;
         },
 
+        skipXMLspace: () => {
+            let found = false;
+            while(spaces[curPart.content[pos.char_idx] || '']) {
+                found = true;
+                if(++pos.char_idx >= curPartLength)
+                    nextPart();
+            }
+            return found;
+        },
+
         skipNobrSpace: () => {
             let i = pos.char_idx, c: string|false = '';
             while(i < curPartLength && ((c = curPart.content[i]) === ' ' || c === '\t'))    ++i;
@@ -345,16 +359,29 @@ export function makeBlockContentIterator(LLD: LogicalLineData, singleLine: boole
             return d;
         },
 
-        regexInPart: (rex: RegExp) => {
-            if(curPart.type === "EOF" || curPart.type === "lineBreak")
-                return false;
-            //rex.lastIndex = pos.char_idx;
-            const rexres = rex.exec(curPart.content.slice(pos.char_idx));
-            if(!rexres)
-                return false;
-            if((pos.char_idx += rexres[0].length) >= curPartLength)
-                nextPart();
-            return rexres;
+        regexInPart: (...rexes: (RegExp | boolean)[]): any => {
+            const res: (RegExpExecArray | boolean)[] = [];
+            const P1 = It.newCheckpoint();
+            const abort = () => { It.setPosition(P1);    return false; };
+            for(const rex of rexes) {
+                if(typeof rex === "boolean") {
+                    const skipped = It.skipXMLspace();
+                    if(rex && !skipped)
+                        return abort();
+                    res.push(skipped);
+                    continue;
+                }
+                if(curPart.type === "EOF" || curPart.type === "lineBreak")
+                    return abort();
+                //rex.lastIndex = pos.char_idx;
+                const rexres = rex.exec(curPart.content.slice(pos.char_idx));
+                if(!rexres)
+                    return abort();
+                if((pos.char_idx += rexres[0].length) >= curPartLength)
+                    nextPart();
+                res.push(rexres);
+            }
+            return (res.length === 1 && typeof res[0] !== "boolean" ? res[0] : res);
         },
 
         takeDelimited: (allowedDelimiters: Record<string, string>, delim_io?: BCI_TakeDelimited_IO) => {
@@ -421,7 +448,6 @@ export function makeBlockContentIterator(LLD: LogicalLineData, singleLine: boole
     };
     return It;
 }
-
 
 
 const delims: Record<string, RegExp> = { '"': /\\(?=")/g,  '\'': /\\(?=')/g,

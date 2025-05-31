@@ -28,7 +28,7 @@ export const htmlEntity_traits: InlineElementTraits<"htmlEntity"> = {
         const entity = It.regexInPart(rex); // advances content iterator if positive match
         if(!entity)
             return false;
-        processHTML_entity(entity, this.B);
+        processHTML_entity(entity as RegExpMatchArray, this.B);
         return this.B;
     },
     
