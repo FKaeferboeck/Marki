@@ -99,7 +99,7 @@ export class MarkdownParser implements BlockContainer {
 		if(!T)    throw new Error(`Cannot process content of block "${B.type}"`);
 		if(isContainer(B))
 			B.blocks.forEach(B1 => this.processBlock(B1));
-		else if(B.type !== "fenced" && B.type !== "indentedCodeBlock" && B.content?.parts.length)
+		else if(T.inlineProcessing !== false && B.content?.parts.length)
 			B.inlineContent = this.processInline(B.content);
 	}
 
@@ -140,6 +140,7 @@ export class MarkdownParser implements BlockContainer {
 		"blockQuote",
 		"listItem",
 		"linkDef",
+		"htmlBlock",
 		"paragraph",
 		"sectionHeader_setext" // this only get used if a paragraph is rejected due to encountering "=======" (SETEXT header suffix)
 	];
@@ -148,7 +149,8 @@ export class MarkdownParser implements BlockContainer {
 		"sectionHeader",
 		"fenced", // also in CommonMark mode
 		"blockQuote",
-		"listItem"
+		"listItem",
+		"htmlBlock"
 	];
 
 	blockParserProvider = {

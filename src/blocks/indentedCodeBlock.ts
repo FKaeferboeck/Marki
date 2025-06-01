@@ -24,5 +24,6 @@ export const indentedCodeBlock_traits: BlockTraits<"indentedCodeBlock"> = {
 
     allowSoftContinuations: false,
     allowCommentLines: true,
+    inlineProcessing: false,
     defaultBlockInstance: { }
 };

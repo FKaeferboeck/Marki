@@ -80,8 +80,8 @@ describe('Backslash escapes', () => {
     doTest(17, '`` \\[\\` ``'); // Backslash escapes do not work in code blocks, code spans, autolinks, or raw HTML
     doTest(18, '    \\[\\]');
     doTest(19, '~~~\n\\[\\]\n~~~');
-    //doTest(20, '<https://example.com?find=\\*>');
-    //doTest(21, '<a href="/bar\\/)">');
+    doTest(20, '<https://example.com?find=\\*>');
+    doTest(21, '<a href="/bar\\/)">');
     doTest(22, '[foo](/bar\\* "ti\\*tle")'); // But they work in all other contexts, including URLs and link titles, link references, and info strings in fenced code blocks
     doTest(23, '[foo]\n\n[foo]: /bar\\* "ti\\*tle"');
     doTest(24, '``` foo\\+bar\nfoo\n```');
@@ -95,7 +95,7 @@ describe('Entity and numeric character references', () => {
     doTest(28, '&nbsp &x; &#; &#x;\n&#87654321;\n&#abcdef0;\n&ThisIsNotDefined; &hi?;'); // Here are some nonentities
     doTest(29, '&copy');
     doTest(30, '&MadeUpEntity;'); // Strings that are not on the list of HTML5 named entities are not recognized as entity references
-    //doTest(31, '<a href="&ouml;&ouml;.html">'); // Entity and numeric character references are recognized in any context besides code spans or code blocks
+    doTest(31, '<a href="&ouml;&ouml;.html">'); // Entity and numeric character references are recognized in any context besides code spans or code blocks
     doTest(32, '[foo](/f&ouml;&ouml; "f&ouml;&ouml;")');
     doTest(33, '[foo]\n\n[foo]: /f&ouml;&ouml; "f&ouml;&ouml;"');
     doTest(34, '``` f&ouml;&ouml;\nfoo\n```');
@@ -172,7 +172,7 @@ describe('setext headings', () => {
     doTest(88, `Foo\n= =\n\nFoo\n--- -`); // setext heading underline cannot contain internal spaces or tabs
     doTest(89, `Foo  \n-----`); // Trailing spaces or tabs in the content line do not cause a hard line break
     doTest(90, `Foo\\\n----`); // Nor does a backslash at the end
-    //doTest(91, `\`Foo\n----\n\`\n\n<a title="a lot\n---\nof dashes"/>`); // indicators of block structure take precedence over indicators of inline structure
+    doTest(91, `\`Foo\n----\n\`\n\n<a title="a lot\n---\nof dashes"/>`); // indicators of block structure take precedence over indicators of inline structure
     doTest(92, `> Foo\n---`); // The setext heading underline cannot be a lazy continuation line in a list item or block quote
     doTest(93, `> foo\nbar\n===`);
     doTest(94, `- Foo\n---`);
@@ -246,7 +246,57 @@ describe('Fenced code blocks', () => {
 })
 
 
-/* Missing! TODO!! */
+describe('HTML blocks', () => {
+    doTest(148, '<table><tr><td>\n<pre>\n**Hello**,\n\n_world_.\n</pre>\n</td></tr></table>');
+    doTest(149, '<table>\n  <tr>\n    <td>\n           hi\n    </td>\n  </tr>\n</table>\n\nokay.');
+    doTest(150, ' <div>\n  *hello*\n         <foo><a>');
+    doTest(151, '</div>\n*foo*'); // A block can also start with a closing tag
+    doTest(152, '<DIV CLASS="foo">\n\n*Markdown*\n\n</DIV>'); // Here we have two HTML blocks with a Markdown paragraph between them
+    doTest(153, '<div id="foo"\n  class="bar">\n</div>'); // The tag on the first line can be partial, as long as it is split where there would be whitespace
+    doTest(154, '<div id="foo" class="bar\n  baz">\n</div>');
+    doTest(155, '<div>\n*foo*\n\n*bar*'); // An open tag need not be closed
+    doTest(156, '<div id="foo"\n*hi*'); // A partial tag need not even be completed (garbage in, garbage out)
+    doTest(157, '<div class\nfoo');
+    doTest(158, '<div *???-&&&-<---\n*foo*'); // The initial tag doesn’t even need to be a valid tag, as long as it starts like one
+    doTest(159, '<div><a href="bar">*foo*</a></div>'); // In type 6 blocks, the initial tag need not be on a line by itself
+    doTest(160, '<table><tr><td>\nfoo\n</td></tr></table>');
+    doTest(161, '<div></div>\n``` c\nint x = 33;\n```'); // Everything until the next blank line or end of document gets included in the HTML block
+    doTest(162, '<a href="foo">\n*bar*\n</a>'); // To start an HTML block with a tag that is not in the list of block-level tags in (6), you must put the tag by itself on the first line (and it must be complete)
+    doTest(163, '<Warning>\n*bar*\n</Warning>'); // In type 7 blocks, the tag name can be anything
+    doTest(164, '<i class="foo">\n*bar*\n</i>');
+    doTest(165, '</ins>\n*bar*');
+    doTest(166, '<del>\n*foo*\n</del>');     // as HTML block
+    doTest(167, '<del>\n\n*foo*\n\n</del>'); // Same with content as Markdown
+    doTest(168, '<del>*foo*</del>');         // Same as raw HTML inside paragraph
+    /* Type 1 */
+    doTest(169, '<pre language="haskell"><code>\nimport Text.HTML.TagSoup\n\nmain :: IO ()\nmain = print $ parseTags tags\n</code></pre>\nokay');
+    doTest(170, '<script type="text/javascript">\n// JavaScript example\n\ndocument.getElementById("demo").innerHTML = "Hello JavaScript!";\n</script>\nokay');
+    doTest(171, '<textarea>\n\n*foo*\n\n_bar_\n\n</textarea>');
+    doTest(172, '<style\n  type="text/css">\nh1 {color:red;}\n\np {color:blue;}\n</style>\nokay');
+    doTest(173, '<style\n  type="text/css">\n\nfoo'); // If there is no matching end tag, the block will end at the end of the document (or the enclosing block quote or list item)
+    doTest(174, '> <div>\n> foo\n\nbar');
+    doTest(175, '- <div>\n- foo');
+    doTest(176, '<style>p{color:red;}</style>\n*foo*'); // The end tag can occur on the same line as the start tag
+    //doTest(177, '<!-- foo -->*bar*\n*baz*');
+    doTest(178, '<script>\nfoo\n</script>1. *bar*'); // Note that anything on the last line after the end tag will be included in the HTML block
+    /* Type 2 */
+    //doTest(179, '<!-- Foo\n\nbar\n   baz -->\nokay');
+    /* Type 3 — processing instruction */
+    doTest(180, '<?php\n\n  echo \'>\';\n\n?>\nokay');
+    /* Type 4 — declaration */
+    doTest(181, '<!DOCTYPE html>');
+    /* Type 5 — CDATA section */
+    doTest(182, '<![CDATA[\nfunction matchwo(a,b)\n{\n  if (a < b && a < 0) then {\n    return 1;\n\n  } else {\n\n    return 0;\n  }\n}\n]]>\nokay');
+    //doTest(183, '  <!-- foo -->\n\n    <!-- foo -->'); // The opening tag can be preceded by up to three spaces of indentation, but not four
+    doTest(184, '  <div>\n\n    <div>');
+    doTest(185, 'Foo\n<div>\nbar\n</div>'); // An HTML block of types 1–6 can interrupt a paragraph, and need not be preceded by a blank line
+    doTest(186, '<div>\nbar\n</div>\n*foo*'); // However, a following blank line is needed, except at the end of a document, and except for blocks of types 1–5, above
+    doTest(187, 'Foo\n<a href="bar">\nbaz'); // HTML blocks of type 7 cannot interrupt a paragraph 
+    doTest(188, '<div>\n\n*Emphasized* text.\n\n</div>');
+    doTest(189, '<div>\n*Emphasized* text.\n</div>');
+    doTest(190, '<table>\n\n<tr>\n\n<td>\nHi\n</td>\n\n</tr>\n\n</table>');
+    doTest(191, '<table>\n\n  <tr>\n\n    <td>\n      Hi\n    </td>\n\n  </tr>\n\n</table>'); // if the inner tags are indented and separated by spaces, they will be interpreted as an indented code block
+});
 
 
 describe('Link reference definitions', () => {
@@ -259,7 +309,7 @@ describe('Link reference definitions', () => {
     doTest(198, '[foo]:\n/Xurlr\n\n[foo]'); // The title may be omitted
     doTest(199, '[foo]:\n\n[foo]'); // The link destination may not be omitted
     doTest(200, '[foo]: <>\n\n[foo]'); // However, an empty link destination may be specified using angle brackets
-    //doTest(201, '[foo]: <bar>(baz)\n\n[foo]'); // The title must be separated from the link destination by spaces or tabs
+    doTest(201, '[foo]: <bar>(baz)\n\n[foo]'); // The title must be separated from the link destination by spaces or tabs
     doTest(202, '[foo]: /url\bar\*baz "foo\"bar\baz"\n\n[foo]'); // Both title and destination can contain backslash escapes and literal backslashes
     doTest(203, '[foo]\n\n[foo]: url'); // A link can come before its corresponding definition
     doTest(204, '[foo]\n\n[foo]: first\n[foo]: second'); // If there are several matching definitions, the first one takes precedence

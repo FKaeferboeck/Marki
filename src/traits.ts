@@ -37,6 +37,7 @@ export interface BlockTraits<T extends BlockType = ExtensionBlockType, Extra ext
     canBeSoftContinuation?: boolean; // default true
     allowCommentLines: boolean;
     hasContent?: boolean; // default true; false means that this element stores all data it has in its individual block data and doesn't use the "content" property
+    inlineProcessing?: boolean; // default true
     lastIsContent?: boolean; // if a line is continuation type "last" it will still be added to the block content - default false
     canSelfInterrupt?: boolean; // list items do that
     trimLeadingContentSpace?: boolean;

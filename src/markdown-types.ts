@@ -8,6 +8,7 @@ import { LinkDef } from "./blocks/linkDef.js";
 import { FencedBlock } from "./blocks/fenced.js";
 import { EmptySpace } from "./blocks/emptySpace.js";
 import { ListItem } from "./blocks/listItem.js";
+import { HTML_block } from "./blocks/html-block.js";
 
 export type ExtensionNamespace = string;
 
@@ -50,6 +51,7 @@ export interface BlockTypeMap_Leaf {
 	thematicBreak:        ThematicBreak;
 	fenced:               FencedBlock;
 	linkDef:              LinkDef;
+	htmlBlock:            HTML_block;
 }
 
 export interface BlockTypeMap_Container {

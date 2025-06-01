@@ -13,6 +13,7 @@ import { LLDinfo, sliceLLD } from './util.js';
 import { listItem_traits } from './blocks/listItem.js';
 import { MarkdownParser, ParseState } from './markdown-parser.js';
 import { linkDef_traits } from './blocks/linkDef.js';
+import { htmlBlock_traits } from './blocks/html-block.js';
 
 
 
@@ -26,7 +27,8 @@ export const standardBlockParserTraits: BlockParserTraitsList = {
 	fenced:               fenced_traits,
 	listItem:             listItem_traits,
 	blockQuote:           blockQuote_traits,
-	linkDef:              linkDef_traits
+	linkDef:              linkDef_traits,
+	htmlBlock:            htmlBlock_traits
 };
 
 

@@ -110,8 +110,9 @@ export class Renderer {
             if(pos.isLast)
                 I.add(`</${L.listType === "Ordered" ? 'ol' : 'ul'}>`);
         },
-        "emptySpace":      (B, I) => { },
-        "linkDef":         (B, I) => { }
+        "emptySpace": (B, I) => { },
+        "linkDef":    (B, I) => { },
+        "htmlBlock":  (B, I) => { this.renderBlockContent(B, I, "literal"); }
     };
 
     inlineHandler: InlineHandlerList = {
@@ -194,7 +195,8 @@ export class Renderer {
         if(mode === "literal") {
             for(let LLD = B.content || null;  LLD;  LLD = LLD.next) {
                 LLD.parts.forEach(P => arr.push(P.content as string));
-                arr.push('\n');
+                if(B.type !== "htmlBlock" || LLD.next)
+                    arr.push('\n');
             }
             s = arr.join('');
         } else if(B.inlineContent) {

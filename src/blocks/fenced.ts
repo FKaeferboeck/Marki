@@ -62,6 +62,7 @@ export const fenced_traits: BlockTraits<"fenced"> = {
 
     allowSoftContinuations: false,
     allowCommentLines: true,
+    inlineProcessing: false,
 
     defaultBlockInstance: {
         fence_type:   "`",
