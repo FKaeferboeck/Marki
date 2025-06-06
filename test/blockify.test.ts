@@ -1,6 +1,6 @@
-import { describe, expect, it, test } from 'vitest'
-import { linify } from '../src/parser';
-import { AnyBlock, Block, BlockBase_Container, BlockType, isContainer } from '../src/markdown-types';
+import { expect, test } from 'vitest'
+import { linify_old } from '../src/parser';
+import { AnyBlock, BlockType, isContainer } from '../src/markdown-types';
 import { lineDataAll } from '../src/util';
 import { MarkdownParser } from '../src/markdown-parser';
 
@@ -46,7 +46,7 @@ const parser = new MarkdownParser();
 function doTest(title: string, input: string, target_: { type: BlockType,  extent: number }[], verbose?: boolean) {
     test(title, () => {
         parser.diagnostics = verbose || false;
-        const LS      = linify(input);
+        const LS      = linify_old(input);
         const LLD     = lineDataAll(LS, 0);
         const target  = resultMaker(target_);
         const blocks  = parser.processContent(LLD);

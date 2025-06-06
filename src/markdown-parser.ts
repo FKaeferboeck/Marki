@@ -1,4 +1,6 @@
 import { BlockContainer, BlockParser, BlockParserBase, BlockParser_Container, BlockParser_Standard, standardBlockParserTraits } from "./block-parser.js";
+import { collectLists } from "./blocks/listItem.js";
+import { pairUpDelimiters } from "./delimiter-processing.js";
 import { InlineParserProvider, processInline } from "./inline-parsing-context.js";
 import { autolink_traits } from "./inline/autolink.js";
 import { escaped_traits } from "./inline/backslash-escape.js";
@@ -10,9 +12,9 @@ import { bang_bracket_traits, image_traits } from "./inline/image.js";
 import { bracket_traits, link_traits } from "./inline/link.js";
 import { rawHTML_traits } from "./inline/raw-html.js";
 import { AnyBlock, Block, BlockBase, BlockType, BlockType_Container, LogicalLineData, isContainer } from "./markdown-types.js";
-import { LineStructure } from "./parser.js";
+import { LineStructure, linify_old } from "./parser.js";
 import { BlockParserTraitsList, BlockTraits, BlockTraits_Container, DelimiterTraits, InlineParserTraitsList } from "./traits.js";
-import { LLDinfo } from "./util.js";
+import { lineDataAll, LLDinfo } from "./util.js";
 
 
 interface BlockParserProviderItem {
@@ -76,6 +78,21 @@ export class MarkdownParser implements BlockContainer {
 
 	reset() {
 		this.linkDefs = {};
+	}
+
+	/* Full parsing of a complete document (contents as string) */
+	processDocument(input: string) {
+		const LS   = linify_old(input);
+        const LLD  = lineDataAll(LS, 0);
+        this.reset();
+        const blocks = this.processContent(LLD);
+        collectLists(blocks);
+        blocks.forEach(B => {
+            this.processBlock(B);
+            if(B.inlineContent)
+                pairUpDelimiters(B.inlineContent);
+        });
+		return blocks;
 	}
 
 	startBlock   = startBlock;

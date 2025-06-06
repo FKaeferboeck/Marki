@@ -65,7 +65,7 @@ export function lineType(L: LogicalLine, LS: LineStructure): LogicalLineType {
 }
 
 
-export function linify(text: string): LineStructure {
+export function linify_old(text: string): LineStructure {
 	const A = linify_(text, { line: 0,  character: 0 }, false);
 	return layoutLogicalLines(A, [0, A.length]);
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it, test } from 'vitest'
-import { linify } from '../src/parser';
+import { linify_old } from '../src/parser';
 import { lineDataAll } from '../src/util';
 import * as commonmark from 'commonmark';
 import { collectLists, listItem_traits } from '../src/blocks/listItem';
@@ -27,7 +27,7 @@ renderer.blockHandler["ext_standard_sourceInclude"] = (B_, I) => {
 
 function doTest2(idx: number | string, input: string, target: string, verbose = false) {
     test('' + idx, () => {
-        const LS   = linify(input);
+        const LS   = linify_old(input);
         const LLD  = lineDataAll(LS, 0);
         
         //const diag = false;

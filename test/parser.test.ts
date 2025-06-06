@@ -1,5 +1,5 @@
 import { describe, expect, it, test } from 'vitest'
-import { IncrementalChange, linify, linify_update, LinifyUpdateResult, spliceContent, TextPart } from '../src/parser';
+import { IncrementalChange, linify_old, linify_update, LinifyUpdateResult, spliceContent, TextPart } from '../src/parser';
 import { Range } from 'vscode-languageserver';
 
 const part = (line: number, character: number, content: string): TextPart => ({ type: "TextPart",     line,  character,  content });
@@ -60,7 +60,7 @@ const text1 = `<div>
 
 describe('Full linify()', () => {
     it('With XML comments', () => {
-        const LS = linify(text0);
+        const LS = linify_old(text0);
         const LS_target = {
             all: [
                 part(0, 0, 'Hallooo!'),  part(1, 0, ''),  part(2, 0, 'Text1 '),  cmt0(2, 6, '<!-- Cmt -->'),  part(2, 18, 'Text2'),
@@ -99,7 +99,7 @@ describe('Full linify()', () => {
 
 describe('linify_update()', () => {
     test('simple text insert', () => {
-        const LS = linify(text0);
+        const LS = linify_old(text0);
         const D: IncrementalChange = { range: rng(2, 20, 2, 20),  text: 'XX' };
         const delta = linify_update(LS, D);
     
@@ -123,7 +123,7 @@ describe('linify_update()', () => {
     });
 
     test('insert comment part', () => {
-        const LS = linify(text0);
+        const LS = linify_old(text0);
         const D: IncrementalChange = { range: rng(2, 20, 2, 20),  text: 'X<!-- between -->Y' };
         const delta = linify_update(LS, D);
     
@@ -148,7 +148,7 @@ describe('linify_update()', () => {
     });
 
     test('remove comment part', () => {
-        const LS = linify(text0);
+        const LS = linify_old(text0);
         const D: IncrementalChange = { range: rng(2, 6, 2, 18),  text: 'XY' };
         const delta = linify_update(LS, D);
     
@@ -175,7 +175,7 @@ describe('linify_update()', () => {
 
 describe('linify_update() with remainder', () => {
     it('disrupting comment start', () => {
-        const LS = linify(text0);
+        const LS = linify_old(text0);
         const D: IncrementalChange = { range: rng(2, 25, 2, 25),  text: ' ' };
         const delta = linify_update(LS, D);
     
@@ -198,7 +198,7 @@ describe('linify_update() with remainder', () => {
     });
 
     it('disrupting end of single-line comment', () => {
-        const LS = linify(text0);
+        const LS = linify_old(text0);
         const D: IncrementalChange = { range: rng(2, 16, 2, 16),  text: ' ' };
         const delta = linify_update(LS, D);
     
@@ -221,7 +221,7 @@ describe('linify_update() with remainder', () => {
     });
 
     it('disrupting end of multi-line comment', () => {
-        const LS = linify(text0);
+        const LS = linify_old(text0);
         const D: IncrementalChange = { range: rng(4, 5, 4, 5),  text: ' ' };
         const delta = linify_update(LS, D);
     

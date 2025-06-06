@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { linify } from '../src/parser';
+import { linify_old } from '../src/parser';
 import { lineDataAll } from '../src/util';
 import { Renderer} from '../src/renderer/renderer';
 import * as commonmark from 'commonmark';
@@ -20,7 +20,7 @@ var commonmark_writer = new commonmark.HtmlRenderer();
 
 export function doTest(idx: number | string, input: string, verbose = false) {
     test('' + idx, () => {
-        const LS   = linify(input);
+        const LS   = linify_old(input);
         const LLD  = lineDataAll(LS, 0);
         
         //const diag = false;
