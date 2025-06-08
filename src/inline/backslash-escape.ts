@@ -15,10 +15,10 @@ export const backslashEscapeds: Record<string, boolean> = {
 export const escaped_traits: InlineElementTraits<"escaped"> = {
     startChars: [ '\\' ],
 
-    parse(It, pos0) {
-        if(It.nextChar() !== '\\')
+    parse(It) {
+        if(It.pop() !== '\\')
             return false;
-        const c = It.nextChar();
+        const c = It.pop();
         if(!c || !backslashEscapeds[c])
             return false;
         this.B.character = c;

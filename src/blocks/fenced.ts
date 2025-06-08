@@ -1,7 +1,8 @@
 import { InlineParsingContext } from "../inline-parsing-context.js";
-import { AnyInline, LogicalLineData } from "../markdown-types.js";
+import { isSpaceLine, LogicalLine, LogicalLine_text, Slice, sliceLine, standardBlockStart } from "../linify.js";
+import { AnyInline } from "../markdown-types.js";
 import { BlockTraits } from "../traits.js";
-import { makeBlockContentIterator, sliceLLD, standardBlockStart } from "../util.js";
+import { makeBlockContentIterator } from "../util.js";
 
 
 export interface FencedBlock {
@@ -13,32 +14,33 @@ export interface FencedBlock {
 
 
 export const fenced_traits: BlockTraits<"fenced"> = {
-    startsHere(LLD, B) {
-        if(!standardBlockStart(LLD))
+    startsHere(LL, B) {
+        if(!standardBlockStart(LL))
             return -1;
-        const rexres = /^(?:`{3,}|~{3,})/.exec(LLD.startPart);
+        const rexres = /^(?:`{3,}|~{3,})/.exec(LL.content);
         if(!rexres)
             return -1;
 
-        B.fence_type   = LLD.startPart.charAt(0) as FencedBlock["fence_type"];
+        B.fence_type   = LL.content[0] as FencedBlock["fence_type"];
         B.fence_length = rexres[0].length;
 
         // process info string — it's not just verbatim text
-        const LLD_info = sliceLLD(LLD, LLD.startIndent + B.fence_length);
-        if(LLD_info.parts.length > 0)
-            LLD_info.parts = [LLD_info.parts[0]];
-        if(!(LLD_info.type === "empty" || LLD_info.type === "emptyish")) {
+        const LL_info = sliceLine(LL, LL.indent + B.fence_length);
+        /*if(LLD_info.type === "text")
+            //LLD_info.parts = [LLD_info.parts[0]];
+            { }*/
+        if(!isSpaceLine(LL_info)) {
             //console.log(LLD_info);
-            const It_info = makeBlockContentIterator(LLD_info);
+            const It_info = makeBlockContentIterator(LL_info);
             It_info.skipNobrSpace();
 
             const context = new InlineParsingContext(this.MDP.inlineParser_minimal);
             context.inlineParseLoop(It_info, B.info_string);
-            //B.info_string  = LLD.startPart.slice(B.fence_length).trim();
+            //B.info_string  = LLD.content.slice(B.fence_length).trim();
             //console.log(B.info_string)
         }
 
-        B.indentation  = LLD.startIndent; // space before the fence -> will be trimmed from content lines too
+        B.indentation  = LL.indent; // space before the fence -> will be trimmed from content lines too
 
         if(B.fence_type === "`" && B.info_string.some(P => typeof P === "string" && P.includes('`'))) {
             this.resetBlock();
@@ -47,16 +49,16 @@ export const fenced_traits: BlockTraits<"fenced"> = {
         return 0;
     },
 
-    continuesHere(LLD) {
-        if(LLD.type == "single" && LLD.startIndent < 4) {
+    continuesHere(LL) {
+        if(standardBlockStart(LL)) {
             const rex = new RegExp(`^${this.B.fence_type}{${this.B.fence_length},}\s*$`);
-            if(rex.test(LLD.startPart))
+            if(rex.test(LL.content))
                 return "last";
         }
-        return Math.min(LLD.startIndent, this.B.indentation);
+        return Math.min(LL.indent, this.B.indentation);
     },
 
-    acceptLineHook(_LLD: LogicalLineData, bct) {
+    acceptLineHook(_LL, bct) {
         return (bct !== "start");
     },
 

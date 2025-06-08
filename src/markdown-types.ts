@@ -3,25 +3,19 @@ import { ThematicBreak } from "./blocks/thematicBreak.js";
 import { IndentedCodeBlock } from "./blocks/indentedCodeBlock.js";
 import { Paragraph } from "./blocks/paragraph.js";
 import { SectionHeader } from "./blocks/sectionHeader.js";
-import { HTML_Markup, LinePart, LogicalLineType } from "./parser.js";
+import { LinePart, LogicalLineType } from "./parser.js";
 import { LinkDef } from "./blocks/linkDef.js";
 import { FencedBlock } from "./blocks/fenced.js";
 import { EmptySpace } from "./blocks/emptySpace.js";
 import { ListItem } from "./blocks/listItem.js";
 import { HTML_block } from "./blocks/html-block.js";
+import { LogicalLine, LogicalLine_with_cmt } from "./linify.js";
 
 export type ExtensionNamespace = string;
 
 export type ExtensionBlockType = `ext_${ExtensionNamespace}_${string}`;
 
-
-export const LP_break      = { type: "lineBreak"     as const,  content: '\n' };
-export const LP_break_HTML = { type: "lineBreakHTML" as const,  content: '\n' };
-export const LP_EOF        = { type: "EOF"           as const,  content: [ false ] as const };
-
-export type LinePart_ext = LinePart | typeof LP_break | typeof LP_break_HTML | typeof LP_EOF;
-
-export interface LogicalLineData {
+/*export interface LogicalLineData {
 	logl_idx:                      number;
 	parts:                         LinePart_ext[];
 	preStartIndent?:               number;
@@ -31,13 +25,11 @@ export interface LogicalLineData {
 	next:                          LogicalLineData | null;
 	contentSlice?:                 LogicalLineData;
 	isSoftContainerContinuation? : boolean;
-}
+}*/
 
 
 export interface InlinePos {
-	LLD:      LogicalLineData;
-    //line_idx: number;
-    part_idx: number;
+	LL:       LogicalLine_with_cmt;
     char_idx: number;
 }
 
@@ -68,7 +60,7 @@ export type BlockBase<K extends BlockType> = {
 	type:                K;
 	logical_line_start:  number;
 	logical_line_extent: number;
-	content?:            LogicalLineData;
+	content?:            LogicalLine;
 	inlineContent?:      InlineContent; // same as "content", but inline parsed
 };
 
@@ -129,8 +121,7 @@ export const isNestableDelimiter = (elt: InlineElement<InlineElementType> | Deli
 export interface InlineElementMap {
 	escaped:    { character: string; };
 	htmlEntity: { code: string;  codePoint: number | number[] | undefined; /* undefined describes an illegal entity code */
-                  valid: boolean; }
-	html:       { stuff: string;  continues?: boolean; };
+                  valid: boolean; };
 	codeSpan:   { content: string; };
 	link:       { linkType:          "inline" | "reference" | "collapsed" | "shortcut";
 		          linkLabelContents: InlineContent;
@@ -149,7 +140,7 @@ export interface InlineElementMap {
 	              linkTitle?:        AnyInline[];
 				  reference?:        Block<"linkDef">; };
 	autolink:   { scheme: string;  URI: string;  email?: string; };
-	rawHTML:    { XML_type: "tag" | "tag_selfclosed" | "tag_close" | "processingInstruction" | "declaration" | "CDATA";
+	rawHTML:    { XML_type: "tag" | "tag_selfclosed" | "tag_close" | "processingInstruction" | "declaration" | "CDATA" | "XML_comment";
 		          tag: string; };
 }
 

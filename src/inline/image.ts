@@ -1,10 +1,9 @@
-import { T } from "vitest/dist/chunks/environment.d.C8UItCbf.js";
 import { makeDelimiter, pairUpDelimiters, reassembleContent } from "../delimiter-processing.js";
-import { parseBackslashEscapes, InlineParser_Standard, InlineParser } from "../inline-parser.js";
+import { InlineParser_Standard, InlineParser } from "../inline-parser.js";
 import { InlinePos, InlineElement, Delimiter_nestable } from "../markdown-types.js";
 import { DelimFollowerTraits, DelimiterTraits } from "../traits.js";
-import { BlockContentIterator, contentSlice, removeDelimiter } from "../util.js";
-import { acceptable, containsElement, parseLinkDestination, referenceLinkExtra, untilSpaceOrStop } from "./link.js";
+import { BlockContentIterator } from "../util.js";
+import { acceptable, parseLinkDestination, referenceLinkExtra } from "./link.js";
 
 
 export const bang_bracket_traits: DelimiterTraits = {
@@ -13,8 +12,8 @@ export const bang_bracket_traits: DelimiterTraits = {
     category: "emphLoose",
 
     parseDelimiter(It: BlockContentIterator) {
-        It.nextChar(); // '!'
-        if(It.nextChar() !== '[')
+        It.pop(); // '!'
+        if(It.pop() !== '[')
             return false;
         return makeDelimiter('![', ']');
     }
@@ -36,9 +35,9 @@ export const image_traits: DelimFollowerTraits<"image"> = {
         const B = this.B;
         B.linkLabelContents = this.getDelimitedContent(openingDelim);
         B.linkLabel = reassembleContent(B.linkLabelContents);
-        const cpt = It.newCheckpoint();
+        const cpt = It.newPos();
 
-        if(It.peekChar() === '(') { // inline link
+        if(It.peek() === '(') { // inline link
             const X = parseLinkDestination(It);
             if(X) {
                 B.destination = X.destination;
@@ -50,7 +49,7 @@ export const image_traits: DelimFollowerTraits<"image"> = {
             It.setPosition(cpt); // rewind
         }
         
-        if(It.peekChar() === '[') { // reference link, full or collapsed
+        if(It.peek() === '[') { // reference link, full or collapsed
             const X = referenceLinkExtra(It);
             if(X) {
                 B.linkType    = X.linkType;

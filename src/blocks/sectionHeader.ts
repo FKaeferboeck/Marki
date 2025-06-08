@@ -1,6 +1,6 @@
-import { LogicalLineData } from "../markdown-types.js";
+import { measureColOffset, standardBlockStart } from "../linify.js";
 import { BlockTraits } from "../traits.js";
-import { BlockContentIterator, isLineStart, makeBlockContentIterator, measureIndent, sliceLLD_to } from "../util.js";
+import { BlockContentIterator, isLineStart, makeBlockContentIterator, sliceLL_to } from "../util.js";
 
 
 export interface SectionHeader {
@@ -10,13 +10,13 @@ export interface SectionHeader {
 
 
 function trimEndMarker(It: BlockContentIterator) {
-    const P = It.newCheckpoint(); // just to make a position instance
+    const P = It.newPos(); // just to make a position instance
     let n = 0, c: string | false = false;
 
     //trailing space will be trimmed in every case
-    while((c = It.peekBack(n + 1)) === ' ' || c === '\t')    ++n;
+    while((c = It.peekN(-(n + 1))) === ' ' || c === '\t')    ++n;
 
-    if(It.peekBack(n + 1) !== '#') {
+    if(It.peekN(-(n + 1)) !== '#') {
         if(n === 0)
             return false;
         It.getPosition(P, -n);
@@ -24,14 +24,14 @@ function trimEndMarker(It: BlockContentIterator) {
     }
     const n0 = n;
         
-    while(It.peekBack(n + 1) === '#')    ++n;
+    while(It.peekN(-(n + 1)) === '#')    ++n;
     It.getPosition(P, -n);
     if(isLineStart(P)) // -> closing ### with no text before it (rare special case)
         return P;
 
     // a closing ### must be preceded by space (in the special case above that space was already trimmed from the left as part of the opening ###)
     const n1 = n;
-    while((c = It.peekBack(n + 1)) === ' ' || c === '\t')    ++n;
+    while((c = It.peekN(-(n + 1))) === ' ' || c === '\t')    ++n;
     if(n === n1) { // closing ### not preceded by space -> it isn't a closing ### -> include it in content
         if(n0 === 0)
             return false;
@@ -44,28 +44,27 @@ function trimEndMarker(It: BlockContentIterator) {
 
 
 export const sectionHeader_traits: BlockTraits<"sectionHeader"> = {
-    startsHere(LLD: LogicalLineData, B) {
-        if(!(LLD.type === "single" || LLD.type === "text") || LLD.startIndent >= 4)
+    startsHere(LL, B) {
+        if(!standardBlockStart(LL))
             return -1;
-        const rexres = /^(#{1,6})(\s+|$)/.exec(LLD.startPart);
+        const rexres = /^(#{1,6})(\s+|$)/.exec(LL.content);
         if(!rexres)
             return -1;
         B.level = rexres[1].length;
-        const n0 = rexres[1].length + LLD.startIndent;
-        return n0 + measureIndent(rexres[2], (LLD.preStartIndent || 0) + n0);
+        return measureColOffset(LL, rexres[0].length) + LL.indent;
     },
     continuesHere() { return "end"; }, // section headers are single-line
 
-    postprocessContentLine(LLD) {
-        if(LLD.type === "empty")
-            return LLD;
-        const It = makeBlockContentIterator(LLD);
+    postprocessContentLine(LL) {
+        if(LL.type === "empty")
+            return LL;
+        const It = makeBlockContentIterator(LL);
         It.goToEnd();
 
         // Is there perhaps a closing ### ?
         const P = trimEndMarker(It);
         
-        return (P ? sliceLLD_to(LLD, P) : LLD);
+        return (P ? sliceLL_to(LL, P) : LL);
     },
 
     allowSoftContinuations: false,

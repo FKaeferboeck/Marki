@@ -1,154 +1,40 @@
-import { InlinePos, LinePart_ext, LogicalLineData, LP_break, LP_break_HTML, LP_EOF } from "./markdown-types.js";
-import { HTML_Markup, LinePart, LineStructure, LogicalLineType } from "./parser.js";
-
-const breakable: Partial<Record<LinePart_ext["type"], boolean>> = { "HTML_Tag": true,  "XML_Comment": true };
-const isHTML_Markup = (P: LinePart_ext): P is HTML_Markup => breakable[P.type] || false;
+import { lineContent, LogicalLine, LogicalLine_comment, LogicalLine_text, LogicalLine_with_cmt, LogicalLineType, shiftCol, Slice, sliceLine_to } from "./linify.js";
+import { InlinePos } from "./markdown-types.js";
 
 const spaces: Record<string, boolean> = { ' ': true,  '\t': true,  '\n': true };
 
 
-export function measureIndent(s: string, preStartIndent: number = 0) {
-    let n = 0;
-    for (let i = 0, iN = s.length;  i < iN;  i++)
-        switch(s[i]) {
-        case ' ':     ++n;       break;
-        case '\t':
-            n += 4 + preStartIndent;
-            n -= (n % 4) + preStartIndent;
-            break;
-        default:      return n;
+export function sliceLL_to(LL: LogicalLine_with_cmt, end: InlinePos): LogicalLine_with_cmt {
+    if(LL === end.LL)
+        return sliceLine_to(LL, end.char_idx) as LogicalLine_with_cmt;
+
+    const LL_return = { ... LL };
+    let LL_w = LL_return;
+    while(LL.next) {
+        LL = LL.next;
+        if(LL === end.LL) {
+            LL_w.next = sliceLine_to(LL, end.char_idx);
+            return LL_return;
         }
-    return n;
-}
-
-
-export function lineTypeLP(L: LinePart_ext[]): LogicalLineType {
-    if(L.length === 0)    return "empty";
-    if(L.length === 1) {
-        const P = L[0];
-        if(P.type === "XML_Comment")    return "comment";
-        if(P.content.length === 0)    return "empty";
-        if((P.content as string).trimEnd().length === 0)    return "emptyish";
-        return "single";
+        LL_w = (LL_w.next = { ... LL,  shiftCol: shiftCol(LL),  parent: LL } as Slice<LogicalLine_with_cmt>);
+        // ^ The cloned object has the wrong "next" property, but it gets corrected in the next loop iteration
     }
-    // now there are multiple parts, which means that at least some of them are comments -> can only be all comment or mixed content
-    return (L.some(P => P.type !== "XML_Comment" && (P.content as string).trimEnd().length !== 0) ? "text" : "comment");
+    throw new Error('End line of slicing position not found');
 }
 
 
-function trimStart_tabbed(s: string, n: number, preStartIndent: number) {
-    if(n <= 0)    return s;
-    for(let i = 0, iN = s.length, colPos = 0;  i < iN;  ++i) {
-        if(s[i] === '\t') {
-            colPos += 4 + preStartIndent;
-            colPos -= (colPos % 4) + preStartIndent;
-            if(colPos >= n)
-                return ' '.repeat(colPos - n) + s.slice(i + 1);
-        }
-        else if(++colPos >= n)
-            return s.slice(i + 1);
-    }
-    return '';
-}
-
-export function sliceLLD(LLD: LogicalLineData, begin: number): LogicalLineData {
-    const p0 = (LLD.parts.length > 0 ? trimStart_tabbed(LLD.parts[0].content as string, begin, LLD.preStartIndent || 0) : '');
-    //const p0 = (' '.repeat(LLD.startIndent) + LLD.startPart).slice(begin);
-    const parts = LLD.parts.map(P => ({ ... P }));
-    if(p0.length > 0)
-        parts[0].content = p0;
-    else
-        parts.splice(0, 1);
-
-    const pre = begin + (LLD.preStartIndent || 0);
-    const LLD_c: LogicalLineData = {
-        logl_idx:    LLD.logl_idx,
-        parts:       parts,
-        startPart:   p0.trimStart(),
-        startIndent: measureIndent(p0, pre),
-        type:        lineTypeLP(parts),
-        next:        null
-    };
-    if(pre > 0)
-        LLD_c.preStartIndent = pre;
-    LLD.contentSlice = LLD_c;
-    if(LLD.isSoftContainerContinuation)
-        LLD_c.isSoftContainerContinuation = true;
-    return LLD_c;
-}
-
-
-const cloneLLD = (LLD: LogicalLineData): LogicalLineData => ({ ... LLD,  parts: [ ... LLD.parts ],  next: null });
-
-export function sliceLLD_to(LLD: LogicalLineData, end: InlinePos): LogicalLineData {
-    const LLD_return = cloneLLD(LLD);
-    let LLD1 = LLD_return;
-    while(LLD != end.LLD) {
-        if(!LLD.next)
-            throw new Error('End not found');
-        LLD1 = (LLD1.next = cloneLLD(LLD = LLD.next));
-    }
-    const P1: LinePart_ext | undefined = LLD1.parts[end.part_idx];
-    LLD1.parts = LLD1.parts.slice(0, end.part_idx);
-    if(P1)
-        LLD1.parts.push({ content: P1.content.slice(0, end.char_idx),  type: P1.type } as LinePart_ext);
-    return LLD_return;
-}
-
-
-
-export function lineData(LS: LineStructure, logl_idx: number): LogicalLineData {
-    const LL = LS.logical_lines[logl_idx];
-    let P  = LS.all[LL.start];
-    const p0 = (P.type === "TextPart" ? P.content : '');
-    const parts: LinePart_ext[] = [];
-    for(let i = LL.start, iE = i + LL.extent;  i < iE;  ++i) {
-        parts.push(P = LS.all[i]);
-        if(isHTML_Markup(P) && P.continues)
-            parts.push(LP_break_HTML);
-    }
-    //parts.push(LP_break);
-
-    return {
-        logl_idx,  parts,
-        startPart:   p0.trimStart(),
-        startIndent: measureIndent(p0),
-        type:        (LL.type === "text" ? "single" : LL.type),
-        next:        null
-    };
-}
-
-export function lineDataAll(LS: LineStructure, logl_idx_start: number): LogicalLineData {
-    let lld = lineData(LS, logl_idx_start);
-    const lld0 = lld;
-    while(++logl_idx_start < LS.logical_lines.length)
-        lld = (lld.next = lineData(LS, logl_idx_start));
-    return lld0;
-}
-
-
-
-const standardBlockLineTypes: Partial<Record<LogicalLineType | "single", boolean>> = { single: true,  text: true };
-export const standardBlockStart = (LLD: LogicalLineData) => (!!standardBlockLineTypes[LLD.type] && LLD.startIndent < 4);
-
-
-export function LLDinfo(LLD: LogicalLineData | null | undefined) {
-    if(!LLD)
+export function LLinfo(LL: LogicalLine_with_cmt | null | undefined) {
+    if(!LL)
         return '[EOF]';
-    return `[${LLD.logl_idx}:${LLD.startIndent ? `(${LLD.startIndent})+` : ''}${LLD.startPart}${LLD.isSoftContainerContinuation ? '\\SCC' : ''}]`;
+    if(LL.type === "comment")
+        return '[Comment line]';
+    return `[${LL.start}:${LL.indent ? `(${LL.indent})+` : ''}${lineContent(LL)}${LL.isSoftContainerContinuation ? '\\SCC' : ''}]`;
 }
 
-export const isLineStart = (pos: InlinePos) => (pos.part_idx === 0 && pos.char_idx === 0);
+export const isLineStart = (pos: InlinePos) => (pos.char_idx === 0);
 
 
 /**********************************************************************************************************************/
-
-export const makeInlinePos = (LLD: LogicalLineData): InlinePos => ({
-    LLD,
-    part_idx: 0,
-    char_idx: 0
-});
-
 
 export interface InlineParsingConfig {
     ignoreStartIndents: boolean;
@@ -158,45 +44,28 @@ export interface InlineParsingConfig {
 
 
 export function contentSlice(p0: InlinePos, p1: InlinePos, includeComments: boolean, line_break_char = '\n') {
+    let C = lineContent(p0.LL);
+    if(p0.LL === p1.LL) // slice of a single line
+        return C.slice(p0.char_idx, p1.char_idx);
+
     const buf: string[] = [];
-    let LLD = p0.LLD;
+    if(p0.char_idx < C.length)
+        buf.push(C.slice(p0.char_idx)); // remainder of start line
 
-    if(p0.part_idx >= LLD.parts.length) { // starting at an end-of-line (or perhaps EOF) character
-        if(!LLD.next)
-            return ''; // p0 is EOF
-        p0 = { LLD: LLD.next,  part_idx: 0,  char_idx: 0 };
-        buf.push(line_break_char);
+    // add whole lines between start and end
+    let LL = p0.LL;
+    while(LL.next && LL.next !== p1.LL) {
+        LL = LL.next as LogicalLine; // TODO!! comment lines
+        buf.push(line_break_char, lineContent(LL));
     }
+    if(!LL.next)
+        throw new Error('');
 
-    let R0 = p0.LLD.parts[p0.part_idx], R1 = p1.LLD.parts[p1.part_idx];
-    if(R0 === R1) {
-        buf.push(R0.content.slice(p0.char_idx, p1.char_idx) as string);
-        return buf.join('');
+    buf.push(line_break_char);
+    if(p1.char_idx > 0) {
+        C = lineContent(p1.LL);
+        buf.push(C.slice(0, p1.char_idx));
     }
-
-    buf.push(R0.content.slice(p0.char_idx) as string);
-    
-    const fct = (i: number, iE: number) => {
-        for(;  i < iE;  ++i) {
-            const R = LLD.parts[i];
-            if(R.type !== "XML_Comment" || includeComments)
-                buf.push(R.content as string);
-        }
-    };
-
-    if(p0.LLD === p1.LLD) // everything contained in one line
-        fct(p0.part_idx + 1, p1.part_idx);
-    else { // content spanning multiple lines
-        fct(p0.part_idx + 1, LLD.parts.length);
-        buf.push(line_break_char);
-        while((LLD = LLD.next!) !== p1.LLD) { // complete lines between start and end
-            fct(0, LLD.parts.length);
-            buf.push(line_break_char);
-        }
-        fct(0, p1.part_idx);
-    }
-    if(p1.char_idx > 0)
-        buf.push(R1.content.slice(0, p1.char_idx) as string);
     return buf.join('');
 }
 
@@ -206,162 +75,224 @@ export interface BCI_TakeDelimited_IO {
     isOpen: boolean; // in: do we accept an open end?  out: did we end open?
 }
 
+type BlockContentChar = string | false;
+
 export interface BlockContentIterator {
-    pos: InlinePos;
-    checkpoint: InlinePos;
-    line_break_char: string;
+    //line_break_char: string;
 
-    newCheckpoint(): InlinePos;
+    newPos(): InlinePos;
 
-    peekChar(): string | false;
-    peekItem(): string | LinePart | false;
+    peek():           BlockContentChar;
+    peekN(n: number): BlockContentChar;
 
-    peekForward(n: number): string | false;
-    peekBack   (n: number): string | false;
-
-    prevCharInPart(): false | string;
-    nextChar(): false | string;
-    nextItem(): false | string | LinePart;
+    pop():   BlockContentChar; // basically *It++
+    unpop(): BlockContentChar; // basically *--It
 
     skip(chars: Record<string, boolean>) : number;
     skipNobrSpace(): number;
     skipXMLspace(): boolean; // returns if anything was skipped
 
-    regexInPart(rexes: RegExp): false | RegExpMatchArray;
-    regexInPart(...rexes: (RegExp | boolean)[]): false | (RegExpMatchArray | boolean)[];
+    regexInLine(rexes: RegExp): false | RegExpMatchArray;
+    regexInLine(...rexes: (RegExp | boolean)[]): false | (RegExpMatchArray | boolean)[];
 
-    takeDelimited(allowedDelimiters: Record<string, string>, delim_io?: BCI_TakeDelimited_IO): string | false;
+    takeDelimited(allowedDelimiters: Record<string, string>, delim_io?: BCI_TakeDelimited_IO): BlockContentChar;
 
     setPosition        (P:  InlinePos): void;
     setCheckPoint      (P?: InlinePos): void;
     goToEnd(): void;
-    //setCheckPointAtPrev(P?: InlinePos): void;
     getPosition(P: InlinePos, n?: number): boolean; // extract current position, optionally with an offset
+
+    stateInfo(): void;
+}
+
+
+function spreadLL(LL: LogicalLine_with_cmt) {
+    const LLs = [ LL ];
+    while(LL.next)
+        LLs.push(LL = LL.next);
+    return LLs;
+}
+
+
+const nSubrows = (LL: LogicalLine_with_cmt | undefined) => (LL?.type === "comment" ? LL.content.length : 1);
+
+
+// comment lines are represented by a number == index into their sub-rows
+type CurLineType = LogicalLineType | "EOL" | "EOF" | "BEB" /* before begin */;
+interface LineHandle {
+    idx:        number; // if type is EOL/EOF, this will point to the line/subrow whose end it is
+    cmt_subrow: number; //
+    type:       CurLineType;
+}
+
+function getPart(LLs: LogicalLine_with_cmt[], H: LineHandle, line_break_char: string) {
+    switch(H.type) {
+        case "EOL":      return line_break_char;
+        case "BEB":
+        case "EOF":      return [false] as const;
+        case "comment":  return (LLs[H.idx] as LogicalLine_comment).content[H.cmt_subrow];
+        case "text":     return (LLs[H.idx] as LogicalLine_text).content;
+        default:
+            throw new Error('getPart: Cannot return part of empty line');
+    }
+}
+
+function nextLineIdx(LLs: LogicalLine_with_cmt[], lineIdx: number, skip_cmt_lines: boolean) {
+    do ++lineIdx;
+    while(lineIdx < LLs.length && skip_cmt_lines && LLs[lineIdx].type === "comment");
+    return lineIdx;
+}
+
+function nextLine(LLs: LogicalLine_with_cmt[], H: LineHandle, skip_cmt_lines: boolean) {
+    const LL = LLs[H.idx];
+    if(H.type === "EOF")
+        return; // do not advance beyond the end
+    if(!(H.type === "EOL" || H.type === "BEB")) {
+        H.type = (H.cmt_subrow < nSubrows(LL) - 1 || // comment line, standing at what is not the last subrow
+                  nextLineIdx(LLs, H.idx, skip_cmt_lines) < LLs.length ? "EOL" : "EOF");
+        return;
+    }
+    // EOL or BEB -> next line
+    if(H.cmt_subrow < nSubrows(LL) - 1) // next subrow of the same comment line
+        ++H.cmt_subrow;
+    else {
+        H.idx = nextLineIdx(LLs, H.idx, skip_cmt_lines);
+        if(H.idx >= LLs.length)
+            throw new Error('Unexpectedly EOL not followed by another line – should be EOF instead!');
+        H.cmt_subrow = 0;
+    }
+    H.type = LLs[H.idx].type;
+    if(H.type === "empty" || H.type === "emptyish")
+        nextLine(LLs, H, skip_cmt_lines);
+}
+
+function prevLine(LLs: LogicalLine_with_cmt[], H: LineHandle, skip_cmt_lines: boolean) {
+    if(H.type === "BEB")
+        return;
+
+    if(H.type.startsWith('EO')) {
+        H.type = LLs[H.idx].type;
+        if(H.type === "empty" || H.type === "emptyish")
+            prevLine(LLs, H, skip_cmt_lines);
+        return;
+    }
+
+    // going from a real part to a pseudo-part
+    if(H.type === "comment" && H.cmt_subrow > 0)
+        --H.cmt_subrow; // H.idx stays unchanged
+    else {
+        do --H.idx;
+        while(H.idx >= 0 && skip_cmt_lines && LLs[H.idx].type === "comment");
+        if(H.idx < 0) {
+            H.type = "BEB";
+            H.cmt_subrow = 0;
+            return;
+        }
+        H.cmt_subrow = nSubrows(LLs[H.idx]) - 1;
+    }
+    H.type = "EOL";
 }
 
 
 
-
-
-export function makeBlockContentIterator(LLD: LogicalLineData, singleLine: boolean = false): BlockContentIterator {
-    const pos        = makeInlinePos(LLD);
-    let   checkpoint = makeInlinePos(LLD);
-    let curLine = LLD;
-    let curPart: LinePart_ext = curLine.parts[0];
-    let curPartLength = curPart.content.length;
+export function makeBlockContentIterator(LL: LogicalLine, singleLine: boolean = false): BlockContentIterator {
+    const skip_cmt_lines = true, line_break_char = '\n';
+    const LLs = (singleLine ? [ LL ] : spreadLL(LL));
+    const H: LineHandle = { idx: -1,  cmt_subrow: 0,  type: "BEB" };
+    let char_idx = 0;
+    let curPart: string | readonly [false] = [false];
+    let curPartLength = 0;
 
     const nextPart = () => {
-        const x = (++pos.part_idx - curLine.parts.length);
-        if(x === 0 && curLine.next && !singleLine) { // insert line break character, except after the last line
-            curPart = LP_break;
-            pos.char_idx = 0;
-            curPartLength = 0;
-            return;
-        }
-        if(x >= 0) {
-            if(!curLine.next || singleLine) {
-                curPart = LP_EOF;
-                /*pos.part_idx = */pos.char_idx = 0;
-                return;
-            }
-            if(curLine = curLine.next)
-                pos.LLD = curLine;
-            pos.part_idx = 0;
-        }
-        curPartLength = (curPart = curLine.parts[pos.part_idx]).content.length;
-        curPart.content.length
-        pos.char_idx = 0;
+        nextLine(LLs, H, skip_cmt_lines);
+        curPartLength = (curPart = getPart(LLs, H, line_break_char)).length;
+        char_idx = 0;
+    };
+    const prevPart = () => {
+        prevLine(LLs, H, skip_cmt_lines);
+        curPartLength = (curPart = getPart(LLs, H, line_break_char)).length;
+        char_idx = curPartLength - 1;
     };
 
-    const It = {
-        pos,
-        checkpoint,
-        line_break_char: ' ',
+    nextPart(); // set to first eligible part
 
-        newCheckpoint: () => ({ ... pos }),
-
-        peekChar: () => curPart.content[pos.char_idx],
-        peekItem: () => {
-            if(isHTML_Markup(curPart) && pos.char_idx === 0)
-                return curPart;
-            return It.peekChar();
-        },
-
-        peekForward: (n: number) => {
-            n += pos.char_idx;
-            if(n < curPartLength)
-                return curPart.content[n];
-            
-            let p_i = pos.part_idx, C = curPart.content;
+    function shiftIntoView(H: LineHandle, offset: number) {
+        if(offset > 0)
             do {
-                if(p_i + 1 >= curLine.parts.length)
-                    return '';
-                n -= C.length;
-                C = curLine.parts[++p_i].content;
-            } while(n >= C.length);
-            return C[n];
-        },
-        peekBack: (n: number) => {
-            if(pos.char_idx >= n)    return curPart.content[pos.char_idx - n];
-            n -= pos.char_idx;
-            if(pos.part_idx > 0) {
-                const C = curLine.parts[pos.part_idx - 1].content;
-                if(C.length >= n)
-                    return C[C.length - n];
-            }
-            return false;
+                nextLine(LLs, H, skip_cmt_lines);
+                const part = getPart(LLs, H, line_break_char);
+                if(offset < part.length)
+                    return offset;
+                offset -= part.length;
+            } while(H.type !== "EOF");
+        else
+            do {
+                prevLine(LLs, H, skip_cmt_lines);
+                const part = getPart(LLs, H, line_break_char);
+                offset += part.length;
+                if(offset >= 0)
+                    return offset;
+            } while(H.type !== "BEB");
+        return 0;
+    }
+
+    const It = {
+        newPos: (): InlinePos => {
+            const LL = LLs[H.idx];
+            return { LL,  char_idx: (H.type.startsWith('EO') ? lineContent(LL).length : char_idx) };
         },
 
-        prevCharInPart: () => (pos.char_idx > 0 && curPart.content[pos.char_idx - 1]),
-        nextChar: () => {
-            const s = curPart.content[pos.char_idx];
-            if(s && ++pos.char_idx >= curPartLength)
+        peek: () => curPart[char_idx],
+        peekN: (offset: number) => {
+            offset += char_idx;
+            if(0 <= offset && offset < curPartLength) // the most common case
+                return curPart[offset];
+            const H1 = { ... H };
+            offset = shiftIntoView(H1, offset);
+            return getPart(LLs, H1, line_break_char)[offset];
+        },
+
+        pop: () => {
+            const s = curPart[char_idx];
+            if(s && ++char_idx >= curPartLength)
                 nextPart();
             return s;
         },
-
-        nextItem: () => {
-            if(isHTML_Markup(curPart) && pos.char_idx === 0) {
-                const s = curPart;
-                nextPart();
-                return s;
-            }
-            const s = curPart.content[pos.char_idx];
-            if(s && ++pos.char_idx >= curPartLength)
-                nextPart();
-            return s;
+        unpop: () => {
+            if(--char_idx < 0)    prevPart();
+            return curPart[char_idx];
         },
 
         skip: (chars: Record<string, boolean>) => {
             let skipped = 0;
-            for(let c: string | false = false;  (c = It.peekChar()) && chars[c];  It.nextChar())
+            for(let c: string | false = false;  (c = It.peek()) && chars[c];  It.pop())
                 ++skipped;
             return skipped;
         },
 
         skipXMLspace: () => {
             let found = false;
-            while(spaces[curPart.content[pos.char_idx] || '']) {
+            while(spaces[curPart[char_idx] || '']) {
                 found = true;
-                if(++pos.char_idx >= curPartLength)
+                if(++char_idx >= curPartLength)
                     nextPart();
             }
             return found;
         },
 
         skipNobrSpace: () => {
-            let i = pos.char_idx, c: string|false = '';
-            while(i < curPartLength && ((c = curPart.content[i]) === ' ' || c === '\t'))    ++i;
-            const d = i - pos.char_idx;
-            pos.char_idx = i;
-            if(pos.char_idx === curPartLength)
+            let i = char_idx, c: string|false = '';
+            while(i < curPartLength && ((c = curPart[i]) === ' ' || c === '\t'))    ++i;
+            const d = i - char_idx;
+            char_idx = i;
+            if(char_idx === curPartLength)
                 nextPart();
             return d;
         },
 
-        regexInPart: (...rexes: (RegExp | boolean)[]): any => {
+        regexInLine: (...rexes: (RegExp | boolean)[]): any => {
             const res: (RegExpExecArray | boolean)[] = [];
-            const P1 = It.newCheckpoint();
+            const P1 = It.newPos();
             const abort = () => { It.setPosition(P1);    return false; };
             for(const rex of rexes) {
                 if(typeof rex === "boolean") {
@@ -371,13 +302,13 @@ export function makeBlockContentIterator(LLD: LogicalLineData, singleLine: boole
                     res.push(skipped);
                     continue;
                 }
-                if(curPart.type === "EOF" || curPart.type === "lineBreak")
+                if(H.type === "EOF" || H.type === "EOL")
                     return abort();
-                //rex.lastIndex = pos.char_idx;
-                const rexres = rex.exec(curPart.content.slice(pos.char_idx));
+                //rex.lastIndex = char;
+                const rexres = rex.exec((curPart as string).slice(char_idx));
                 if(!rexres)
                     return abort();
-                if((pos.char_idx += rexres[0].length) >= curPartLength)
+                if((char_idx += rexres[0].length) >= curPartLength)
                     nextPart();
                 res.push(rexres);
             }
@@ -385,65 +316,75 @@ export function makeBlockContentIterator(LLD: LogicalLineData, singleLine: boole
         },
 
         takeDelimited: (allowedDelimiters: Record<string, string>, delim_io?: BCI_TakeDelimited_IO) => {
-            let c = It.peekChar();
+            let c = It.peek();
             let escaped = false;
             let delim = delim_io?.delim || c;
             const endDelim = delim && allowedDelimiters[delim];
             if(!endDelim)
                 return false;
-            const chkp = It.newCheckpoint();
+            const chkp = It.newPos();
             if(!delim_io?.delim) // if we started a new delimiting expression the first character is the delimiter and will be skipped here
-                It.nextChar(); 
+                It.pop(); 
             if(delim_io && !delim_io.delim)
                 delim_io.delim = c as string;
             
-            while(c = It.nextChar()) {
+            while(c = It.pop()) {
                 if((c === delim || c === endDelim) && !escaped) {
                     if(delim_io)
                         delim_io.isOpen = false;
-                    return contentSlice(chkp, It.pos, true);
+                    return contentSlice(chkp, It.newPos(), true);
                 }
                 escaped = (c === '\\' && !escaped);
             }
             if(delim_io?.isOpen)
-                return contentSlice(chkp, It.pos, true);
+                return contentSlice(chkp, It.newPos(), true);
             It.setPosition(chkp);
             return false;
         },
 
         setPosition: (P: InlinePos) => {
-            Object.assign(pos, P);
-            const pa = (curLine = P.LLD).parts;
-            curPart = (P.part_idx < pa.length ? pa[P.part_idx] : LP_break);
-            curPartLength = curPart.content.length;
+            const idx = LLs.indexOf(P.LL);
+            if(idx < 0)
+                throw new Error('setPosition: Position does not point into this block content');
+            H.idx = idx;
+            H.cmt_subrow = 0; // TODO!!
+            H.type = P.LL.type;
+            char_idx = P.char_idx;
+            curPartLength = (curPart = lineContent(P.LL)).length;
+            if(char_idx >= curPartLength)
+                nextPart();
         },
-        setCheckPoint: (P?: InlinePos) => {
-            Object.assign(P || checkpoint, pos);
+        setCheckPoint: (P: InlinePos) => {
+            P.LL = LLs[H.idx];
+            P.char_idx = (H.type.startsWith('EO') ? lineContent(P.LL).length : char_idx);
         },
         goToEnd: () => {
-            while(curLine.next)
-                curLine = curLine.next;
-            pos.LLD = curLine;
-            pos.part_idx = curLine.parts.length; // off-end
-            pos.char_idx = 0;
-            curPart = LP_EOF;
-            curPartLength = 1;
-        },
-        getPosition: (P: InlinePos, n?: number) => {
-            Object.assign(P, pos);
-            // TODO!! Wo can only use negative offsets currently
-            if(n) {
-                if(P.char_idx >= -n)
-                    P.char_idx += n;
-                else {
-                    n += P.char_idx;
-                    if(P.part_idx === 0)
-                        return false;
-                    const C = P.LLD.parts[--P.part_idx].content;
-                    P.char_idx = C.length + n;
-                }
+            H.idx = LLs.length - 1;
+            const LL = LLs[H.idx];
+            H.cmt_subrow = nSubrows(LL) - 1;
+            H.type       = "EOF";
+            if(LL.type === "comment" && skip_cmt_lines) { // bit of a fudge but it works
+                H.cmt_subrow = 0;
+                H.type = "comment";
+                prevPart();
+                H.type = "EOF";
             }
+        },
+        getPosition: (P: InlinePos, offset?: number) => {
+            offset = (offset || 0) + char_idx;
+            if(0 <= offset && offset < curPartLength) {
+                P.LL = LLs[H.idx];
+                P.char_idx = offset;
+                return true;
+            }
+            const H1 = { ... H };
+            P.char_idx = shiftIntoView(H1, offset);
+            P.LL = LLs[H.idx];
             return true;
+        },
+
+        stateInfo() {
+            console.log(`[Line ${H.idx} "${H.type}" ${H.type === "comment" ? `(${H.cmt_subrow}) ` : ''}char ${char_idx}]`)
         }
     };
     return It;
@@ -458,17 +399,11 @@ export function removeDelimiter(s: string) {
 }
 
 
-export function trimEndSpace(LLD: LogicalLineData) {
-    let LLD1 = LLD;
-    while(LLD1.next)    LLD1 = LLD1.next;
-    if(LLD1.parts.length === 0)
-        return LLD;
-    const P = LLD1.parts[LLD1.parts.length - 1];
-    if(typeof P.content !== "string" || P.type !== "TextPart")
-        return LLD;
-    P.content = P.content.trimEnd();
-    if(!P.content)
-        LLD.parts.pop();
-    LLD1.type = lineTypeLP(LLD1.parts);
-    return LLD;
+export function trimEndSpace(LL: LogicalLine_with_cmt) {
+    let LL1 = LL;
+    while(LL1.next)    LL1 = LL1.next;
+    if(LL1.type !== "text")
+        return LL;
+    LL1.content = LL1.content.trimEnd();
+    return LL;
 }

@@ -1,24 +1,23 @@
-import { BlockParser_Standard } from "../block-parser.js";
-import { LogicalLineData } from "../markdown-types.js";
+import { isSpaceLine } from "../linify.js";
 import { BlockTraits } from "../traits.js";
 
 export interface IndentedCodeBlock { };
 
 
 export const indentedCodeBlock_traits: BlockTraits<"indentedCodeBlock"> = {
-    startsHere(LLD: LogicalLineData) {
-        if(LLD.startIndent < 4)    return -1;
-        this.setCheckpoint(LLD);
+    startsHere(LL) {
+        if(LL.indent < 4)    return -1;
+        this.setCheckpoint(LL);
         return 4;
     },
-    continuesHere(LLD) {
-        if(LLD.type === "empty" || LLD.type === "emptyish")
+    continuesHere(LL) {
+        if(isSpaceLine(LL))
             return 4;
 
-        if(LLD.startIndent < 4)
+        if(LL.indent < 4)
             return "end";
 
-        this.setCheckpoint(LLD);   
+        this.setCheckpoint(LL);   
         return 4;
     },
 

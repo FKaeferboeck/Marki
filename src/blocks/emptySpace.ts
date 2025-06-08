@@ -1,11 +1,12 @@
 import { BlockParser_EmptySpace } from "../block-parser.js";
-import { LogicalLineData } from "../markdown-types.js";
+import { isSpaceLine, LogicalLine } from "../linify.js";
 import { BlockTraits } from "../traits.js";
 
 export interface EmptySpace { };
 
+
 export const emptySpace_traits: BlockTraits<"emptySpace"> = {
-    startsHere(LLD: LogicalLineData) { return (LLD.type === "empty" || LLD.type === "emptyish" ? 0 : -1); }, // doesn't matter, the individual BlockParser skips this function
+    startsHere(LL: LogicalLine) { return (isSpaceLine(LL) ? 0 : -1); }, // doesn't matter, the individual BlockParser skips this function
     continuesHere() { return "end"; },
 
     allowSoftContinuations: true,

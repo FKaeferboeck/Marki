@@ -1,7 +1,6 @@
-import { BlockParser } from "../../block-parser.js";
-import { Block_Container, BlockBase, BlockBase_Container_additions, BlockType, BlockTypeMap_Container, LogicalLineData } from "../../markdown-types.js";
-import { BlockTraits, BlockTraitsExtended } from "../../traits.js";
-import { measureIndent } from "../../util.js";
+import { LogicalLine, standardBlockStart } from "../../linify.js";
+import { BlockBase, BlockBase_Container_additions, BlockType } from "../../markdown-types.js";
+import { BlockTraitsExtended } from "../../traits.js";
 
 
 export interface SourceInclude {
@@ -19,16 +18,16 @@ export type Block_SourceInclude = Block_Container_Ext<"ext_standard_sourceInclud
 
 
 export const sourceInclude_traits: BlockTraitsExtended<"ext_standard_sourceInclude", SourceIncludeTraits_extra> = {
-    startsHere(LLD: LogicalLineData, B: Block_SourceInclude) {
-        if(!(LLD.type === "single" || LLD.type === "text") || LLD.startIndent >= 4)
+    startsHere(LL: LogicalLine, B: Block_SourceInclude) {
+        if(!standardBlockStart(LL))
             return -1;
-        if(!LLD.startPart.startsWith(this.traits.command))
+        if(!LL.content.startsWith(this.traits.command))
             return -1;
-        const rexres = /^\s+/.exec(LLD.startPart.slice(this.traits.command.length));
+        const rexres = /^\s+/.exec(LL.content.slice(this.traits.command.length));
         if(!rexres)
             return -1;
         const n = this.traits.command.length + rexres[0].length;
-        B.target = LLD.startPart.slice(n);
+        B.target = LL.content.slice(n);
         return n;
     },
     continuesHere() { return "end"; }, // single-line

@@ -1,7 +1,6 @@
 import { BlockParser_Container } from "../block-parser.js";
-import { LogicalLineData } from "../markdown-types.js";
+import { measureColOffset, standardBlockStart } from "../linify.js";
 import { BlockTraits_Container } from "../traits.js";
-import { standardBlockStart } from "../util.js";
 
 export interface BlockQuote {
     prefix: string;
@@ -11,19 +10,19 @@ export interface BlockQuote {
 export const blockQuote_traits: BlockTraits_Container<"blockQuote"> = {
     isContainer: true,
 
-    startsHere(LLD: LogicalLineData) {
-        if(!(standardBlockStart(LLD) && LLD.startPart.startsWith('>')))
+    startsHere(LL) {
+        if(!(standardBlockStart(LL) && LL.content.startsWith('>')))
             return -1;
-        return (/^>\s/.test(LLD.startPart) ? 2 : 1) + LLD.startIndent;
+        return (/^>\s/.test(LL.content) ? 2 : 1) + LL.indent;
     },
 
-    continuesHere(LLD) {
-        if(LLD.startIndent >= 4) // indented code blocks do not interrups block quotes
+    continuesHere(LL) {
+        if(!standardBlockStart(LL)) // indented code blocks do not interrups block quotes
             return "soft";
-        const rexres = /^>\s?/.exec(LLD.startPart);
+        const rexres = /^>\s?/.exec(LL.content);
         if(!rexres)
             return "soft";
-        return rexres[0].length + LLD.startIndent;
+        return measureColOffset(LL, rexres[0].length) + LL.indent;
     },
 
     allowSoftContinuations: true,

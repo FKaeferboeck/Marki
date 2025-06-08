@@ -1,6 +1,5 @@
-import { LogicalLineData } from "../markdown-types.js";
 import { BlockTraits } from "../traits.js";
-import { standardBlockStart } from "../util.js";
+import { standardBlockStart } from "../linify.js";
 
 
 export interface ThematicBreak {
@@ -9,10 +8,10 @@ export interface ThematicBreak {
 
 
 export const thematicBreak_traits: BlockTraits<"thematicBreak"> = {
-    startsHere(LLD: LogicalLineData, B) {
-        if(!standardBlockStart(LLD) || !/^(?:\*(?:\s*\*){2,}|-(?:\s*-){2,}|_(?:\s*_){2,})\s*$/.test(LLD.startPart))
+    startsHere(LL, B) {
+        if(!standardBlockStart(LL) || !/^(?:\*(?:\s*\*){2,}|-(?:\s*-){2,}|_(?:\s*_){2,})\s*$/.test(LL.content))
             return -1;
-        B.ruleType = LLD.startPart.charAt(0) as ThematicBreak["ruleType"];
+        B.ruleType = LL.content[0] as ThematicBreak["ruleType"];
         return 0;
     },
     allowSoftContinuations: false,

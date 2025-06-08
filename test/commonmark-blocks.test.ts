@@ -1,12 +1,11 @@
 import { describe, expect, test } from 'vitest'
-import { linify_old } from '../src/parser';
-import { lineDataAll } from '../src/util';
 import { Renderer} from '../src/renderer/renderer';
 import * as commonmark from 'commonmark';
 import { collectLists, listItem_traits } from '../src/blocks/listItem';
 import { MarkdownParser } from '../src/markdown-parser';
 import { standardBlockParserTraits } from '../src/block-parser';
 import { pairUpDelimiters } from '../src/delimiter-processing';
+import { linify } from '../src/linify';
 
 // As of 2025-03-12 Vitest suddenly isn't able any more to import listItem on its own. Luckily we can repair it like this.
 standardBlockParserTraits.listItem = listItem_traits;
@@ -17,35 +16,37 @@ const renderer = new Renderer();
 var commonmark_reader = new commonmark.Parser();
 var commonmark_writer = new commonmark.HtmlRenderer();
 
+const clearify = (s: string) => s.replaceAll('\t', '[\\t]');
 
 export function doTest(idx: number | string, input: string, verbose = false) {
     test('' + idx, () => {
-        const LS   = linify_old(input);
-        const LLD  = lineDataAll(LS, 0);
-        
+        const LLs   = linify(input, false);
+
         //const diag = false;
         const diag = verbose;
         parser.reset();
         parser.diagnostics = diag;
-        const blocks = parser.processContent(LLD);
+        const blocks = parser.processContent(LLs[0]);
         collectLists(blocks, diag);
         blocks.forEach(B => {
             parser.processBlock(B);
             if(B.inlineContent)
                 pairUpDelimiters(B.inlineContent);
         });
-        const my_result = renderer.referenceRender(blocks, diag);
+        const my_result = clearify(renderer.referenceRender(blocks, diag));
         if(verbose)
             console.log(blocks)
 
         const commonmark_parsed = commonmark_reader.parse(input);
-        const commonmark_result = commonmark_writer.render(commonmark_parsed) as string;
+        const commonmark_result = clearify(commonmark_writer.render(commonmark_parsed) as string);
         if(verbose)
             console.log('CommonMark:', commonmark_result);
         expect(my_result).toEqual(commonmark_result);
     });
 }
 
+
+/* Here begins the list of all examples contained in the CommonMark 0.31.2 specification */
 
 describe('Tabs', () => {
     doTest( 1,   '\tfoo\tbaz\t\tbim');
@@ -277,17 +278,17 @@ describe('HTML blocks', () => {
     doTest(174, '> <div>\n> foo\n\nbar');
     doTest(175, '- <div>\n- foo');
     doTest(176, '<style>p{color:red;}</style>\n*foo*'); // The end tag can occur on the same line as the start tag
-    //doTest(177, '<!-- foo -->*bar*\n*baz*');
+    doTest(177, '<!-- foo -->*bar*\n*baz*');
     doTest(178, '<script>\nfoo\n</script>1. *bar*'); // Note that anything on the last line after the end tag will be included in the HTML block
     /* Type 2 */
-    //doTest(179, '<!-- Foo\n\nbar\n   baz -->\nokay');
+    doTest(179, '<!-- Foo\n\nbar\n   baz -->\nokay');
     /* Type 3 — processing instruction */
     doTest(180, '<?php\n\n  echo \'>\';\n\n?>\nokay');
     /* Type 4 — declaration */
     doTest(181, '<!DOCTYPE html>');
     /* Type 5 — CDATA section */
     doTest(182, '<![CDATA[\nfunction matchwo(a,b)\n{\n  if (a < b && a < 0) then {\n    return 1;\n\n  } else {\n\n    return 0;\n  }\n}\n]]>\nokay');
-    //doTest(183, '  <!-- foo -->\n\n    <!-- foo -->'); // The opening tag can be preceded by up to three spaces of indentation, but not four
+    doTest(183, '  <!-- foo -->\n\n    <!-- foo -->'); // The opening tag can be preceded by up to three spaces of indentation, but not four
     doTest(184, '  <div>\n\n    <div>');
     doTest(185, 'Foo\n<div>\nbar\n</div>'); // An HTML block of types 1–6 can interrupt a paragraph, and need not be preceded by a blank line
     doTest(186, '<div>\nbar\n</div>\n*foo*'); // However, a following blank line is needed, except at the end of a document, and except for blocks of types 1–5, above
@@ -439,8 +440,8 @@ describe('lists', () => {
     doTest(305, 'The number of windows in my house is\n1.  The number of doors is 6.');
     doTest(306, '- foo\n\n- bar\n\n\n- baz');
     doTest(307, '- foo\n  - bar\n    - baz\n\n\n      bim');
-    //doTest(308, '- foo\n- bar\n\n<!-- -->\n\n- baz\n- bim');
-    //doTest(309, '-   foo\n\n    notcode\n\n-   foo\n\n<!-- -->\n\n    code');
+    doTest(308, '- foo\n- bar\n\n<!-- -->\n\n- baz\n- bim');
+    doTest(309, '-   foo\n\n    notcode\n\n-   foo\n\n<!-- -->\n\n    code');
     doTest(310, '- a\n - b\n  - c\n   - d\n  - e\n - f\n- g'); // List items need not be indented to the same level
     doTest(311, '1. a\n\n  2. b\n\n   3. c');
     doTest(312, '- a\n - b\n  - c\n   - d\n    - e');

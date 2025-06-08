@@ -9,11 +9,11 @@ const rex_special = /^[\s\p{P}\p{S}]$/u;
 
 
 function checkEmphDelimiterContext(D: Delimiter_emph, T: DelimiterTraits, It: BlockContentIterator) {
-    let c = It.peekBack(D.delim.length + 1);
+    let c = It.peekN(-(D.delim.length + 1));
     const white_before   = (!c || rex_whitespace.test(c)),
           special_before = (!c || rex_special.test(c));
 
-    c = It.peekChar();
+    c = It.peek();
     const white_after   = (!c || rex_whitespace.test(c)),
           special_after = (!c || rex_special.test(c));
 
@@ -51,7 +51,7 @@ export function parseDelimiter(It: BlockContentIterator, checkpoint1: InlinePos,
     if(toClose) {
         let endDelim: string | false = false;
         if(!T.parseCloser)
-            endDelim = It.nextChar(); // skip the closing delimiter (it's assumed to be a single character when parseCloser() is not defined)
+            endDelim = It.pop(); // skip the closing delimiter (it's assumed to be a single character when parseCloser() is not defined)
         else if(!(endDelim = T.parseCloser(It, checkpoint1)))
             return false;
         // opening and closing delimiter get double-linked

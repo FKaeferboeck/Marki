@@ -1,5 +1,5 @@
 import { describe } from 'vitest'
-import { doTest } from './referenceRender.test';
+import { doTest } from './commonmark-blocks.test';
 
 
 describe('Code spans', () => {
@@ -340,7 +340,7 @@ describe('Inline: Raw HTML', () => {
     doTest(623, '</a></foo >'); // Closing tags
     doTest(624, '</a href="foo">'); // Illegal attributes in closing tag
     doTest(625, 'foo <!-- this is a --\ncomment - with hyphens -->'); // Comments
-    //doTest(626, 'foo <!--> foo -->\n\nfoo <!---> foo -->');
+    doTest(626, 'foo <!--> foo -->\n\nfoo <!---> foo -->'); // !! Here CommonMark prescribes a behavior that is wrong by the XML standard !!
     doTest(627, 'foo <?php echo $a; ?>'); // Processing instructions
     doTest(628, 'foo <!ELEMENT br EMPTY>'); // Declarations
     doTest(629, 'foo <![CDATA[>&<]]>'); // CDATA sections

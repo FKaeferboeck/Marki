@@ -1,4 +1,5 @@
 import { parseBackslashEscapes } from "../inline-parser.js";
+import { lineContent, LogicalLine_with_cmt, shiftCol } from "../linify.js";
 import { AnyBlock, AnyInline, Block, BlockType, InlineContent, inlineContentCategory, InlineElement, InlineElementType } from "../markdown-types.js";
 import { InlineHandlerList, InlineRenderer, renderInline } from "./inline-renderer.js";
 import { renderHTML_entity, escapeXML, escapeXML_all, urlEncode } from "./util.js";
@@ -50,6 +51,13 @@ function delimitedSection(data: InlineContent, i0: number) {
         contents:   data.slice(i0 + 1, i1),
         closingIdx: i1
     };
+}
+
+
+function actualizeTab(pfx: string, preIndent: number) {
+    if((preIndent % 4) !== 0 && pfx[0] === '\t')
+        return ' '.repeat(4 - (preIndent % 4)) + pfx.slice(1);
+    return pfx;
 }
 
 
@@ -118,7 +126,6 @@ export class Renderer {
     inlineHandler: InlineHandlerList = {
         "escaped":    (elt, I) => I.add(escapeXML(elt.character)),
         "codeSpan":   (elt, I) => I.add(`<code>${escapeXML(elt.content)}</code>`),
-        "html":       (elt, I) => I.add(elt.stuff),
         "link":       function(elt, I) {
             const dest  = elt.reference?.destination || elt.destination;
             const title = elt.reference?.linkTitle   || elt.linkTitle;
@@ -193,9 +200,13 @@ export class Renderer {
         let s = '';
         const arr: string[] = [];
         if(mode === "literal") {
-            for(let LLD = B.content || null;  LLD;  LLD = LLD.next) {
-                LLD.parts.forEach(P => arr.push(P.content as string));
-                if(B.type !== "htmlBlock" || LLD.next)
+            for(let LL: LogicalLine_with_cmt | undefined = B.content;  LL;  LL = LL.next) {
+                if(LL.type === "comment")
+                    continue;
+                if(LL.prefix)
+                    arr.push(actualizeTab(LL.prefix, shiftCol(LL)));
+                arr.push(lineContent(LL));
+                if(B.type !== "htmlBlock" || LL.next)
                     arr.push('\n');
             }
             s = arr.join('');
@@ -204,8 +215,8 @@ export class Renderer {
             I?.add(s1);
             return s1;
         } else {
-            for(let LLD = B.content || null;  LLD;  LLD = LLD.next)
-                arr.push(LLD.startPart);
+            for(let LL: LogicalLine_with_cmt | undefined = B.content;  LL;  LL = LL.next)
+                arr.push(lineContent(LL));
             s = arr.join('\n');
         }
         const s1 = escapeXML(s);

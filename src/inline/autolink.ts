@@ -8,13 +8,13 @@ export const autolink_traits: InlineElementTraits<"autolink"> = {
     startChars: [ '<' ],
 
     parse(It) {
-        let rexres = It.regexInPart(/^<([A-Za-z][A-Za-z\d+.\-]{1,31}):([^<>\x00-\x20]*)>/);
+        let rexres = It.regexInLine(/^<([A-Za-z][A-Za-z\d+.\-]{1,31}):([^<>\x00-\x20]*)>/);
         if(rexres) {
             this.B.scheme = rexres[1];
             this.B.URI    = rexres[2];
             return this.B;
         }
-        rexres = It.regexInPart(rexEmailAutolink);
+        rexres = It.regexInLine(rexEmailAutolink);
         if(rexres) {
             this.B.email = rexres[1];
             return this.B;

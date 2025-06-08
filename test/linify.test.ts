@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { linify, LogicalLine, LogicalLine_comment, sliceLine } from "../src/linify";
+import { linify, LogicalLine, LogicalLine_comment, LogicalLine_with_cmt, sliceLine } from "../src/linify";
 
 const text0 = `Hallooo!
 
@@ -55,7 +55,7 @@ describe('Full linify()', () => {
 
     it('With XML comments', () => {
         const LS = linify(text0, true);
-        const expected: LogicalLine[] = [
+        const expected: LogicalLine_with_cmt[] = [
             { type: "text",     start:  0, indent: 0, prefix: '', content: 'Hallooo!' },
             { type: "empty",    start:  1, indent: 0 },
             { type: "text",     start:  2, indent: 0, prefix: '', content: 'Text1 <!-- Cmt -->Text2<!--' },

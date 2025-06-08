@@ -31,15 +31,15 @@ export function acceptable<T extends "link" | "image">(MDP: MarkdownParser, B: I
 
 export function takeLinkDestination(It: BlockContentIterator, destination: AnyInline[]) {
     It.skip({ ' ': true,  '\n': true });
-    const bracketed = It.regexInPart(/^<(?:\\[<>]|[^<>])*>/);
+    const bracketed = It.regexInLine(/^<(?:\\[<>]|[^<>])*>/);
     if(bracketed)
         parseBackslashEscapes(bracketed[0].slice(1, -1), destination);
     else {
-        if(It.peekChar() === '<')
+        if(It.peek() === '<')
             return false;
-        const chkp = It.newCheckpoint();
+        const chkp = It.newPos();
         untilSpaceOrStop(It);
-        const S = contentSlice(chkp, It.pos, true);
+        const S = contentSlice(chkp, It.newPos(), true);
         if(!S)
             return false; // this should be impossible
         parseBackslashEscapes(S, destination);
@@ -75,7 +75,7 @@ export const bracket_traits: DelimiterTraits = {
     category: "emphLoose",
 
     parseDelimiter(It: BlockContentIterator) {
-        It.nextChar(); // '['
+        It.pop(); // '['
         return makeDelimiter('[', ']');
     }
 };
@@ -87,41 +87,41 @@ export function parseLinkDestination(It: BlockContentIterator) {
         linkTitle?:  AnyInline[];
     } = { destination: [] };
     
-    if(It.nextChar() !== '(')
+    if(It.pop() !== '(')
         return false;
 
     It.skip({ ' ': true,  '\n': true });
-    const bracketed = It.regexInPart(/^<(?:\\[<>]|[^<>])*>/);
+    const bracketed = It.regexInLine(/^<(?:\\[<>]|[^<>])*>/);
     if(bracketed)
         parseBackslashEscapes(bracketed[0].slice(1, -1), X.destination);
     else {
-        if(It.peekChar() === '<')
+        if(It.peek() === '<')
             return false;
-        const chkp = It.newCheckpoint();
+        const chkp = It.newPos();
         if(untilSpaceOrStop(It) === "invalid")
             return false;
-        parseBackslashEscapes(contentSlice(chkp, It.pos, true), X.destination);
+        parseBackslashEscapes(contentSlice(chkp, It.newPos(), true), X.destination);
         It.skip({ ' ': true,  '\n': true });
         const title = It.takeDelimited({ '"': '"',  '\'': '\'',  '(': ')' });
         if(title)
             parseBackslashEscapes(removeDelimiter(title), X.linkTitle = []);
     }
     It.skip({ ' ': true,  '\n': true });
-    return (It.nextChar() === ')' && X);
+    return (It.pop() === ')' && X);
 }
 
 
 export function referenceLinkExtra(It: BlockContentIterator) { // reference link, full or collapsed
-    if(It.peekChar() !== '[')
+    if(It.peek() !== '[')
         return false;
     let X: {
         linkType:    "collapsed" | "reference",
         destination: AnyInline[];
     } = { linkType: "collapsed",  destination: [] };
 
-    if(It.peekForward(1) === ']') {
-        It.nextChar();
-        It.nextChar();
+    if(It.peekN(1) === ']') {
+        It.pop();
+        It.pop();
         return X;
     }
     const ref = It.takeDelimited({ '[': ']' });
@@ -151,9 +151,9 @@ export const link_traits: DelimFollowerTraits<"link"> = {
         if(containsElement(B.linkLabelContents, "link"))
             return false;
         B.linkLabel = reassembleContent(B.linkLabelContents);
-        const cpt = It.newCheckpoint();
+        const cpt = It.newPos();
 
-        if(It.peekChar() === '(') { // inline link
+        if(It.peek() === '(') { // inline link
             const X = parseLinkDestination(It);
             if(X) {
                 B.destination = X.destination;
@@ -165,7 +165,7 @@ export const link_traits: DelimFollowerTraits<"link"> = {
             It.setPosition(cpt); // rewind
         }
         
-        if(It.peekChar() === '[') { // reference link, full or collapsed
+        if(It.peek() === '[') { // reference link, full or collapsed
             const X = referenceLinkExtra(It);
             if(X) {
                 B.linkType    = X.linkType;
@@ -196,13 +196,13 @@ export function untilSpaceOrStop(It: BlockContentIterator) {
     let c: false | string = false;
     let nesting = 1;
     while(true) {
-        switch(c = It.peekChar()) {
+        switch(c = It.peek()) {
         case '(':
-            if(It.prevCharInPart() !== '\\')
+            if(It.peekN(-1) !== '\\')
                 ++nesting;
             break;
         case ')':
-            if(It.prevCharInPart() !== '\\')
+            if(It.peekN(-1) !== '\\')
                 --nesting;
             if(nesting === 0)
                 return "stop";
@@ -212,6 +212,6 @@ export function untilSpaceOrStop(It: BlockContentIterator) {
         case false:  case '\t':
             return "invalid";
         }
-        It.nextChar();
+        It.pop();
     }
 }

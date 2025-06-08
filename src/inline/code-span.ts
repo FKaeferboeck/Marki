@@ -10,9 +10,9 @@ export const codeSpan_traits: InlineElementTraits<"codeSpan"> = {
     parse(It, pos0) {
         let marker_in_length = 0;
         let s: false | string = false;
-        if(It.prevCharInPart() === '`') // start char is part of a longer sequence of ````, but not the first one
+        if(It.peekN(-1) === '`') // start char is part of a longer sequence of ````, but not the first one
             return false;
-        while((s = It.nextChar()) === '`')
+        while((s = It.pop()) === '`')
             ++marker_in_length;
         if(marker_in_length === 0) // just in case, it should already be guaranteed by the start char check
             return false;
@@ -27,8 +27,8 @@ export const codeSpan_traits: InlineElementTraits<"codeSpan"> = {
                 break;
             case '`':
                 ++non_space;
-                if(++marker_out_length === marker_in_length && It.peekChar() !== '`')
-                    return extractCodeSpan(pos0, It.pos, marker_in_length,
+                if(++marker_out_length === marker_in_length && It.peek() !== '`')
+                    return extractCodeSpan(pos0, It.newPos(), marker_in_length,
                                            space_in && space_out && non_space != marker_in_length ? "spaced" : "normal");
                 break;
             case false: // block ended in unclosed code span
@@ -39,7 +39,7 @@ export const codeSpan_traits: InlineElementTraits<"codeSpan"> = {
                 marker_out_length = 0;
                 break;
             }
-            s = It.nextChar();
+            s = It.pop();
         }
     },
     

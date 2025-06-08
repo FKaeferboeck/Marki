@@ -6,6 +6,45 @@ XML comments (which look `<!-- like this -->`) are the only type of comments sup
 relationship between Markdown and HTML.
 For this reason it's desirable that XML comments in Markdown can match as many as possible of the capabilities of multi-line comments in other programming/markup languages.
 
+- A comment can only contain empty lines if it is a comment HTML block. In that case it cannot lie inside a Markdown block (because it *is* a block).
+- A comment can only lie inside a block if it is an inline comment. If a block needs a specific prefix in each line (e.g. a table, where each line must start with "|"),
+  it's not possible to simply comment out a whole line without interrupting the block.
+
+To remedy these shortcomings, we introduce the concept of a **comment line**.
+
+> A comment line is a group of physical lines of text that starts with an XML comment at the first character, and contains only XML comments and whitespace.
+>
+> It can contain more than one physical line if the line breaks are all inside XML comments.
+>
+> During block parsing comment lines are treated as if they didn't exist.
+
+Examples:
+
+    <!-- This is a comment line -->
+    After the comment line
+    <!-- This
+         is
+         
+         also a -->    <!-- comment line -->
+    After the second comment line
+      <!-- This is not a comment line, because it has a starting indent -->
+
+## Why are start indents not allowed?
+
+- Comment lines have to be identified prior to block parsing so that blocks already know where they are.
+- Suppose we want to have what would be a comment line as part of a fenced code block. That line has already been identified as a comment line.
+  So we'd have to put the comment line into the literal content, counter to the rule defined above.
+- But suppose further that the comment line looks like this:
+      ```
+      <!-- Comment line
+      ```
+      
+      <!-- unrelated comment -->
+- Here we want a comment opening as a fenced code block; prior to block parsing this is recognized as a comment line comprising four physical lines,
+  ending at the end of the next unrelated comment (because comments do not nest). This doesn't allow us to end the fenced code block in line 3 because we only
+
+
+
 The major problem we run into is that there is a reasonable sounding requirement on comments that isn't totally achievable within Markdown:
 
 *A comment, regardless of its content, should produce the same output of its surrounding markdown as if the comment weren't present.*

@@ -1,5 +1,3 @@
-import { linify_old } from '../src/parser.js';
-import { lineDataAll } from '../src/util.js';
 import { MarkdownParser } from '../src/markdown-parser.js';
 import { collectLists } from '../src/blocks/listItem.js';
 import { Renderer } from '../src/renderer/renderer.js';
@@ -12,13 +10,12 @@ import { linify } from '../src/linify.js';
 const parser = new MarkdownParser();
 
 {
-  const input = '<a href="foo">\n*bar*\n</a>';
-  const LS   = linify_old(input);
-  const LLD  = lineDataAll(LS, 0);
+  const input = `foo <!-- this is a --\ncomment - with hyphens -->`;
+  const LLs   = linify(input, false);
   const diag = false;
   //const diag = verboses[idx] || false;
   parser.diagnostics = diag;
-  const blocks = parser.processContent(LLD);
+  const blocks = parser.processContent(LLs[0]);
   collectLists(blocks, diag);
   blocks.forEach(B => {
     parser.processBlock(B);

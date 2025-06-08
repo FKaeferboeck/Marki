@@ -9,7 +9,6 @@ import { escapeXML, escapeXML_all, urlEncode, renderHTML_entity } from "./util.j
 const inlineHandler_plain: InlineHandlerList = {
     "escaped":    (elt, I) => I.add(escapeXML(elt.character)),
     "codeSpan":   (elt, I) => I.add(`<code>${escapeXML(elt.content)}</code>`),
-    "html":       (elt, I) => I.add(elt.stuff),
     "link":       (elt, I) => {
         const buf2: AnyInline[] = [];
         parseBackslashEscapes(elt.linkLabel, buf2);
@@ -17,7 +16,8 @@ const inlineHandler_plain: InlineHandlerList = {
     },
     "hardBreak":  (elt, I) => I.add(elt.nSpaces === 1 ? '\n' : '<br />\n'),
     "htmlEntity": (elt, I) => I.add(escapeXML(renderHTML_entity(elt))),
-    "image":      function(elt, I) { this.render(elt.linkLabelContents, I); }
+    "image":      function(elt, I) { this.render(elt.linkLabelContents, I); },
+    "rawHTML":    (elt, I) => I.add(elt.tag)
 };
 
 
@@ -34,7 +34,6 @@ export function getInlineRenderer_plain() {
 const inlineHandler_reassemble: InlineHandlerList = {
     "escaped":    (elt, I) => I.add('\\' + elt.character),
     "codeSpan":   (elt, I) => I.add(`<code>${escapeXML(elt.content)}</code>`),
-    "html":       (elt, I) => I.add(elt.stuff),
     "link":       (elt, I) => {
         const buf2: AnyInline[] = [];
         parseBackslashEscapes(elt.linkLabel, buf2);
@@ -42,7 +41,8 @@ const inlineHandler_reassemble: InlineHandlerList = {
     },
     "hardBreak":  (elt, I) => I.add(typeof elt.nSpaces === "number" ? ' '.repeat(elt.nSpaces) + '\n' : '\\\n'),
     "htmlEntity": (elt, I) => I.add(escapeXML(renderHTML_entity(elt))),
-    "image":      (elt, I) => { }
+    "image":      (elt, I) => { },
+    "rawHTML":    (elt, I) => I.add(elt.tag)
 };
 
 

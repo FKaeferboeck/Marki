@@ -6,14 +6,15 @@ import { indentedCodeBlock_traits } from './blocks/indentedCodeBlock.js';
 import { paragraph_traits } from './blocks/paragraph.js';
 import { sectionHeader_traits } from './blocks/sectionHeader.js';
 import { sectionHeader_setext_traits } from './blocks/sectionHeader_setext.js';
-import { AnyBlock, Block, BlockBase, BlockType, BlockType_Container, BlockType_Leaf, LogicalLineData } from './markdown-types.js';
+import { AnyBlock, Block, BlockBase, BlockType, BlockType_Container, BlockType_Leaf } from './markdown-types.js';
 import { LogicalLineType } from './parser.js';
 import { BlockParserTraitsList, BlockContinuationType, BlockTraits, BlockTraits_Container } from './traits.js';
-import { LLDinfo, sliceLLD } from './util.js';
+import { LLinfo } from './util.js';
 import { listItem_traits } from './blocks/listItem.js';
 import { MarkdownParser, ParseState } from './markdown-parser.js';
 import { linkDef_traits } from './blocks/linkDef.js';
 import { htmlBlock_traits } from './blocks/html-block.js';
+import { isSpaceLine, LogicalLine, LogicalLine_with_cmt, sliceLine } from './linify.js';
 
 
 
@@ -51,24 +52,24 @@ export interface BlockParserBase {
 export interface BlockParser<K extends BlockType = BlockType, Traits extends BlockTraits<K> = BlockTraits<K>> extends BlockParserBase {
 	type: K;
 	// Does a block of this type begin in that logical line, and can it interrupt the given currently open block?
-	beginsHere(LLD: LogicalLineData, interrupting?: BlockType | undefined): number;
+	beginsHere(LL: LogicalLine_with_cmt, interrupting?: BlockType | undefined): number;
 
 	// assuming this line doesn't contain a block start that interrupts the block parsed herein, does that block continue in this logical line?
-	continues(LLD: LogicalLineData, isSoftContainerContinuation?: boolean): BlockContinuationType;
+	continues(LL: LogicalLine_with_cmt, isSoftContainerContinuation?: boolean): BlockContinuationType;
 
-	acceptLine(LLD: LogicalLineData, bct: BlockContinuationType | "start", prefix_length: number): void;
+	acceptLine(LL: LogicalLine_with_cmt, bct: BlockContinuationType | "start", prefix_length: number): void;
 
-	finish(): LogicalLineData; // store the finished block with its surrounding container, return the last line that was accepted
+	finish(): LogicalLine; // store the finished block with its surrounding container, return the last line that was accepted
 
-	setCheckpoint(LLD: LogicalLineData): void;
-	getCheckpoint(): LogicalLineData | null;
+	setCheckpoint(LL: LogicalLine): void;
+	getCheckpoint(): LogicalLine | null;
 	resetBlock(): Block<K>;
 	MDP: MarkdownParser;
 	parent: BlockContainer | undefined;
 	traits: Traits;//BlockTraits<K>;
 	B: Block<K>;
 	isInterruption: boolean;
-	startLine: LogicalLineData | undefined;
+	startLine: LogicalLine | undefined;
 	blockContainerType: BlockContainer["blockContainerType"] | "none";
 }
 
@@ -96,14 +97,15 @@ export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits e
 
 	static textLines: Partial<Record<LogicalLineType, boolean>> = { text: true,  single: true };
 
-	beginsHere(LLD: LogicalLineData, interrupting?: BlockType | undefined): number {
-		if(!BlockParser_Standard.textLines[LLD.type])
+	beginsHere(LL: LogicalLine_with_cmt, interrupting?: BlockType | undefined): number {
+		if(LL.type !== "text")
 			return -1;
+		// TODO!! Handle comment lines here!
 
-		const starts = this.traits.startsHere.call(this, LLD, this.B, interrupting);
+		const starts = this.traits.startsHere.call(this, LL, this.B, interrupting);
 		if(starts < 0)    return -1;
 		
-		this.B.logical_line_start  = LLD.logl_idx;
+		this.B.logical_line_start  = LL.start;
 		this.B.logical_line_extent = 1;
 		if(this.MDP.diagnostics)
 			console.log(`Releasing [${this.type}]`);
@@ -112,40 +114,43 @@ export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits e
 		return starts;
 	}
 
-	continues(LLD: LogicalLineData, isSoftContainerContinuation?: boolean): BlockContinuationType {
+	continues(LL: LogicalLine_with_cmt, isSoftContainerContinuation?: boolean): BlockContinuationType {
 		const ret = (t: BlockContinuationType) => {
 			if(t === "soft" && isSoftContainerContinuation)
-				LLD.isSoftContainerContinuation = true;
+				LL.isSoftContainerContinuation = true;
 			return t;
 		};
 
+		if(LL.type === "comment")
+			return "end"; // TODO!!!
+
 		if (this.traits.continuesHere) {
-			const x = this.traits.continuesHere.call(this, LLD, isSoftContainerContinuation);
+			const x = this.traits.continuesHere.call(this, LL, isSoftContainerContinuation);
 			if(typeof x !== "undefined")
 				return ret(x);
 		}
 
-		if(LLD.type === "empty" || LLD.type === "emptyish")
+		if(isSpaceLine(LL))
 			return ret("end");
-		if(LLD.type === "comment")
-			return ret(this.traits.allowCommentLines ? "soft" : "end");
+		/*if(LL.type === "comment")
+			return ret(this.traits.allowCommentLines ? "soft" : "end");*/
 
 		const cpfx = this.traits.continuationPrefix;
 		if(cpfx) {
 			if(typeof cpfx === "function")
-				return ret(cpfx(LLD, this.B));
-			const rexres = cpfx.exec(LLD.startPart);
+				return ret(cpfx(LL, this.B));
+			const rexres = cpfx.exec(LL.content);
 			if(rexres)
 				return ret(rexres[0].length);
 		}
 		return ret(this.traits.allowSoftContinuations ? "soft" : "end");
 	}
 
-	acceptLine(LLD: LogicalLineData, bct: BlockContinuationType | "start", prefix_length: number) {
-		if(this.traits.acceptLineHook && !this.traits.acceptLineHook.call(this, LLD, bct))
+	acceptLine(LL: LogicalLine, bct: BlockContinuationType | "start", prefix_length: number) {
+		if(this.traits.acceptLineHook && !this.traits.acceptLineHook.call(this, LL, bct))
 			return;
 		if(bct === "start")
-			this.startLine = LLD;
+			this.startLine = LL;
 		//if(this.MDP.diagnostics)    console.log('acceptLine into', this.type, LLD, prefix_length, sliceLLD(LLD, prefix_length))
 
 		// We prepare the content part of the line for acceptance, even if we don't accept it right away due to checkpoint (and perhaps never will)
@@ -153,67 +158,70 @@ export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits e
 		// continuing lines inside block containers are already enqueued during continues().
 		if((this.blockContainerType !== "containerBlock" /*|| bct === "start"*/) && !(bct === "last" && !this.traits.lastIsContent)) {
 			if(this.traits.trimLeadingContentSpace)
-				prefix_length = Math.max(prefix_length, LLD.startIndent);
-			this.enqueueContentSlice(LLD, prefix_length, bct);
+				prefix_length = Math.max(prefix_length, LL.indent);
+			this.enqueueContentSlice(LL, prefix_length, bct);
 		}
 
-		if(this.checkpoint && LLD.logl_idx > this.checkpoint.logl_idx)
+		if(this.checkpoint && LL.start > this.checkpoint.start)
 			return;
-		this.lastLine = LLD;
-		this.B.logical_line_extent = LLD.logl_idx - this.B.logical_line_start + 1;
+		this.lastLine = LL;
+		this.B.logical_line_extent = LL.start - this.B.logical_line_start + 1;
 		if(bct !== "last" || this.traits.lastIsContent) {
 			// flush pending content lines to the block contents array
-			let LLD_content = (this.lastAddedContent ? this.lastAddedContent.next : this.lastEnqueuedContent!);
-			if(!this.B.content && LLD_content && this.traits.hasContent !== false)
-				this.B.content = LLD_content;
-			for(;  LLD_content;  LLD_content = LLD_content.next) {
-				this.lastAddedContent = LLD_content;
-				if(this.MDP.diagnostics)    console.log(`      Adding content ${LLDinfo(LLD_content)} to "${this.type}"`);
+			let LL_content = (this.lastAddedContent ? this.lastAddedContent.next : this.lastEnqueuedContent!);
+			if(!this.B.content && LL_content && this.traits.hasContent !== false) {
+				if(LL_content.type === "comment")
+					throw new Error('Block content cannot start with a comment line');
+				this.B.content = LL_content;
+			}
+			for(;  LL_content;  LL_content = LL_content.next) {
+				this.lastAddedContent = LL_content;
+				if(this.MDP.diagnostics)    console.log(`      Adding content ${LLinfo(LL_content)} to "${this.type}"`);
 			}
 		}
 	}
 
-	finish(): LogicalLineData {
+	finish(): LogicalLine {
 		if(this.traits.finalizeBlockHook)
 			this.traits.finalizeBlockHook.call(this);
 		if(this.lastAddedContent)
-			this.lastAddedContent.next = null; // if we ignore some scheduled content because it's after the last checkpoint, we have to drop it from the linked list.
+			this.lastAddedContent.next = undefined; // if we ignore some scheduled content because it's after the last checkpoint, we have to drop it from the linked list.
 		if(this.parent)
 			this.parent.addContentBlock(this.B);
 		//container.addContentBlock(this.B);
-		if(this.MDP.diagnostics)    console.log(`  Finish [${this.type}], to continue in line ${(this.lastLine?.logl_idx || 0) + 1}`)
+		if(this.MDP.diagnostics)    console.log(`  Finish [${this.type}], to continue in line ${(this.lastLine?.start || 0) + 1}`)
 		return this.lastLine!;
 	}
 
-	setCheckpoint(LLD: LogicalLineData) { this.checkpoint = LLD; }
-	getCheckpoint(): LogicalLineData | null { return this.checkpoint || null; }
+	setCheckpoint(LL: LogicalLine) { this.checkpoint = LL; }
+	getCheckpoint(): LogicalLine | null { return this.checkpoint || null; }
 	MDP: MarkdownParser;
 	parent: BlockContainer | undefined;
 	traits: Traits;
 	B: Block<K>; //Traits["defaultBlockInstance"];
 	isInterruption: boolean = false;
-	startLine:  LogicalLineData | undefined;
-	lastLine:   LogicalLineData | undefined; // the line most recently added to the block through acceptLine()
-	lastAddedContent: LogicalLineData | undefined; // tail of the linked list in this.B.content
-	checkpoint: LogicalLineData | undefined;
-	lastEnqueuedContent: LogicalLineData | undefined;
+	startLine:           LogicalLine | undefined;
+	lastLine:            LogicalLine | undefined; // the line most recently added to the block through acceptLine()
+	lastAddedContent:    LogicalLine_with_cmt | undefined; // tail of the linked list in this.B.content
+	checkpoint:          LogicalLine | undefined;
+	lastEnqueuedContent: LogicalLine | undefined;
 	blockContainerType: BlockContainer["blockContainerType"] | "none" = "none";
 	readonly useSoftContinuations: boolean;
 
-	protected enqueueContentSlice(LLD: LogicalLineData, slice_length: number, bct?: BlockContinuationType | "start") {
+	protected enqueueContentSlice(LL: LogicalLine, slice_col: number, bct?: BlockContinuationType | "start") {
 		// because a block container might try to double enqueue a line
-		if((this.lastEnqueuedContent?.logl_idx || -1) >= LLD.logl_idx)
+		if((this.lastEnqueuedContent?.start || -1) >= LL.start)
 			//return this.lastEnqueuedContent.contentSlice!;
-			throw new Error(`Trying to double enqueue cline ${LLDinfo(LLD)}`);
+			throw new Error(`Trying to double enqueue cline ${LLinfo(LL)}`);
 
-		let LLD_C = sliceLLD(LLD, slice_length);
+		let LLD_C: LogicalLine = sliceLine(LL, slice_col);
 		if(typeof bct !== "undefined" && this.traits.postprocessContentLine)
-			LLD_C = this.traits.postprocessContentLine.call(this, LLD_C, bct);
+			LLD_C = this.traits.postprocessContentLine.call(this, LLD_C, bct) as LogicalLine;
 
 		if(this.lastEnqueuedContent)
 			this.lastEnqueuedContent.next = LLD_C;
 		this.lastEnqueuedContent = LLD_C;
-		if(this.MDP.diagnostics)    console.log(`      Enqueuing ${LLDinfo(LLD)}>${LLDinfo(LLD_C)} in <${this.type}>`)
+		if(this.MDP.diagnostics)    console.log(`      Enqueuing ${LLinfo(LL)}>${LLinfo(LLD_C)} in <${this.type}>`)
 		return LLD_C;
 	}
 }
@@ -231,38 +239,38 @@ export class BlockParser_Container<K extends BlockType_Container = BlockType_Con
         this.curContentParser = { container: this,  curParser: null,  generator: null };
     }
 
-    beginsHere(LLD: LogicalLineData, interrupting?: BlockType | undefined): number {
-        const n0 = super.beginsHere(LLD, interrupting);
+    beginsHere(LL: LogicalLine, interrupting?: BlockType | undefined): number {
+        const n0 = super.beginsHere(LL, interrupting);
 		if(n0 < 0)
 			return n0;
-		const LLD_c = this.enqueueContentSlice(LLD, n0);
+		const LLD_c = this.enqueueContentSlice(LL, n0);
         this.curContentParser = this.MDP.processLine({ container: this,  curParser: null,  generator: null }, LLD_c);
         if(!this.curContentParser.curParser)
             throw new Error(`Content of container ${this.type} not recognized as any block type!`);
 		return n0;
 	}
 
-    continues(LLD: LogicalLineData): BlockContinuationType {
-        let cont = super.continues(LLD);
-		if(this.MDP.diagnostics && cont !== "soft")    console.log(`  block container <${this.type}> continues at line ${LLD.logl_idx}? ${cont}`);
+    continues(LL: LogicalLine): BlockContinuationType {
+        let cont = super.continues(LL);
+		if(this.MDP.diagnostics && cont !== "soft")    console.log(`  block container <${this.type}> continues at line ${LL.start}? ${cont}`);
 		if(cont === "end")
 			return cont;
 			
 		/* The following line will sometimes cause a line to be enqueued that in the end isn't used because the block ends,
 		 * but that doesn't hurt. It keept the code simpler. */
-		const LLD_c = this.enqueueContentSlice(LLD, typeof cont === "number" ? cont : 0);
+		const LL_c = this.enqueueContentSlice(LL, typeof cont === "number" ? cont : 0);
 
 		if(typeof cont === "number") {
-			let curLLD = LLD_c;
+			let curLL: LogicalLine = LL_c;
 			while(true) {
-				if(this.MDP.diagnostics)    console.log(`      = Parsing content slice ${LLDinfo(curLLD)} inside ${this.type}`);
-				this.curContentParser = this.MDP.processLine(this.curContentParser, curLLD);
+				if(this.MDP.diagnostics)    console.log(`      = Parsing content slice ${LLinfo(curLL)} inside ${this.type}`);
+				this.curContentParser = this.MDP.processLine(this.curContentParser, curLL);
 				if(this.curContentParser.retry) {
-					curLLD = this.curContentParser.retry;
-					if(this.MDP.diagnostics)    console.log(`      = Retry in line ${LLDinfo(curLLD)}`);
-				} else if(curLLD.logl_idx < LLD_c.logl_idx) { // this can only happen during backtracking due to a rejected content block
-					if(this.MDP.diagnostics)    console.log(`      = Proceed ${curLLD.logl_idx}->${LLDinfo(curLLD.next)}  (because we haven't reached ${LLDinfo(LLD_c)})`);
-					curLLD = curLLD.next!;
+					curLL = this.curContentParser.retry;
+					if(this.MDP.diagnostics)    console.log(`      = Retry in line ${LLinfo(curLL)}`);
+				} else if(curLL.start < LL_c.start) { // this can only happen during backtracking due to a rejected content block
+					if(this.MDP.diagnostics)    console.log(`      = Proceed ${curLL.start}->${LLinfo(curLL.next)}  (because we haven't reached ${LLinfo(LL_c)})`);
+					curLL = curLL.next as LogicalLine;
 				} else
 					break;
 			}
@@ -278,31 +286,31 @@ export class BlockParser_Container<K extends BlockType_Container = BlockType_Con
 			// only paragraph content can softly continue a container block
 			// if there's nested block containers the innermost content is the one that counts, so we delegate the decision to the inner container
 			if(P.blockContainerType == "none" && P.type !== "paragraph") {
-				if(this.MDP.diagnostics)    console.log(`  block container <${this.type}> softly continues at line ${LLD.logl_idx} with content <${P.type}>? No, it's not paragraph content`);
+				if(this.MDP.diagnostics)    console.log(`  block container <${this.type}> softly continues at line ${LL.start} with content <${P.type}>? No, it's not paragraph content`);
 				return "end";
 			}
 
-			cont = P.continues(LLD_c, true);
+			cont = P.continues(LL_c, true);
 
 			// The following behavior isn't fully clear from the CommonMark specification in my opinion, but we replicate what the CommonMark reference implementation does:
 			if(cont === "reject")
 				cont = "end";
-			if(this.MDP.diagnostics)    console.log(`  block container <${this.type}> softly continues at line ${LLD.logl_idx} with content <${P.type}>? -> ${cont}`);
+			if(this.MDP.diagnostics)    console.log(`  block container <${this.type}> softly continues at line ${LL.start} with content <${P.type}>? -> ${cont}`);
         }
         return cont;
     }
 
     addContentBlock<K extends BlockType>(B: BlockBase<K>) { this.B.blocks.push(B as AnyBlock); }
 
-    acceptLine(LLD: LogicalLineData, bct: BlockContinuationType | "start") {
+    acceptLine(LL: LogicalLine, bct: BlockContinuationType | "start") {
 		// an accepted soft continuation of a container block means an unprefixed soft continuation of the same line as content (which is a paragraph)
 		// contents of hard continuations have already been accepted during continues()
 		if(bct === "soft")
-			this.curContentParser.curParser?.acceptLine(LLD.contentSlice!, "soft", 0);
-        super.acceptLine(LLD, bct, typeof bct === "number" ? bct : 0);
+			this.curContentParser.curParser?.acceptLine(this.lastEnqueuedContent!, "soft", 0);
+        super.acceptLine(LL, bct, typeof bct === "number" ? bct : 0);
     }
 
-    finish(): LogicalLineData {
+    finish(): LogicalLine {
         this.curContentParser.curParser?.finish();
         return super.finish();
 	}
@@ -317,23 +325,21 @@ export class BlockParser_Container<K extends BlockType_Container = BlockType_Con
 
 
 export class BlockParser_EmptySpace extends BlockParser_Standard<"emptySpace"> {
-    static readonly empties: Partial<Record<LogicalLineType, true>> = { empty: true,  emptyish: true,  comment: true };
-
     constructor(MDP: MarkdownParser, type: "emptySpace", traits: BlockTraits<"emptySpace">, useSoftContinuations: boolean = true) {
         super(MDP, type, traits, useSoftContinuations);
 	}
 
-    beginsHere(LLD: LogicalLineData): number {
-        if(!BlockParser_EmptySpace.empties[LLD.type])
+    beginsHere(LL: LogicalLine): number {
+        if(LL.type === "text")
             return -1;
-        this.B.logical_line_start  = LLD.logl_idx;
+        this.B.logical_line_start  = LL.start;
         this.B.logical_line_extent = 1;
 		this.MDP.blockParserProvider.release(this);
         return 0;
     }
 
-    continues(LLD: LogicalLineData): BlockContinuationType {
-        return (BlockParser_EmptySpace.empties[LLD.type] ? 0 : "end");
+    continues(LL: LogicalLine): BlockContinuationType {
+        return (LL.type !== "text" ? 0 : "end");
     }
 
     isInterruption: boolean = false;

@@ -11,10 +11,11 @@ import { htmlEntity_traits } from "./inline/html-entity.js";
 import { bang_bracket_traits, image_traits } from "./inline/image.js";
 import { bracket_traits, link_traits } from "./inline/link.js";
 import { rawHTML_traits } from "./inline/raw-html.js";
-import { AnyBlock, Block, BlockBase, BlockType, BlockType_Container, LogicalLineData, isContainer } from "./markdown-types.js";
-import { LineStructure, linify_old } from "./parser.js";
+import { linify, LogicalLine, LogicalLine_with_cmt } from "./linify.js";
+import { AnyBlock, Block, BlockBase, BlockType, BlockType_Container, isContainer } from "./markdown-types.js";
+import { LineStructure } from "./parser.js";
 import { BlockParserTraitsList, BlockTraits, BlockTraits_Container, DelimiterTraits, InlineParserTraitsList } from "./traits.js";
-import { lineDataAll, LLDinfo } from "./util.js";
+import { LLinfo } from "./util.js";
 
 
 interface BlockParserProviderItem {
@@ -29,13 +30,13 @@ export interface ParseState {
 	container: BlockContainer;
 	curParser: BlockParser | null;
 	generator: Generator<BlockParser> | null;
-	retry?:    LogicalLineData;
+	retry?:    LogicalLine;
 }
 
 
 export type TakeBlockResult = {
 	finished_block: AnyBlock;
-	lineAfter:      LogicalLineData | null;
+	lineAfter:      LogicalLine | null;
 	ended_by?:      BlockParser | "eof";
 };
 
@@ -82,10 +83,9 @@ export class MarkdownParser implements BlockContainer {
 
 	/* Full parsing of a complete document (contents as string) */
 	processDocument(input: string) {
-		const LS   = linify_old(input);
-        const LLD  = lineDataAll(LS, 0);
+		const LLs = linify(input, false); // TODO!!
         this.reset();
-        const blocks = this.processContent(LLD);
+        const blocks = this.processContent(LLs[0]);
         collectLists(blocks);
         blocks.forEach(B => {
             this.processBlock(B);
@@ -99,13 +99,13 @@ export class MarkdownParser implements BlockContainer {
 	processLine  = processLine;
 	processLines = processLines;
 
-	processContent(LLD: LogicalLineData) {
+	processContent(LL: LogicalLine_with_cmt) {
 		this.blocks = [];
-		let LLD0: LogicalLineData | null = LLD;
-		while(LLD0) {
-			const P = this.processLines(LLD0, null, { container: this,  curParser: null,  generator: null });
+		let LL0: LogicalLine_with_cmt | null = LL;
+		while(LL0) {
+			const P = this.processLines(LL0, null, { container: this,  curParser: null,  generator: null });
 			if(this.diagnostics)    console.log(`Coming out of parsing with open block`, P.curParser?.type, P.curParser?.getCheckpoint());
-			LLD0 = (P.curParser?.finish()?.next || null);
+			LL0 = (P.curParser?.finish()?.next || null);
 		}
 		
 		return this.blocks;
@@ -116,7 +116,7 @@ export class MarkdownParser implements BlockContainer {
 		if(!T)    throw new Error(`Cannot process content of block "${B.type}"`);
 		if(isContainer(B))
 			B.blocks.forEach(B1 => this.processBlock(B1));
-		else if(T.inlineProcessing !== false && B.content?.parts.length)
+		else if(T.inlineProcessing !== false && B.content)
 			B.inlineContent = this.processInline(B.content);
 	}
 
@@ -231,7 +231,7 @@ export class MarkdownParser implements BlockContainer {
 
 /**********************************************************************************************************************/
 
-export function startBlock(this: MarkdownParser, ctx: ParseState, LLD: LogicalLineData, interrupting?: BlockType): ParseState {
+export function startBlock(this: MarkdownParser, ctx: ParseState, LL: LogicalLine_with_cmt, interrupting?: BlockType): ParseState {
 	if(!ctx.generator)
 		ctx.generator = this.blockParserProvider.mainBlocks(ctx.container);
 
@@ -239,45 +239,45 @@ export function startBlock(this: MarkdownParser, ctx: ParseState, LLD: LogicalLi
 	while(!(I = ctx.generator.next()).done) {
 		const PA = I.value;
 		
-		const n = PA.beginsHere(LLD, interrupting);
+		const n = PA.beginsHere(LL, interrupting);
 		//if(this.diagnostics)    console.log(`Trying "${PA.type}" for line ${LLD.logl_idx} -> ${n}`);
 		if(n >= 0) {
-			if(this.diagnostics)    console.log(`  Processing line ${LLDinfo(LLD)} -> start <${PA.type}>`);
-			PA.acceptLine(LLD, "start", n);
+			if(this.diagnostics)    console.log(`  Processing line ${LLinfo(LL)} -> start <${PA.type}>`);
+			PA.acceptLine(LL, "start", n);
 			ctx.curParser = PA;
 			return ctx;
 		}
 	}
-	if(this.diagnostics)    console.log(`  Processing line ${LLDinfo(LLD)} -> no interruption of <${interrupting}>`);
+	if(this.diagnostics)    console.log(`  Processing line ${LLinfo(LL)} -> no interruption of <${interrupting}>`);
 	ctx.generator = null;
 	ctx.curParser = null;
 	return ctx;
 }
 
 
-export function processLine(this: MarkdownParser, PP: ParseState, LLD: LogicalLineData): ParseState {
+export function processLine(this: MarkdownParser, PP: ParseState, LL: LogicalLine_with_cmt): ParseState {
 	const { container, curParser, generator } = PP;
 	PP.retry = undefined;
-	if(this.diagnostics)    console.log(`  processLine ${LLDinfo(LLD)} in ${container.blockContainerType} ${curParser ? `continuing <${curParser.type}>` : 'starting a new block'}`);
+	if(this.diagnostics)    console.log(`  processLine ${LLinfo(LL)} in ${container.blockContainerType} ${curParser ? `continuing <${curParser.type}>` : 'starting a new block'}`);
 
 	if(!curParser) { // start a new block
-		this.startBlock(PP, LLD);
+		this.startBlock(PP, LL);
 		if(!PP.curParser)
-			throw new Error(`Line ${LLD.logl_idx} doesn't belong to any block, that's not possible!`)
+			throw new Error(`Line ${LL.start} doesn't belong to any block, that's not possible!`)
 		return PP;
 	}
 
 	// continue an existing block
-	const bct = curParser.continues(LLD);
-	if(this.diagnostics)    console.log(`  Processing line ${LLDinfo(LLD)} in <${PP.curParser?.type}> -> ${bct}`)
+	const bct = curParser.continues(LL);
+	if(this.diagnostics)    console.log(`  Processing line ${LLinfo(LL)} in <${PP.curParser?.type}> -> ${bct}`)
 	switch(bct) {
 	case "end": // current block cannot continue in this line, i.e. it ends on its own
 		{
 			const LLD_last = curParser.finish();
-			return { container,  retry: LLD_last.next!,  curParser: null,  generator: null }; // will start a new block in the current line
+			return { container,  retry: LLD_last.next! as LogicalLine,  curParser: null,  generator: null }; // will start a new block in the current line
 		}
 	case "last":
-		curParser.acceptLine(LLD, bct, 0);
+		curParser.acceptLine(LL, bct, 0);
 		curParser.finish();
 		return { container,  curParser: null,  generator: null }; // will start a new block in the next line
 	case "reject":
@@ -287,7 +287,7 @@ export function processLine(this: MarkdownParser, PP: ParseState, LLD: LogicalLi
 		return { container,  retry: curParser.getCheckpoint() || curParser.startLine!,  curParser: null,  generator };
 	case "soft": // it's a soft continuation, which means it's possible that the next block begins here, interrupting the current one
 		{
-			const P1 = this.startBlock({ container,  curParser: null,  generator: this.blockParserProvider.interrupters(curParser) }, LLD, curParser.type).curParser;
+			const P1 = this.startBlock({ container,  curParser: null,  generator: this.blockParserProvider.interrupters(curParser) }, LL, curParser.type).curParser;
 			if(P1) {
 				curParser.finish();
 				PP.curParser = P1;
@@ -297,27 +297,27 @@ export function processLine(this: MarkdownParser, PP: ParseState, LLD: LogicalLi
 			}
 		}
 		// soft continuation wasn't interrupted, we can accept it
-		if(this.diagnostics)    console.log(`  Not interrupted -> accept line ${LLD.logl_idx} as <${PP.curParser?.type}>`)
-		curParser.acceptLine(LLD, bct, 0);
+		if(this.diagnostics)    console.log(`  Not interrupted -> accept line ${LL.start} as <${PP.curParser?.type}>`)
+		curParser.acceptLine(LL, bct, 0);
 		return PP;
 	default: // hard accept
-		curParser.acceptLine(LLD, bct, bct);
+		curParser.acceptLine(LL, bct, bct);
 		return PP;
 	}
 }
 
 
 
-export function processLines(this: MarkdownParser, LLD0: LogicalLineData, LLD1: LogicalLineData | null, PP: ParseState) {
-	let curLLD: LogicalLineData | null = LLD0;
-	while(curLLD && curLLD !== LLD1) {
-		PP = this.processLine(PP, curLLD);
+export function processLines(this: MarkdownParser, LL0: LogicalLine_with_cmt, LL1: LogicalLine_with_cmt | null, PP: ParseState) {
+	let curLL: LogicalLine_with_cmt | null = LL0;
+	while(curLL && curLL !== LL1) {
+		PP = this.processLine(PP, curLL);
 		if(PP.retry) {
-			if(this.diagnostics)    console.log(`* Retry in line ${LLDinfo(PP.retry)}`);
-			curLLD = PP.retry;
+			if(this.diagnostics)    console.log(`* Retry in line ${LLinfo(PP.retry)}`);
+			curLL = PP.retry;
 		} else {
-			if(this.diagnostics)    console.log(`* Proceed ${curLLD.logl_idx}->${LLDinfo(curLLD.next)}`);
-			curLLD = curLLD.next;
+			if(this.diagnostics)    console.log(`* Proceed ${curLL.start}->${LLinfo(curLL.next)}`);
+			curLL = curLL.next || null;
 		}
 	}
 	if(this.diagnostics)    console.log(`Out!`)

@@ -1,7 +1,8 @@
 import { BlockParser_Container } from "../block-parser.js";
-import { LogicalLineData, Block_Container, AnyBlock, isContainer, Block } from "../markdown-types.js";
+import { isSpaceLine, measureColOffset, standardBlockStart } from "../linify.js";
+import { Block_Container, AnyBlock, isContainer, Block } from "../markdown-types.js";
 import { BlockTraits_Container } from "../traits.js";
-import { LLDinfo, measureIndent, standardBlockStart } from "../util.js";
+import { LLinfo } from "../util.js";
 
 
 export interface ListItem {
@@ -22,10 +23,10 @@ export interface List {
 
 export const listItem_traits: BlockTraits_Container<"listItem"> = {
     isContainer: true,
-    startsHere(LLD: LogicalLineData, B, interrupting?) {
-        if(!standardBlockStart(LLD))
+    startsHere(LL, B, interrupting?) {
+        if(!standardBlockStart(LL))
             return -1;
-        const rexres = /^([\-+*]|\d{1,9}[).])([ \t]+|$)/.exec(LLD.startPart);
+        const rexres = /^([\-+*]|\d{1,9}[).])([ \t]+|$)/.exec(LL.content);
         if(!rexres)
             return -1;
         B.marker = rexres[1].slice(-1) as ListItem["marker"];
@@ -35,40 +36,40 @@ export const listItem_traits: BlockTraits_Container<"listItem"> = {
                 return -1; // orderedlist items may only interrupt a paragraph if they have the starting number 1 (CommonMark just-so rule)
         }
 
-        const pre = (LLD.preStartIndent || 0) + rexres[1].length;
-        let space = Math.max(measureIndent(rexres[2], pre), 1);
-        if(rexres[0].length === LLD.startPart.length) {
+        const markerLength = rexres[1].length;
+        let space = Math.max(measureColOffset(LL, rexres[0].length) - markerLength, 1);
+        if(rexres[0].length === LL.content.length) {
             if(interrupting === "paragraph")
                 return -1; // list items starting with an empty line are not allowed to interrupt paragraph (CommonMark just-so rule)
             space = 1;
         } else if(space > 4)
             space = 1;
 
-        B.indent = LLD.startIndent + rexres[1].length + space;
-        this.setCheckpoint(LLD);
+        B.indent = LL.indent + rexres[1].length + space;
+        this.setCheckpoint(LL);
         return B.indent;
     },
     
-    continuesHere(LLD) {
-        if(LLD.startIndent >= this.B.indent) {
-            this.setCheckpoint(LLD);
+    continuesHere(LL) {
+        if(LL.indent >= this.B.indent) {
+            this.setCheckpoint(LL);
             return this.B.indent;
         }
-        if(LLD.type === "empty" || LLD.type === "emptyish") {
+        if(isSpaceLine(LL)) {
             //(this.B as ContainerBlockBase<"listItem">)
-            if(LLD === this.startLine?.next && (this as BlockParser_Container<"listItem">).curContentType() === "emptySpace")
+            if(LL === this.startLine?.next && (this as BlockParser_Container<"listItem">).curContentType() === "emptySpace")
                 // the list item started with an empty line (list item marker with no content), we are now in the following line and it's empty too
                 return "end"; // CommonMark: "A list item can begin with at most one blank line."
             
             return this.B.indent;
         }
 
-        return (LLD === this.getCheckpoint()?.next ? "soft" : "end");
+        return (LL === this.getCheckpoint()?.next ? "soft" : "end");
     },
 
-    acceptLineHook(LLD, bct) {
+    acceptLineHook(LL, bct) {
         if(bct === "soft")
-            this.setCheckpoint(LLD);
+            this.setCheckpoint(LL);
         return true;
     },
 
@@ -122,7 +123,7 @@ export function collectLists(Bs: AnyBlock[], diagnostics = false) {
                     isLoose:  false
                 };
             L.contents.push(B);
-            if(diagnostics)    console.log(`L) list item at ${LLDinfo(B.content)} is ${B.isLooseItem ? 'loose' : 'tight'}, spaced? ${spaced}`);
+            if(diagnostics)    console.log(`L) list item at ${LLinfo(B.content)} is ${B.isLooseItem ? 'loose' : 'tight'}, spaced? ${spaced}`);
             L.isLoose ||= B.isLooseItem || spaced;
             B.parentList = L;
             spaced = false;
@@ -132,7 +133,7 @@ export function collectLists(Bs: AnyBlock[], diagnostics = false) {
                 spaced = true;
         } else {
             if(L && diagnostics)
-                console.log(`L) Ending list at ${LLDinfo(B.content)} -> is ${L.isLoose ? 'loose' : 'tight'}`);
+                console.log(`L) Ending list at ${LLinfo(B.content)} -> is ${L.isLoose ? 'loose' : 'tight'}`);
             L = undefined;
             spaced = false;
         }
@@ -142,6 +143,6 @@ export function collectLists(Bs: AnyBlock[], diagnostics = false) {
     }
     if(L && diagnostics) {
         const C1 = L.contents[L.contents.length - 1];
-        console.log(`L) Ending list at element ${LLDinfo(C1.blocks[0].content)} -> list is ${L.isLoose ? 'loose' : 'tight'}`);
+        console.log(`L) Ending list at element ${LLinfo(C1.blocks[0].content)} -> list is ${L.isLoose ? 'loose' : 'tight'}`);
     }
 }

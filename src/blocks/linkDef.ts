@@ -1,7 +1,8 @@
 import { BlockParser } from "../block-parser.js";
 import { InlineParsingContext } from "../inline-parsing-context.js";
 import { takeLinkDestination } from "../inline/link.js";
-import { AnyInline, LogicalLineData } from "../markdown-types.js";
+import { isSpaceLine, LogicalLine, standardBlockStart } from "../linify.js";
+import { AnyInline } from "../markdown-types.js";
 import { BlockContinuationType, BlockTraits } from "../traits.js";
 import { BCI_TakeDelimited_IO, BlockContentIterator, makeBlockContentIterator } from "../util.js";
 
@@ -35,7 +36,7 @@ function linkDefStep(this: LinkDefParser, It: BlockContentIterator): BlockContin
         this.parts.push(label);
         if(this.delim.isOpen)
             return 0;
-        if(It.nextChar() !== ':')
+        if(It.pop() !== ':')
             return "reject";
         // now we finished parsing the label
         this.stage = 2;
@@ -43,14 +44,14 @@ function linkDefStep(this: LinkDefParser, It: BlockContentIterator): BlockContin
         if(/^[ \t\r\n]*$/.test(this.B.linkLabel))
             return "reject";
         It.skipNobrSpace();
-        if(!It.peekChar()) // line break after link label
+        if(!It.peek()) // line break after link label
             return 0;
     case 2:
         if(!takeLinkDestination(It, this.B.destination))
             return "reject";
         this.stage = 3;
         this.hadSpace = (It.skipNobrSpace() > 0);
-        if(!It.peekChar()) { // line break after link destination
+        if(!It.peek()) { // line break after link destination
             this.stage = 4;
             this.hadSpace = true;
             return 0;
@@ -78,20 +79,19 @@ function linkDefStep(this: LinkDefParser, It: BlockContentIterator): BlockContin
         if(this.delim.isOpen)
             return 0;
         It.skipNobrSpace();
-        if(It.peekChar())
+        if(It.peek())
             return (this.stage === 5 ? "reject" : "end"); // link definition must end after the link title
                                                           // if it doesn't but the potential link title was after a line break we accept the part before the checkpoint (== link without title)
         this.stage = 7;
 
         // TODO!! Improve LLD construction
-        const LLD: LogicalLineData = { logl_idx: -1,  parts: [{
-            line: 0,  character: 0,
-            type:     "TextPart",
-            content:  this.parts.join('\n').slice(1, -1)
-        }],  startIndent: 0,  startPart: '',  type: "single",  next: null };
-
+        const LL: LogicalLine = {
+            start: -1,  type: "text",
+            content: this.parts.join('\n').slice(1, -1),
+            indent: 0,  prefix: ''
+        };
         const context = new InlineParsingContext(this.MDP.inlineParser_standard);
-        context.inlineParseLoop(makeBlockContentIterator(LLD),
+        context.inlineParseLoop(makeBlockContentIterator(LL),
                                 this.B.linkTitle = []);
         return "last";
     }
@@ -101,40 +101,41 @@ function linkDefStep(this: LinkDefParser, It: BlockContentIterator): BlockContin
 
 
 export const linkDef_traits: BlockTraits<"linkDef"> = {
-    startsHere(this: LinkDefParser, LLD: LogicalLineData, B) {
+    startsHere(this: LinkDefParser, LL, B) {
         this.stage = 0;
-        if(!(LLD.type === "single" || LLD.type === "text") || LLD.startIndent >= 4)
+        if(!standardBlockStart(LL))
             return -1;
-        if(!LLD.startPart.startsWith('['))
+        if(!LL.content.startsWith('['))
             return -1;
         if(this.MDP.diagnostics)
             console.log('Link def block', this.B)
-        const It = makeBlockContentIterator(LLD, true);
+        const It = makeBlockContentIterator(LL, true);
         const res = linkDefStep.call(this, It);
         if(res === "reject") {
 		    this.resetBlock(); // if we abort in the first line the parser doesn't get a chance to release the parser from the reuse cache, so we need to reset it for the next use
             return -1;
         }
         if(this.stage === 4)
-            this.setCheckpoint(LLD);
+            this.setCheckpoint(LL);
         return 0; // Even when we know the link def finishes in one line we'll still end it in the next line, because that's how the parser works.
     },
 
-    continuesHere(this: LinkDefParser, LLD: LogicalLineData) {
+    continuesHere(this: LinkDefParser, LL) {
         if(this.stage === 7) // the whole link definition was in the start line, this is the next line
             return "end";
-        if(LLD.type === "empty" || LLD.type === "emptyish")
+        if(isSpaceLine(LL))
             return (this.stage === 4 ? "end" : "reject"); // If we encounter an empty line while waiting for the link title to start, that means an ommitted title and is ok.
-        const It = makeBlockContentIterator(LLD, true);
+        const It = makeBlockContentIterator(LL, true);
         const ret = linkDefStep.call(this, It);
         if(ret !== "reject" && (this.stage === 4 || this.stage === 7))
-            this.setCheckpoint(LLD);
+            this.setCheckpoint(LL);
         return ret;
     },
 
-    postprocessContentLine(LLD) {
-        LLD.startPart = LLD.startPart.replace(/(?:\s+#+|^#+)?\s*$/, ''); // handle trailing space and closing sequences
-        return LLD;
+    postprocessContentLine(LL) {
+        if(LL.type === "text")
+            LL.content = LL.content.replace(/(?:\s+#+|^#+)?\s*$/, ''); // handle trailing space and closing sequences
+        return LL;
     },
 
     finalizeBlockHook() {

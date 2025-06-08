@@ -9,7 +9,7 @@
   },
   "scripts": {
     "tsc": "tsc",
-    "test": "vitest --reporter=dot",
+    "test": "vitest --reporter=dot commonmark",
     "test2": "vitest --config ./test/vitest.config.ts"
   },
   "repository": {

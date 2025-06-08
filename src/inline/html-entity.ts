@@ -25,7 +25,7 @@ export const htmlEntity_traits: InlineElementTraits<"htmlEntity"> = {
     startChars: [ '&' ],
 
     parse(It) {
-        const entity = It.regexInPart(rex); // advances content iterator if positive match
+        const entity = It.regexInLine(rex); // advances content iterator if positive match
         if(!entity)
             return false;
         processHTML_entity(entity as RegExpMatchArray, this.B);

@@ -1,8 +1,9 @@
 import { BlockParser } from "./block-parser.js";
 import { BlockParser_Container } from "./blocks/blockQuote.js";
 import { InlineParser } from "./inline-parser.js";
+import { LogicalLine, LogicalLine_text, LogicalLine_with_cmt } from "./linify.js";
 import { MarkdownParser } from "./markdown-parser.js";
-import { BlockType, ExtensionBlockType, BlockBase, Block_Container, LogicalLineData, BlockType_Container, Block, InlineElementType, ExtensionInlineElementType, InlineElement, InlinePos, BlockIndividualData, Delimiter, Delimiter_nestable } from "./markdown-types.js";
+import { BlockType, ExtensionBlockType, BlockType_Container, Block, InlineElementType, ExtensionInlineElementType, InlineElement, InlinePos, BlockIndividualData, Delimiter, Delimiter_nestable } from "./markdown-types.js";
 import { BlockContentIterator } from "./util.js";
 
 
@@ -18,20 +19,20 @@ export interface BlockTraits<T extends BlockType = ExtensionBlockType, Extra ext
        If it can begin here it shoudl return a number describing the offset where the actual content of the block (after a prefix) starts,
        e.g. 2 for a blockquote starting after "> ".
        If the prefix contains additional data (e.g. the level of an atx header) the method can parse that data into the provided block object. */
-    startsHere(this: BlockParser<T, BlockTraitsExtended<T, Extra>>, data: LogicalLineData, B: Block<T>, interrupting?: BlockType | undefined): number;
+    startsHere(this: BlockParser<T, BlockTraitsExtended<T, Extra>>, LL: LogicalLine, B: Block<T>, interrupting?: BlockType | undefined): number;
 
     /* returning undefined means the function doesn't make a decision whether to continue the block here,
      * and leaves it to the subsequent standard algorithm instead.
      */
-    continuesHere?(this: BlockParser<T>, data: LogicalLineData, isSoftContainerContinuation?: boolean): BlockContinuationType | undefined;
+    continuesHere?(this: BlockParser<T>, LL: LogicalLine, isSoftContainerContinuation?: boolean): BlockContinuationType | undefined;
 
-    acceptLineHook?(this: BlockParser<T>, LLD: LogicalLineData, bct: BlockContinuationType | "start") : boolean;
+    acceptLineHook?(this: BlockParser<T>, LL: LogicalLine, bct: BlockContinuationType | "start") : boolean;
     finalizeBlockHook?(this: BlockParser<T>): void;
 
     /* in case content lines need to be transformed in some way when adding them to the block content */
-    postprocessContentLine?(this: BlockParser<T>, LLD: LogicalLineData, bct: BlockContinuationType | "start") : LogicalLineData;
+    postprocessContentLine?(this: BlockParser<T>, LL: LogicalLine, bct: BlockContinuationType | "start") : LogicalLine_with_cmt;
 
-    continuationPrefix?: RegExp| ((LLD: LogicalLineData, B: Block<T>) => number);
+    continuationPrefix?: RegExp| ((LL: LogicalLine, B: Block<T>) => number);
     
     allowSoftContinuations: boolean;
     canBeSoftContinuation?: boolean; // default true

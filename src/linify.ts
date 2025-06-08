@@ -1,40 +1,61 @@
 import { Position } from 'vscode-languageserver';
 
 
-export interface LogicalLine_emptyish {
-    type:    "empty" | "emptyish";
-    start:   number;
+export type LogicalLineType = "empty" | "emptyish" | "comment" | "text";
+
+export interface LogicalLine_base<T extends LogicalLineType> {
+    type:  T;
+    start: number;
+    next?: LogicalLine_with_cmt;
+    isSoftContainerContinuation? : boolean; // this is dirty
+}
+function clone_LL_base<T extends LogicalLineType>(B: LogicalLine_base<LogicalLineType>, type: T) {
+    const B1: LogicalLine_base<T> = { type,  start: B.start };
+    if(typeof B.isSoftContainerContinuation === "boolean")
+        B1.isSoftContainerContinuation = B.isSoftContainerContinuation;
+    return B1;
+}
+
+export interface LogicalLine_emptyish extends LogicalLine_base<"empty"|"emptyish"> {
     prefix?: string; // prefix can be omitted for empty lines
     indent:  number; // with emptyish lines nothing comes after the indent/prefix
 }
 
-export interface LogicalLine_comment {
-    type:    "comment";
-    start:   number;
+export interface LogicalLine_comment extends LogicalLine_base<"comment"> {
     content: string[]; // excluding leading space in first line
 }
 
-export interface LogicalLine_text {
-    type:    "text";
-    start:   number;
+export interface LogicalLine_text extends LogicalLine_base<"text"> {
     content: string;
     prefix:  string;
     indent:  number;
 }
 
-export type LogicalLine = LogicalLine_emptyish | LogicalLine_comment | LogicalLine_text;
+export type LogicalLine          = LogicalLine_emptyish | LogicalLine_text;
+export type LogicalLine_with_cmt = LogicalLine_emptyish | LogicalLine_text | LogicalLine_comment;
 
-export type LogicalLineType = LogicalLine["type"];
-
-
-export type LogicalLineSlice = LogicalLine & {
+export type Slice<T extends LogicalLine_with_cmt> = T & {
     shiftCol: number;
-    parent:   LogicalLine;
+    parent:   LogicalLine_with_cmt;
 }
+export const isLineSlice = <T extends LogicalLine_with_cmt>(LL: T): LL is Slice<T> => ("shiftCol" in LL && typeof LL.shiftCol === "number");
 
 
-export function linify(text: string, makeCommentLines: boolean): LogicalLine[] {
+export const shiftCol = (LL: LogicalLine_with_cmt) => ("shiftCol" in LL && typeof LL.shiftCol === "number" ? LL.shiftCol : 0);
+
+export const standardBlockStart = (LL: LogicalLine): LL is LogicalLine_text => (LL.type === "text" && LL.indent < 4);
+
+export const isSpaceLineType: Record<LogicalLineType, boolean> = { empty: true,  emptyish: true,  text: false,  comment: false };
+export const isSpaceLine = (LL: LogicalLine_with_cmt): LL is LogicalLine_emptyish => isSpaceLineType[LL.type];
+
+export const lineContent = (LL: LogicalLine_with_cmt) => (LL.type === "text" ? LL.content : '');
+
+
+export function linify(text: string, makeCommentLines: boolean): LogicalLine_with_cmt[] {
     const A = linify_(text, makeCommentLines, { line: 0,  character: 0 }, false);
+    for(let i = 1, iN = A.length;  i < iN;  ++i) {
+        A[i - 1].next = A[i];
+    }
     return A;
 }
 
@@ -78,11 +99,28 @@ function tabbedSlice(text: string, colFrom: number, startCol: number = 0): strin
 }
 
 
-const leadingSpace = (LL: LogicalLine) => ("indent" in LL ? LL.indent : 0);
+export function measureColOffset(LL: LogicalLine, char_offset: number) {
+    if(LL.type !== "text")
+        return 0;
+    const indent = shiftCol(LL) + LL.indent;
+    let col = indent, iN = Math.min(LL.content.length, char_offset);
+    for(let i = 0;  i < iN;  ++i) {
+        const c = LL.content[i];
+        if(c === '\t') {
+            col += 4;
+            col -= col % 4;
+        } else
+            ++col;
+    }
+    return col - indent;
+}
+
+
+const leadingSpace = (LL: LogicalLine_with_cmt) => ("indent" in LL ? LL.indent : 0);
 
 
 export function linify_(text: string, makeCommentLines: boolean, pos: Position, inCmt: false) {
-    const buf: LogicalLine[] = [];
+    const buf: LogicalLine_with_cmt[] = [];
     let i0 = 0, n_commentLine = 0, start = 0;
     let lineIsOnlySpace = true, // is this physical line only ' ' and '\t'? (inside or outside an XML comment)
         commentLineEligible = true,
@@ -150,41 +188,59 @@ export function linify_(text: string, makeCommentLines: boolean, pos: Position, 
 }
 
 
-export function sliceLine(LL: LogicalLine | LogicalLineSlice, shiftCol: number): LogicalLineSlice {
-    const shift0 = ("shiftCol" in LL ? LL.shiftCol : 0),
-          indent = ("indent" in LL   ? LL.indent   : 0) + shift0;
-    shiftCol += shift0;
+export function sliceLine(LL: LogicalLine,          colFrom: number): Slice<LogicalLine>;
+export function sliceLine(LL: LogicalLine_with_cmt, colFrom: number): Slice<LogicalLine_with_cmt> {
+    const shift0 = shiftCol(LL),  indent = ("indent" in LL ? LL.indent : 0) + shift0;
+    colFrom += shift0;
     switch(LL.type) {
     case 'empty':
+        return { ... clone_LL_base(LL, "empty"),  shiftCol: colFrom,  parent: LL,  indent: 0 };
     case 'comment':
-        return { ... LL,  shiftCol,  parent: LL };
+        return { ... clone_LL_base(LL, "comment"),  shiftCol: colFrom,  parent: LL,  content: [ ... LL.content ] };
     case "emptyish":
-        if(indent <= shiftCol)
-            return { type: "empty",  start: LL.start,  indent: 0,  shiftCol,  parent: LL };
+        if(indent <= colFrom)
+            return { ... clone_LL_base(LL, "empty"),  indent: 0,  shiftCol: colFrom,  parent: LL };
         return {
-            type: "emptyish",  start: LL.start,  indent: indent - shiftCol,
-            prefix: tabbedSlice(LL.prefix || '', shiftCol, shift0),
-            shiftCol,  parent: LL
+            ... clone_LL_base(LL, "emptyish"),  indent: indent - colFrom,
+            prefix: tabbedSlice(LL.prefix || '', colFrom, shift0),
+            shiftCol: colFrom,  parent: LL
         };
     case "text":
-        if(indent >= shiftCol)
-            return { ... LL,  indent: indent - shiftCol,  prefix: tabbedSlice(LL.prefix, shiftCol, shift0),  shiftCol,  parent: LL };
+        if(indent >= colFrom)
+            return { ... clone_LL_base(LL, "text"),  content: LL.content,
+                     indent: indent - colFrom,  prefix: tabbedSlice(LL.prefix, colFrom, shift0),  shiftCol: colFrom,  parent: LL };
         else {
-            const content_slice = tabbedSlice(LL.content, shiftCol, indent);
+            const content_slice = tabbedSlice(LL.content, colFrom, indent);
             if(!content_slice) // everything was sliced off
-                return { type: "empty",  start: LL.start,  indent: 0,  shiftCol,  parent: LL };
-            const pfx = prefixSize(content_slice, shiftCol);
+                return { ... clone_LL_base(LL, "empty"),  indent: 0,  shiftCol: colFrom,  parent: LL };
+            const pfx = prefixSize(content_slice, colFrom);
             if(pfx.chars === 0) // no whitespace right after the slicing position
-                return { type: "text",  start: LL.start,  indent: 0,  prefix: '',  content: content_slice,  shiftCol,  parent: LL };
+                return { ... clone_LL_base(LL, "text"),  indent: 0,  prefix: '',  content: content_slice,  shiftCol: colFrom,  parent: LL };
             if(pfx.chars === content_slice.length) // all non-whitespace content was sliced off, only whitespace remains to the right of it
-                return { type: "emptyish",  start: LL.start,  indent: pfx.cols,  prefix: content_slice,  shiftCol,  parent: LL };
+                return { ... clone_LL_base(LL, "emptyish"),  indent: pfx.cols,  prefix: content_slice,  shiftCol: colFrom,  parent: LL };
             // most general case: slice hits a whitspace bit in the middle of the string
             return {
-                type: "text",  start: LL.start,
+                ... clone_LL_base(LL, "text"),
                 indent: pfx.cols,  prefix: content_slice.slice(0, pfx.chars),
                 content: content_slice.slice(pfx.chars),
-                shiftCol,  parent: LL
+                shiftCol: colFrom,  parent: LL
             };
         }
     }
+}
+
+
+export function sliceLine_to(LL: LogicalLine_with_cmt, charEnd: number): Slice<LogicalLine_with_cmt> {
+    if(LL.type !== "text")
+        return { ... LL,  shiftCol: shiftCol(LL),  parent: LL };
+
+    if(charEnd <= 0)
+        return (LL.indent > 0 ? { ... clone_LL_base(LL, "empty"),  indent: LL.indent,  prefix: LL.prefix,  shiftCol: shiftCol(LL),  parent: LL }
+                              : { ... clone_LL_base(LL, "empty"),  indent: 0,  shiftCol: shiftCol(LL),  parent: LL }) as Slice<LogicalLine_emptyish>;
+        
+    return {
+        ... LL,
+        content: LL.content.slice(0, charEnd),
+        shiftCol: shiftCol(LL),  parent: LL
+    };
 }

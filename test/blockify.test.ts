@@ -1,8 +1,7 @@
 import { expect, test } from 'vitest'
-import { linify_old } from '../src/parser';
 import { AnyBlock, BlockType, isContainer } from '../src/markdown-types';
-import { lineDataAll } from '../src/util';
 import { MarkdownParser } from '../src/markdown-parser';
+import { linify } from '../src/linify';
 
 interface ResultMakerItem {
     type:      BlockType;
@@ -46,10 +45,9 @@ const parser = new MarkdownParser();
 function doTest(title: string, input: string, target_: { type: BlockType,  extent: number }[], verbose?: boolean) {
     test(title, () => {
         parser.diagnostics = verbose || false;
-        const LS      = linify_old(input);
-        const LLD     = lineDataAll(LS, 0);
+        const LLs     = linify(input, false);
         const target  = resultMaker(target_);
-        const blocks  = parser.processContent(LLD);
+        const blocks  = parser.processContent(LLs[0]);
         const blocks_ = blocks_check(blocks);
         if(verbose) {
             console.log(blocks)

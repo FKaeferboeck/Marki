@@ -1,6 +1,7 @@
 import { parseDelimiter } from "./delimiter-processing.js";
+import { LogicalLine } from "./linify.js";
 import { MarkdownParser } from "./markdown-parser.js";
-import { InlineElementType, Delimiter_nestable, AnyInline, InlineContent, InlineElement, Delimiter, InlinePos, isNestableDelimiter, LogicalLineData } from "./markdown-types.js";
+import { InlineElementType, Delimiter_nestable, InlineContent, InlineElement, Delimiter, InlinePos, isNestableDelimiter } from "./markdown-types.js";
 import { LinePart } from "./parser.js";
 import { InlineParserTraitsList, DelimiterTraits, isDelimFollowerTraits } from "./traits.js";
 import { BlockContentIterator, contentSlice, makeBlockContentIterator } from "./util.js";
@@ -76,10 +77,10 @@ export class InlineParsingContext {
                     contCbk2?: (It: BlockContentIterator, c: string | LinePart) => boolean)
     {
         let c: false | string | LinePart = false;
-        const checkpoint = It.newCheckpoint(), checkpoint1 = It.newCheckpoint();
+        const checkpoint = It.newPos(), checkpoint1 = It.newPos();
         let returnVal = "EOF";
     
-        while(c = It.peekItem()) {
+        while(c = It.peek()) {
             if(contCbk?.(It, c) === false) {
                 returnVal = "byCbk";
                 break;
@@ -122,7 +123,7 @@ export class InlineParsingContext {
                 break;
             }
     
-            if(typeof c !== "string") {
+            /*if(typeof c !== "string") {
                 It.setCheckPoint(checkpoint1);
                 const flush = contentSlice(checkpoint, checkpoint1, false);
                 if(flush)
@@ -134,11 +135,11 @@ export class InlineParsingContext {
                 It.nextItem();
                 It.setCheckPoint(checkpoint);
                 continue;
-            }
+            }*/
     
-            It.nextItem();
+            It.pop();
         }
-        const flush = contentSlice(checkpoint, It.pos, false);
+        const flush = contentSlice(checkpoint, It.newPos(), false);
         if(flush)
             buf.push(flush);
         return returnVal;
@@ -197,8 +198,8 @@ function inlineParse_try(this: InlineParsingContext, t: InlineElementType | Deli
 
 
 
-export function processInline(this: MarkdownParser, LLD: LogicalLineData) {
-	let It = makeBlockContentIterator(LLD);
+export function processInline(this: MarkdownParser, LL: LogicalLine) {
+	let It = makeBlockContentIterator(LL);
 	const buf: InlineContent = [];
 	const context = new InlineParsingContext(this.inlineParser_standard);
 	context.inlineParseLoop(It, buf);
