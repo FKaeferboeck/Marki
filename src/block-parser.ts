@@ -8,7 +8,7 @@ import { sectionHeader_traits } from './blocks/sectionHeader.js';
 import { sectionHeader_setext_traits } from './blocks/sectionHeader_setext.js';
 import { AnyBlock, Block, BlockBase, BlockType, BlockType_Container, BlockType_Leaf } from './markdown-types.js';
 import { LogicalLineType } from './parser.js';
-import { BlockParserTraitsList, BlockContinuationType, BlockTraits, BlockTraits_Container } from './traits.js';
+import { BlockContinuationType, BlockTraits, BlockTraits_Container } from './traits.js';
 import { LLinfo } from './util.js';
 import { listItem_traits } from './blocks/listItem.js';
 import { MarkdownParser, ParseState } from './markdown-parser.js';
@@ -17,26 +17,19 @@ import { htmlBlock_traits } from './blocks/html-block.js';
 import { isSpaceLine, LogicalLine, LogicalLine_with_cmt, sliceLine } from './linify.js';
 
 
-
-export const standardBlockParserTraits: BlockParserTraitsList = {
-	emptySpace:           emptySpace_traits,
-	paragraph:            paragraph_traits,
-	sectionHeader:        sectionHeader_traits,
-	thematicBreak:        thematicBreak_traits,
-	sectionHeader_setext: sectionHeader_setext_traits,
-	indentedCodeBlock:    indentedCodeBlock_traits,
-	fenced:               fenced_traits,
-	listItem:             listItem_traits,
-	blockQuote:           blockQuote_traits,
-	linkDef:              linkDef_traits,
-	htmlBlock:            htmlBlock_traits
-};
-
-
-export function isBlockType_Container(t: BlockType): t is BlockType_Container {
-	const T = standardBlockParserTraits[t];
-	return ((T && ("isContainer" in T) && T.isContainer) || false);
-}
+export const standardBlockTryOrder = [
+	emptySpace_traits,
+	indentedCodeBlock_traits,
+	thematicBreak_traits,
+	sectionHeader_traits,
+	fenced_traits,
+	blockQuote_traits,
+	listItem_traits,
+	linkDef_traits,
+	htmlBlock_traits,
+	paragraph_traits,
+	sectionHeader_setext_traits // this only get used if a paragraph is rejected due to encountering "=======" (SETEXT header suffix)
+];
 
 
 export interface BlockContainer {

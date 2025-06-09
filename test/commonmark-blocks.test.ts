@@ -18,29 +18,13 @@ var commonmark_writer = new commonmark.HtmlRenderer();
 
 const clearify = (s: string) => s.replaceAll('\t', '[\\t]');
 
-export function doTest(idx: number | string, input: string, verbose = false) {
+export function doTest(idx: number | string, input: string) {
     test('' + idx, () => {
-        const LLs   = linify(input, false);
-
-        //const diag = false;
-        const diag = verbose;
-        parser.reset();
-        parser.diagnostics = diag;
-        const blocks = parser.processContent(LLs[0]);
-        collectLists(blocks, diag);
-        blocks.forEach(B => {
-            parser.processBlock(B);
-            if(B.inlineContent)
-                pairUpDelimiters(B.inlineContent);
-        });
-        const my_result = clearify(renderer.referenceRender(blocks, diag));
-        if(verbose)
-            console.log(blocks)
+        const blocks = parser.processDocument(input);
+        const my_result = clearify(renderer.referenceRender(blocks));
 
         const commonmark_parsed = commonmark_reader.parse(input);
         const commonmark_result = clearify(commonmark_writer.render(commonmark_parsed) as string);
-        if(verbose)
-            console.log('CommonMark:', commonmark_result);
         expect(my_result).toEqual(commonmark_result);
     });
 }

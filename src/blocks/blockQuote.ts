@@ -1,13 +1,12 @@
-import { BlockParser_Container } from "../block-parser.js";
 import { measureColOffset, standardBlockStart } from "../linify.js";
-import { BlockTraits_Container } from "../traits.js";
+import { makeBlockContainerTraits } from "../traits.js";
 
 export interface BlockQuote {
     prefix: string;
 };
 
 
-export const blockQuote_traits: BlockTraits_Container<"blockQuote"> = {
+export const blockQuote_traits = makeBlockContainerTraits("blockQuote", {
     isContainer: true,
 
     startsHere(LL) {
@@ -27,7 +26,6 @@ export const blockQuote_traits: BlockTraits_Container<"blockQuote"> = {
 
     allowSoftContinuations: true,
     allowCommentLines: true,
+    isInterrupter: true,
     defaultBlockInstance: { prefix: '' }
-};
-export { BlockParser_Container };
-
+});

@@ -1,11 +1,11 @@
-import { BlockTraits, BlockContinuationType } from "../traits.js";
+import { BlockContinuationType, makeBlockTraits } from "../traits.js";
 import { setext_end_line } from "./sectionHeader_setext.js";
 
 
 export interface Paragraph { };
 
 
-export const paragraph_traits: BlockTraits<"paragraph"> = {
+export const paragraph_traits = makeBlockTraits("paragraph", {
     startsHere() { return 0; },
     continuesHere(LL, isSoftContainerContinuation?: boolean): BlockContinuationType | undefined {
         /* By the philosophy of the parsing algorithm we should look for SETEXT headers before looking for a paragraph and
@@ -26,4 +26,4 @@ export const paragraph_traits: BlockTraits<"paragraph"> = {
     allowCommentLines: true,
     trimLeadingContentSpace: true,
     defaultBlockInstance: { }
-};
+});

@@ -1,6 +1,5 @@
-import { parseBackslashEscapes } from "../inline-parser.js";
 import { lineContent, LogicalLine_with_cmt, shiftCol } from "../linify.js";
-import { AnyBlock, AnyInline, Block, BlockType, InlineContent, inlineContentCategory, InlineElement, InlineElementType } from "../markdown-types.js";
+import { AnyBlock, Block, BlockType, InlineContent, inlineContentCategory, InlineElement, InlineElementType } from "../markdown-types.js";
 import { InlineHandlerList, InlineRenderer, renderInline } from "./inline-renderer.js";
 import { renderHTML_entity, escapeXML, escapeXML_all, urlEncode } from "./util.js";
 import { getInlineRenderer_plain } from "./utility-renderers.js";

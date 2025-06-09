@@ -2,7 +2,7 @@ import { parseBackslashEscapes } from "../inline-parser.js";
 import { AnyInline, Delimiter } from "../markdown-types.js";
 import { InlineHandlerList, InlineRenderer } from "./inline-renderer.js";
 import { Inserter } from "./renderer.js";
-import { escapeXML, escapeXML_all, urlEncode, renderHTML_entity } from "./util.js";
+import { escapeXML, renderHTML_entity } from "./util.js";
 
 
 
@@ -41,7 +41,7 @@ const inlineHandler_reassemble: InlineHandlerList = {
     },
     "hardBreak":  (elt, I) => I.add(typeof elt.nSpaces === "number" ? ' '.repeat(elt.nSpaces) + '\n' : '\\\n'),
     "htmlEntity": (elt, I) => I.add(escapeXML(renderHTML_entity(elt))),
-    "image":      (elt, I) => { },
+    "image":      () => { },
     "rawHTML":    (elt, I) => I.add(elt.tag)
 };
 

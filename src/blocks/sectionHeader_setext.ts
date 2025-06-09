@@ -1,5 +1,5 @@
 import { LogicalLine, standardBlockStart } from "../linify.js";
-import { BlockTraits } from "../traits.js";
+import { makeBlockTraits } from "../traits.js";
 import { trimEndSpace } from "../util.js";
 
 
@@ -10,7 +10,7 @@ export function setext_end_line(LL: LogicalLine) {
 }
 
 
-export const sectionHeader_setext_traits: BlockTraits<"sectionHeader_setext"> = {
+export const sectionHeader_setext_traits = makeBlockTraits("sectionHeader_setext", {
     startsHere(LL) {
         return LL.indent; // because this will only be called when all other possibilities have been excluded
     },
@@ -40,4 +40,4 @@ export const sectionHeader_setext_traits: BlockTraits<"sectionHeader_setext"> = 
     canBeSoftContinuation: false,
     allowCommentLines: false,
     defaultBlockInstance: { level: -1 }
-};
+});

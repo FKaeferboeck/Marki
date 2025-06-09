@@ -9,8 +9,8 @@ export interface LogicalLine_base<T extends LogicalLineType> {
     next?: LogicalLine_with_cmt;
     isSoftContainerContinuation? : boolean; // this is dirty
 }
-function clone_LL_base<T extends LogicalLineType>(B: LogicalLine_base<LogicalLineType>, type: T) {
-    const B1: LogicalLine_base<T> = { type,  start: B.start };
+function LL_inherit<T extends LogicalLineType>(B: LogicalLine_base<LogicalLineType>, type: T, shiftCol = 0) {
+    const B1: LL_SliceBase<T> = { type,  start: B.start,  parent: B as LogicalLine_with_cmt,  shiftCol };
     if(typeof B.isSoftContainerContinuation === "boolean")
         B1.isSoftContainerContinuation = B.isSoftContainerContinuation;
     return B1;
@@ -34,10 +34,12 @@ export interface LogicalLine_text extends LogicalLine_base<"text"> {
 export type LogicalLine          = LogicalLine_emptyish | LogicalLine_text;
 export type LogicalLine_with_cmt = LogicalLine_emptyish | LogicalLine_text | LogicalLine_comment;
 
-export type Slice<T extends LogicalLine_with_cmt> = T & {
+export interface LL_Slice_additions {
     shiftCol: number;
     parent:   LogicalLine_with_cmt;
 }
+export type Slice<T extends LogicalLine_with_cmt> = T & LL_Slice_additions;
+export type LL_SliceBase<T extends LogicalLineType> = LogicalLine_base<T> & LL_Slice_additions;
 export const isLineSlice = <T extends LogicalLine_with_cmt>(LL: T): LL is Slice<T> => ("shiftCol" in LL && typeof LL.shiftCol === "number");
 
 
@@ -194,36 +196,32 @@ export function sliceLine(LL: LogicalLine_with_cmt, colFrom: number): Slice<Logi
     colFrom += shift0;
     switch(LL.type) {
     case 'empty':
-        return { ... clone_LL_base(LL, "empty"),  shiftCol: colFrom,  parent: LL,  indent: 0 };
+        return { ... LL_inherit(LL, "empty", colFrom),  indent: 0 };
     case 'comment':
-        return { ... clone_LL_base(LL, "comment"),  shiftCol: colFrom,  parent: LL,  content: [ ... LL.content ] };
+        return { ... LL_inherit(LL, "comment", colFrom),  content: [ ... LL.content ] };
     case "emptyish":
         if(indent <= colFrom)
-            return { ... clone_LL_base(LL, "empty"),  indent: 0,  shiftCol: colFrom,  parent: LL };
-        return {
-            ... clone_LL_base(LL, "emptyish"),  indent: indent - colFrom,
-            prefix: tabbedSlice(LL.prefix || '', colFrom, shift0),
-            shiftCol: colFrom,  parent: LL
-        };
+            return { ... LL_inherit(LL, "empty", colFrom),  indent: 0 };
+        return { ... LL_inherit(LL, "emptyish", colFrom),  indent: indent - colFrom,
+                 prefix: tabbedSlice(LL.prefix || '', colFrom, shift0) };
     case "text":
         if(indent >= colFrom)
-            return { ... clone_LL_base(LL, "text"),  content: LL.content,
-                     indent: indent - colFrom,  prefix: tabbedSlice(LL.prefix, colFrom, shift0),  shiftCol: colFrom,  parent: LL };
+            return { ... LL_inherit(LL, "text", colFrom),  content: LL.content,
+                     indent: indent - colFrom,  prefix: tabbedSlice(LL.prefix, colFrom, shift0) };
         else {
             const content_slice = tabbedSlice(LL.content, colFrom, indent);
             if(!content_slice) // everything was sliced off
-                return { ... clone_LL_base(LL, "empty"),  indent: 0,  shiftCol: colFrom,  parent: LL };
+                return { ... LL_inherit(LL, "empty", colFrom),  indent: 0 };
             const pfx = prefixSize(content_slice, colFrom);
             if(pfx.chars === 0) // no whitespace right after the slicing position
-                return { ... clone_LL_base(LL, "text"),  indent: 0,  prefix: '',  content: content_slice,  shiftCol: colFrom,  parent: LL };
+                return { ... LL_inherit(LL, "text", colFrom),  indent: 0,  prefix: '',  content: content_slice };
             if(pfx.chars === content_slice.length) // all non-whitespace content was sliced off, only whitespace remains to the right of it
-                return { ... clone_LL_base(LL, "emptyish"),  indent: pfx.cols,  prefix: content_slice,  shiftCol: colFrom,  parent: LL };
+                return { ... LL_inherit(LL, "emptyish", colFrom),  indent: pfx.cols,  prefix: content_slice };
             // most general case: slice hits a whitspace bit in the middle of the string
             return {
-                ... clone_LL_base(LL, "text"),
+                ... LL_inherit(LL, "text", colFrom),
                 indent: pfx.cols,  prefix: content_slice.slice(0, pfx.chars),
-                content: content_slice.slice(pfx.chars),
-                shiftCol: colFrom,  parent: LL
+                content: content_slice.slice(pfx.chars)
             };
         }
     }
@@ -235,8 +233,8 @@ export function sliceLine_to(LL: LogicalLine_with_cmt, charEnd: number): Slice<L
         return { ... LL,  shiftCol: shiftCol(LL),  parent: LL };
 
     if(charEnd <= 0)
-        return (LL.indent > 0 ? { ... clone_LL_base(LL, "empty"),  indent: LL.indent,  prefix: LL.prefix,  shiftCol: shiftCol(LL),  parent: LL }
-                              : { ... clone_LL_base(LL, "empty"),  indent: 0,  shiftCol: shiftCol(LL),  parent: LL }) as Slice<LogicalLine_emptyish>;
+        return (LL.indent > 0 ? { ... LL_inherit(LL, "emptyish", shiftCol(LL)),  indent: LL.indent,  prefix: LL.prefix }
+                              : { ... LL_inherit(LL, "empty",    shiftCol(LL)),  indent: 0 });
         
     return {
         ... LL,

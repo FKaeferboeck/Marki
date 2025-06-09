@@ -1,10 +1,10 @@
 import { isSpaceLine } from "../linify.js";
-import { BlockTraits } from "../traits.js";
+import { makeBlockTraits } from "../traits.js";
 
 export interface IndentedCodeBlock { };
 
 
-export const indentedCodeBlock_traits: BlockTraits<"indentedCodeBlock"> = {
+export const indentedCodeBlock_traits = makeBlockTraits("indentedCodeBlock", {
     startsHere(LL) {
         if(LL.indent < 4)    return -1;
         this.setCheckpoint(LL);
@@ -25,4 +25,4 @@ export const indentedCodeBlock_traits: BlockTraits<"indentedCodeBlock"> = {
     allowCommentLines: true,
     inlineProcessing: false,
     defaultBlockInstance: { }
-};
+});

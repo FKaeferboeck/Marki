@@ -1,5 +1,5 @@
 import { measureColOffset, standardBlockStart } from "../linify.js";
-import { BlockTraits } from "../traits.js";
+import { makeBlockTraits } from "../traits.js";
 import { BlockContentIterator, isLineStart, makeBlockContentIterator, sliceLL_to } from "../util.js";
 
 
@@ -43,7 +43,7 @@ function trimEndMarker(It: BlockContentIterator) {
 }
 
 
-export const sectionHeader_traits: BlockTraits<"sectionHeader"> = {
+export const sectionHeader_traits = makeBlockTraits("sectionHeader", {
     startsHere(LL, B) {
         if(!standardBlockStart(LL))
             return -1;
@@ -69,5 +69,6 @@ export const sectionHeader_traits: BlockTraits<"sectionHeader"> = {
 
     allowSoftContinuations: false,
     allowCommentLines: false,
+    isInterrupter: true,
     defaultBlockInstance: { level: -1 }
-};
+});

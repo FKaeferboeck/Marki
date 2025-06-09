@@ -1,7 +1,7 @@
 import { BlockParser_Container } from "../block-parser.js";
 import { isSpaceLine, measureColOffset, standardBlockStart } from "../linify.js";
 import { Block_Container, AnyBlock, isContainer, Block } from "../markdown-types.js";
-import { BlockTraits_Container } from "../traits.js";
+import { makeBlockContainerTraits } from "../traits.js";
 import { LLinfo } from "../util.js";
 
 
@@ -21,7 +21,7 @@ export interface List {
 }
 
 
-export const listItem_traits: BlockTraits_Container<"listItem"> = {
+export const listItem_traits = makeBlockContainerTraits("listItem", {
     isContainer: true,
     startsHere(LL, B, interrupting?) {
         if(!standardBlockStart(LL))
@@ -79,6 +79,7 @@ export const listItem_traits: BlockTraits_Container<"listItem"> = {
 
     allowSoftContinuations: true,
     allowCommentLines: true,
+    isInterrupter: true,
     canSelfInterrupt: true,
 
     defaultBlockInstance: {
@@ -87,7 +88,7 @@ export const listItem_traits: BlockTraits_Container<"listItem"> = {
         isLooseItem: false,
         parentList:  undefined
     }
-};
+});
 
 
 function isLooseItem(B: Block_Container<"listItem">) {

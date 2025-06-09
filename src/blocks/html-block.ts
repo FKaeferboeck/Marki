@@ -1,4 +1,4 @@
-import { BlockTraits } from "../traits.js";
+import { makeBlockTraits } from "../traits.js";
 import { isSpaceLine, lineContent, standardBlockStart } from "../linify.js";
 
 
@@ -22,7 +22,7 @@ const singleLineOpeningTag = /^<([A-Za-z][A-Za-z\d\-]*)(?:[ \t]+[A-Za-z_:][A-Za-
 const singleLineClosingTag = /^<\/([A-Za-z][A-Za-z\d\-]*)[ \t]*>[ \t]*$/;
 
 
-export const htmlBlock_traits: BlockTraits<"htmlBlock"> = {
+export const htmlBlock_traits = makeBlockTraits("htmlBlock", {
     startsHere(LL, B, interrupting) {
         if(!standardBlockStart(LL))
             return -1;
@@ -102,6 +102,7 @@ export const htmlBlock_traits: BlockTraits<"htmlBlock"> = {
 
     allowSoftContinuations: false,
     allowCommentLines: true,
+    isInterrupter: true,
     inlineProcessing: false,
     lastIsContent: true,
 
@@ -109,4 +110,4 @@ export const htmlBlock_traits: BlockTraits<"htmlBlock"> = {
         htmlType: "anyTag",
         singleLine: false
     }
-};
+});

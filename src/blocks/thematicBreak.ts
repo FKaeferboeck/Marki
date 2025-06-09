@@ -1,4 +1,4 @@
-import { BlockTraits } from "../traits.js";
+import { makeBlockTraits } from "../traits.js";
 import { standardBlockStart } from "../linify.js";
 
 
@@ -7,7 +7,7 @@ export interface ThematicBreak {
 }
 
 
-export const thematicBreak_traits: BlockTraits<"thematicBreak"> = {
+export const thematicBreak_traits = makeBlockTraits("thematicBreak", {
     startsHere(LL, B) {
         if(!standardBlockStart(LL) || !/^(?:\*(?:\s*\*){2,}|-(?:\s*-){2,}|_(?:\s*_){2,})\s*$/.test(LL.content))
             return -1;
@@ -16,7 +16,8 @@ export const thematicBreak_traits: BlockTraits<"thematicBreak"> = {
     },
     allowSoftContinuations: false,
     allowCommentLines: false,
+    isInterrupter: true,
     continuesHere() { return "end"; }, // thematic breaks are single-line
     
     defaultBlockInstance: { ruleType: "*" }
-};
+});

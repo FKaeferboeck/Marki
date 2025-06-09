@@ -1,7 +1,7 @@
 import { InlineParsingContext } from "../inline-parsing-context.js";
-import { isSpaceLine, LogicalLine, LogicalLine_text, Slice, sliceLine, standardBlockStart } from "../linify.js";
+import { isSpaceLine, sliceLine, standardBlockStart } from "../linify.js";
 import { AnyInline } from "../markdown-types.js";
-import { BlockTraits } from "../traits.js";
+import { makeBlockTraits } from "../traits.js";
 import { makeBlockContentIterator } from "../util.js";
 
 
@@ -13,7 +13,7 @@ export interface FencedBlock {
 }
 
 
-export const fenced_traits: BlockTraits<"fenced"> = {
+export const fenced_traits = makeBlockTraits("fenced", {
     startsHere(LL, B) {
         if(!standardBlockStart(LL))
             return -1;
@@ -64,6 +64,7 @@ export const fenced_traits: BlockTraits<"fenced"> = {
 
     allowSoftContinuations: false,
     allowCommentLines: true,
+    isInterrupter: true,
     inlineProcessing: false,
 
     defaultBlockInstance: {
@@ -72,4 +73,4 @@ export const fenced_traits: BlockTraits<"fenced"> = {
         indentation:  0,
         info_string:  []
     }
-};
+});

@@ -1,7 +1,6 @@
-import { BlockParser } from "./block-parser.js";
-import { BlockParser_Container } from "./blocks/blockQuote.js";
+import { BlockParser, BlockParser_Container } from "./block-parser.js";
 import { InlineParser } from "./inline-parser.js";
-import { LogicalLine, LogicalLine_text, LogicalLine_with_cmt } from "./linify.js";
+import { LogicalLine, LogicalLine_with_cmt } from "./linify.js";
 import { MarkdownParser } from "./markdown-parser.js";
 import { BlockType, ExtensionBlockType, BlockType_Container, Block, InlineElementType, ExtensionInlineElementType, InlineElement, InlinePos, BlockIndividualData, Delimiter, Delimiter_nestable } from "./markdown-types.js";
 import { BlockContentIterator } from "./util.js";
@@ -15,6 +14,8 @@ export type BlockContinuationType = number     // block definitely continues in 
 
 
 export interface BlockTraits<T extends BlockType = ExtensionBlockType, Extra extends {} = {}> {
+    blockType: T;
+
     /* This method should return -1 if a block of this type cannot begin in this line.
        If it can begin here it shoudl return a number describing the offset where the actual content of the block (after a prefix) starts,
        e.g. 2 for a blockquote starting after "> ".
@@ -37,6 +38,8 @@ export interface BlockTraits<T extends BlockType = ExtensionBlockType, Extra ext
     allowSoftContinuations: boolean;
     canBeSoftContinuation?: boolean; // default true
     allowCommentLines: boolean;
+    isInterrupter?: boolean; // Can this block interrupt soft continuations? default false
+
     hasContent?: boolean; // default true; false means that this element stores all data it has in its individual block data and doesn't use the "content" property
     inlineProcessing?: boolean; // default true
     lastIsContent?: boolean; // if a line is continuation type "last" it will still be added to the block content - default false
@@ -59,10 +62,18 @@ export interface BlockTraits_Container<T extends BlockType_Container> extends Bl
 }
 
 
+export function makeBlockTraits<bt extends BlockType, T extends Omit<BlockTraits<bt>, "blockType">>(type: bt, traits_: T): BlockTraits<bt> {
+    const traits = traits_ as unknown as BlockTraits<bt>;
+    traits.blockType = type;
+    return traits;
+}
+export function makeBlockContainerTraits<bt extends BlockType_Container, T extends Omit<BlockTraits_Container<bt>, "blockType">>(type: bt, traits_: T): BlockTraits_Container<bt> {
+    const traits = traits_ as unknown as BlockTraits_Container<bt>;
+    traits.blockType = type;
+    return traits;
+}
 
-export type BlockParserTraitsList = Partial<{
-    [K in BlockType]: (K extends BlockType_Container ? BlockTraits_Container<K> : BlockTraits<K>);
-}>;
+export type AnyBlockTraits = BlockType extends infer K ? K extends BlockType ? BlockTraits<K> : never : never;
 
 
 

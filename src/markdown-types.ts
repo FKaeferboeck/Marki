@@ -3,7 +3,6 @@ import { ThematicBreak } from "./blocks/thematicBreak.js";
 import { IndentedCodeBlock } from "./blocks/indentedCodeBlock.js";
 import { Paragraph } from "./blocks/paragraph.js";
 import { SectionHeader } from "./blocks/sectionHeader.js";
-import { LinePart, LogicalLineType } from "./parser.js";
 import { LinkDef } from "./blocks/linkDef.js";
 import { FencedBlock } from "./blocks/fenced.js";
 import { EmptySpace } from "./blocks/emptySpace.js";
@@ -14,19 +13,6 @@ import { LogicalLine, LogicalLine_with_cmt } from "./linify.js";
 export type ExtensionNamespace = string;
 
 export type ExtensionBlockType = `ext_${ExtensionNamespace}_${string}`;
-
-/*export interface LogicalLineData {
-	logl_idx:                      number;
-	parts:                         LinePart_ext[];
-	preStartIndent?:               number;
-	startIndent:                   number;
-	startPart:                     string; // after the indent
-	type:                          LogicalLineType | "single";
-	next:                          LogicalLineData | null;
-	contentSlice?:                 LogicalLineData;
-	isSoftContainerContinuation? : boolean;
-}*/
-
 
 export interface InlinePos {
 	LL:       LogicalLine_with_cmt;
@@ -51,7 +37,7 @@ export interface BlockTypeMap_Container {
 	listItem:   ListItem;
 }
 
-export type BlockType_Leaf      = keyof BlockTypeMap_Leaf;
+export type BlockType_Leaf      = keyof BlockTypeMap_Leaf //| ExtensionBlockType;
 export type BlockType_Container = keyof BlockTypeMap_Container;
 export type BlockType = BlockType_Leaf | BlockType_Container | ExtensionBlockType;
 

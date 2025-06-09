@@ -3,7 +3,7 @@ import { InlineParsingContext } from "../inline-parsing-context.js";
 import { takeLinkDestination } from "../inline/link.js";
 import { isSpaceLine, LogicalLine, standardBlockStart } from "../linify.js";
 import { AnyInline } from "../markdown-types.js";
-import { BlockContinuationType, BlockTraits } from "../traits.js";
+import { BlockContinuationType, makeBlockTraits } from "../traits.js";
 import { BCI_TakeDelimited_IO, BlockContentIterator, makeBlockContentIterator } from "../util.js";
 
 
@@ -100,7 +100,7 @@ function linkDefStep(this: LinkDefParser, It: BlockContentIterator): BlockContin
 
 
 
-export const linkDef_traits: BlockTraits<"linkDef"> = {
+export const linkDef_traits = makeBlockTraits("linkDef", {
     startsHere(this: LinkDefParser, LL, B) {
         this.stage = 0;
         if(!standardBlockStart(LL))
@@ -150,4 +150,4 @@ export const linkDef_traits: BlockTraits<"linkDef"> = {
         destination: [],
         linkTitle: []
     }
-};
+});
