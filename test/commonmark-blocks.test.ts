@@ -3,12 +3,11 @@ import { Renderer} from '../src/renderer/renderer';
 import * as commonmark from 'commonmark';
 import { collectLists, listItem_traits } from '../src/blocks/listItem';
 import { MarkdownParser } from '../src/markdown-parser';
-import { standardBlockParserTraits } from '../src/block-parser';
 import { pairUpDelimiters } from '../src/delimiter-processing';
 import { linify } from '../src/linify';
 
 // As of 2025-03-12 Vitest suddenly isn't able any more to import listItem on its own. Luckily we can repair it like this.
-standardBlockParserTraits.listItem = listItem_traits;
+//standardBlockParserTraits.listItem = listItem_traits;
 
 const parser = new MarkdownParser();
 const renderer = new Renderer();

@@ -42,8 +42,10 @@ export interface BlockParserBase {
 	type: BlockType;
 }
 
-export interface BlockParser<K extends BlockType = BlockType, Traits extends BlockTraits<K> = BlockTraits<K>> extends BlockParserBase {
-	type: K;
+export interface BlockParser<K      extends BlockType = BlockType,
+                             Traits extends BlockTraits<K> = BlockTraits<K>> extends BlockParserBase
+{
+	type: BlockType;
 	// Does a block of this type begin in that logical line, and can it interrupt the given currently open block?
 	beginsHere(LL: LogicalLine_with_cmt, interrupting?: BlockType | undefined): number;
 
@@ -60,7 +62,7 @@ export interface BlockParser<K extends BlockType = BlockType, Traits extends Blo
 	MDP: MarkdownParser;
 	parent: BlockContainer | undefined;
 	traits: Traits;//BlockTraits<K>;
-	B: Block<K>;
+	B: Block<K> & Traits["defaultBlockInstance"];
 	isInterruption: boolean;
 	startLine: LogicalLine | undefined;
 	blockContainerType: BlockContainer["blockContainerType"] | "none";

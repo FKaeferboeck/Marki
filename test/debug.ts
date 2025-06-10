@@ -9,6 +9,7 @@ import { linify } from '../src/linify.js';
 
 const parser = new MarkdownParser();
 
+
 {
   const input = `foo <!-- this is a --\ncomment - with hyphens -->`;
   const LLs   = linify(input, false);

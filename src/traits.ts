@@ -2,7 +2,7 @@ import { BlockParser, BlockParser_Container } from "./block-parser.js";
 import { InlineParser } from "./inline-parser.js";
 import { LogicalLine, LogicalLine_with_cmt } from "./linify.js";
 import { MarkdownParser } from "./markdown-parser.js";
-import { BlockType, ExtensionBlockType, BlockType_Container, Block, InlineElementType, ExtensionInlineElementType, InlineElement, InlinePos, BlockIndividualData, Delimiter, Delimiter_nestable } from "./markdown-types.js";
+import { BlockType, ExtensionBlockType, BlockType_Container, Block, InlineElementType, ExtensionInlineElementType, InlineElement, InlinePos, BlockIndividualData, Delimiter, Delimiter_nestable, Block_Extension } from "./markdown-types.js";
 import { BlockContentIterator } from "./util.js";
 
 
@@ -13,19 +13,19 @@ export type BlockContinuationType = number     // block definitely continues in 
                                   | "reject";  // we've reached a line that's incompatible with the current block, so we reject the block and try a different block type
 
 
-export interface BlockTraits<T extends BlockType = ExtensionBlockType, Extra extends {} = {}> {
+export interface BlockTraits<T extends BlockType = ExtensionBlockType, B extends BlockIndividualData<T> = BlockIndividualData<T>, Extra extends {} = {}> {
     blockType: T;
 
     /* This method should return -1 if a block of this type cannot begin in this line.
        If it can begin here it shoudl return a number describing the offset where the actual content of the block (after a prefix) starts,
        e.g. 2 for a blockquote starting after "> ".
        If the prefix contains additional data (e.g. the level of an atx header) the method can parse that data into the provided block object. */
-    startsHere(this: BlockParser<T, BlockTraitsExtended<T, Extra>>, LL: LogicalLine, B: Block<T>, interrupting?: BlockType | undefined): number;
+    startsHere(this: BlockParser<T, BlockTraitsExtended<T, B, Extra>>, LL: LogicalLine, B: Block<T>, interrupting?: BlockType | undefined): number;
 
     /* returning undefined means the function doesn't make a decision whether to continue the block here,
      * and leaves it to the subsequent standard algorithm instead.
      */
-    continuesHere?(this: BlockParser<T>, LL: LogicalLine, isSoftContainerContinuation?: boolean): BlockContinuationType | undefined;
+    continuesHere?(this: BlockParser<T, BlockTraitsExtended<T, B, Extra>>, LL: LogicalLine, isSoftContainerContinuation?: boolean): BlockContinuationType | undefined;
 
     acceptLineHook?(this: BlockParser<T>, LL: LogicalLine, bct: BlockContinuationType | "start") : boolean;
     finalizeBlockHook?(this: BlockParser<T>): void;
@@ -46,12 +46,25 @@ export interface BlockTraits<T extends BlockType = ExtensionBlockType, Extra ext
     canSelfInterrupt?: boolean; // list items do that
     trimLeadingContentSpace?: boolean;
     creator?: (MDP: MarkdownParser, type: T) => BlockParser<T>;
-    defaultBlockInstance: BlockIndividualData<T>;
+    defaultBlockInstance: B;
 }
 
-export type BlockTraitsExtended<T extends BlockType = ExtensionBlockType, Extra extends {} = {}> =
-    BlockTraits<T, Extra> & Extra;
+export type BlockTraitsExtended<T     extends BlockType = ExtensionBlockType,
+                                B     extends BlockIndividualData<T> = BlockIndividualData<T>,
+                                Extra extends {} = {}>
+    = BlockTraits<T, B, Extra> & Extra;
 
+
+export type ExtensionBlockTraits<B extends BlockIndividualData = BlockIndividualData, Extra extends {} = {}>
+    = BlockTraitsExtended<ExtensionBlockType, B, Extra>;
+
+export function castExtensionBlock<B extends BlockIndividualData>
+    (block: Block_Extension, traits: ExtensionBlockTraits<B>): block is Block_Extension & B
+{
+    if(block.type !== traits.blockType)
+        throw new Error(`castBlock: expected block of type "${traits.blockType}", but encountered "${block.type}"`);
+    return true;
+}
 
 
 export interface BlockTraits_Container<T extends BlockType_Container> extends BlockTraits<T> {
