@@ -2,7 +2,7 @@ import { BlockParser, BlockParser_Container } from "./block-parser.js";
 import { InlineParser } from "./inline-parser.js";
 import { LogicalLine, LogicalLine_with_cmt } from "./linify.js";
 import { MarkdownParser } from "./markdown-parser.js";
-import { BlockType, ExtensionBlockType, BlockType_Container, Block, InlineElementType, ExtensionInlineElementType, InlineElement, InlinePos, BlockIndividualData, Delimiter, Delimiter_nestable, Block_Extension } from "./markdown-types.js";
+import { BlockType, ExtensionBlockType, BlockType_Container, Block, InlineElementType, ExtensionInlineElementType, InlineElement, InlinePos, BlockIndividualData, Delimiter, Delimiter_nestable, Block_Extension, AnyBlock } from "./markdown-types.js";
 import { BlockContentIterator } from "./util.js";
 
 
@@ -28,7 +28,7 @@ export interface BlockTraits<T extends BlockType = ExtensionBlockType, B extends
     continuesHere?(this: BlockParser<T, BlockTraitsExtended<T, B, Extra>>, LL: LogicalLine, isSoftContainerContinuation?: boolean): BlockContinuationType | undefined;
 
     acceptLineHook?(this: BlockParser<T>, LL: LogicalLine, bct: BlockContinuationType | "start") : boolean;
-    finalizeBlockHook?(this: BlockParser<T>): void;
+    finalizeBlockHook?(this: BlockParser<T, BlockTraitsExtended<T, B, Extra>>): void;
 
     /* in case content lines need to be transformed in some way when adding them to the block content */
     postprocessContentLine?(this: BlockParser<T>, LL: LogicalLine, bct: BlockContinuationType | "start") : LogicalLine_with_cmt;
@@ -41,7 +41,7 @@ export interface BlockTraits<T extends BlockType = ExtensionBlockType, B extends
     isInterrupter?: boolean; // Can this block interrupt soft continuations? default false
 
     hasContent?: boolean; // default true; false means that this element stores all data it has in its individual block data and doesn't use the "content" property
-    inlineProcessing?: boolean; // default true
+    inlineProcessing?: boolean | ((this: MarkdownParser, block: AnyBlock) => void); // default true
     lastIsContent?: boolean; // if a line is continuation type "last" it will still be added to the block content - default false
     canSelfInterrupt?: boolean; // list items do that
     trimLeadingContentSpace?: boolean;
@@ -59,7 +59,7 @@ export type ExtensionBlockTraits<B extends BlockIndividualData = BlockIndividual
     = BlockTraitsExtended<ExtensionBlockType, B, Extra>;
 
 export function castExtensionBlock<B extends BlockIndividualData>
-    (block: Block_Extension, traits: ExtensionBlockTraits<B>): block is Block_Extension & B
+    (block: /*Block_Extension*/AnyBlock, traits: ExtensionBlockTraits<B>): block is Block_Extension & B
 {
     if(block.type !== traits.blockType)
         throw new Error(`castBlock: expected block of type "${traits.blockType}", but encountered "${block.type}"`);
@@ -92,16 +92,18 @@ export type AnyBlockTraits = BlockType extends infer K ? K extends BlockType ? B
 
 /**********************************************************************************************************************/
 
-export interface InlineElementTraits<T extends InlineElementType = ExtensionInlineElementType> {
+export interface InlineElementTraits<T extends InlineElementType = ExtensionInlineElementType,
+                                     B extends InlineElement<T> = InlineElement<T>>
+{
     startChars: string[]; // characters where inline element can possibly start — doesn't have to be a sufficient condition
     mode?: "normal" | "delimited"; // default is "normal"
 
     // The implementation can modify startPos to e.g. an earlier position if the inline item wants to backtrack
     // Use this feature with caution! It cannot collide with an already parsed earlier inline item.
-    parse(this: InlineParser<T>, It: BlockContentIterator, startPos: InlinePos): InlineElement<T> | false;
+    parse(this: InlineParser<T>, It: BlockContentIterator, startPos: InlinePos): B | false;
 
     creator: (MDP: MarkdownParser) => InlineParser<T>;
-    defaultElementInstance: InlineElement<T>;
+    defaultElementInstance: B;
 }
 
 

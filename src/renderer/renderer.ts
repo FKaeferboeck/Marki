@@ -37,7 +37,7 @@ function posInList(B: Block<"listItem">) {
 }
 
 
-function delimitedSection(data: InlineContent, i0: number) {
+/*function delimitedSection(data: InlineContent, i0: number) {
     const elt = data[i0];
     if(!elt || inlineContentCategory(elt) !== "anyI")
         return false;
@@ -50,7 +50,7 @@ function delimitedSection(data: InlineContent, i0: number) {
         contents:   data.slice(i0 + 1, i1),
         closingIdx: i1
     };
-}
+}*/
 
 
 function actualizeTab(pfx: string, preIndent: number) {
@@ -162,10 +162,9 @@ export class Renderer {
 
     renderBlock(B: AnyBlock, I: Inserter) {
         const H = this.blockHandler[B.type];
-        if(H)
-            (H as any)(B, I);
-        else
-            I.add('<??>');
+        if(!H)
+            return I.add('<??>');
+        (H as any).call(this, B, I);
     }
 
     fencedOpener = fencedOpener;

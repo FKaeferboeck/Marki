@@ -143,8 +143,10 @@ export class MarkdownParser implements BlockContainer {
 		if(!T)    throw new Error(`Cannot process content of block "${B.type}"`);
 		if(isContainer(B))
 			B.blocks.forEach(B1 => this.processBlock(B1));
-		else if(T.inlineProcessing !== false && B.content)
+		else if((T.inlineProcessing === undefined || T.inlineProcessing === true) && B.content)
 			B.inlineContent = this.processInline(B.content);
+		else if(typeof T.inlineProcessing === "function")
+			T.inlineProcessing.call(this as MarkdownParser, B);
 	}
 
     processInline = processInline;
@@ -228,6 +230,7 @@ export class MarkdownParser implements BlockContainer {
 
     inlineParser_standard = new InlineParserProvider(this);
 	inlineParser_minimal  = new InlineParserProvider(this);
+	customInlineParserProviders: Record<string, InlineParserProvider> = { };
 };
 
 

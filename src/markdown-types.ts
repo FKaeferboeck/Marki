@@ -142,7 +142,7 @@ export interface InlineElementBase<K extends InlineElementType> {
 	followedDelimiter?: Delimiter_nestable;
 }
 
-export type InlineElement<K extends InlineElementType> = (K extends keyof InlineElementMap ? InlineElementMap[K] & InlineElementBase<K> : never);
+export type InlineElement<K extends InlineElementType> = (K extends keyof InlineElementMap ? InlineElementMap[K] & InlineElementBase<K> : { });
 
 export type AnyInline = string | (InlineElementType extends infer U ? (U extends keyof InlineElementMap ? InlineElement<U> : never) : never);
 
