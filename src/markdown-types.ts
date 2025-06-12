@@ -85,7 +85,7 @@ export interface Delimiter_nestable {
 	endDelimStartChar?: string; // stored here instead of in the traits class because we allow it to be dynamically dependent on the opening delimiter
 	isOpener:           boolean;
 	partnerDelim?:      Delimiter_nestable;
-	follower?:          AnyInline; // a DelimFollower inline element that "owns" this delimited section
+	follower?:          Exclude<AnyInline, string>; // a DelimFollower inline element that "owns" this delimited section
 	active:             boolean;
 }
 
@@ -142,9 +142,11 @@ export interface InlineElementBase<K extends InlineElementType> {
 	followedDelimiter?: Delimiter_nestable;
 }
 
-export type InlineElement<K extends InlineElementType> = (K extends keyof InlineElementMap ? InlineElementMap[K] & InlineElementBase<K> : { });
+export type InlineElement<K extends InlineElementType> = (
+	K extends keyof InlineElementMap ? InlineElementMap[K] & InlineElementBase<K> :
+	K extends ExtensionInlineElementType ? InlineElementBase<ExtensionInlineElementType> : never);
 
-export type AnyInline = string | (InlineElementType extends infer U ? (U extends keyof InlineElementMap ? InlineElement<U> : never) : never);
+export type AnyInline = string | (InlineElementType extends infer U ? (U extends keyof InlineElementMap ? InlineElement<U> : InlineElementBase<ExtensionInlineElementType>) : never);
 
 export type InlineContentElement = string | AnyInline | Delimiter;
 export type InlineContent        = InlineContentElement[];

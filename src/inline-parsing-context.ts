@@ -95,7 +95,7 @@ export class InlineParsingContext {
                     if(!curOpenDelimiterTraits)
                         throw new Error(`Failed to acquire traits for currently open delimiter "${curOpenDelimiter.type}"`)
                     found = inlineParse_try.call(this, curOpenDelimiterTraits, curOpenDelimiter, It, buf, checkpoint, checkpoint1);
-                    if(found && this.delimFollowerMap[curOpenDelimiter.type]) { // open delmiter successfully closed, now we'll look if it has a delmiter follower
+                    if(found && this.delimFollowerMap[curOpenDelimiter.type]) { // open delimiter successfully closed, now we'll look if it has a delimiter follower
                         It.setCheckPoint(checkpoint1);
                         for(const t of this.delimFollowerMap[curOpenDelimiter.type]) {
                             if(inlineParse_try.call(this, t, curOpenDelimiter, It, buf, checkpoint, checkpoint1)) {
@@ -164,7 +164,8 @@ function inlineParse_try(this: InlineParsingContext, t: InlineElementType | Deli
                 if(i0 < 0)
                     throw new Error('Opening delimiter not found where it should be!');
                 buf[i0] = elt; // The delimiter-following element replaces the opening delimiter in the inline content array, this makes it much easier to render.
-                buf.splice(i0 + 1); // Remove delimited content from primary sequence, it's contained somewhere in the delimiter-following element instead.
+                if("contentOwner" in P.traits && P.traits.contentOwner)
+                    buf.splice(i0 + 1); // Remove delimited content from primary sequence, it's contained somewhere in the delimiter-following element instead.
                 It.setCheckPoint(checkpoint);
                 return true;
             }

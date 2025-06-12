@@ -3,7 +3,7 @@ import { BlockBase, BlockBase_Container_additions, BlockType } from "../../markd
 import { BlockTraitsExtended } from "../../traits.js";
 
 
-export interface SourceInclude {
+/*export interface SourceInclude {
     target: string;
 }
 
@@ -37,4 +37,4 @@ export const sourceInclude_traits: BlockTraitsExtended<"ext_standard_sourceInclu
     defaultBlockInstance: { target: '' } as SourceInclude,
 
     command: '#include'
-};
+};*/

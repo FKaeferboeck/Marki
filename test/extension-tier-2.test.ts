@@ -1,12 +1,12 @@
 import { describe, expect, test } from 'vitest'
 import { MarkdownParser } from '../src/markdown-parser';
 import { Renderer } from '../src/renderer/renderer';
-import { extendTier1 } from '../src/extensions-tier-1/blocks/traits';
+import { extendTier2 } from '../src/extensions-tier-2/traits';
 
 const parser = new MarkdownParser();
 const renderer = new Renderer();
 
-extendTier1(parser, renderer);
+extendTier2(parser, renderer);
 
 const clearify = (s: string) => s.replace(/\t/g, '[\\t]');
 
@@ -20,7 +20,8 @@ export function doTest(idx: number | string, input: string, expectation: string)
 }
 
 
-describe('Tabular', () => {
-    doTest(1, '|Head 1|Head 2|\n|=|><|=><=|=|\n|C1|C2|\nafterwards', '');
+describe('Styling', () => {
+    doTest(1, 'A paragraph $c1{with *style* content}, does this work?',
+              '<p>A paragraph <span class="style-1">with <em>style</em> content</span>, does this work?</p>\n');
 
 });

@@ -4,7 +4,7 @@ import { escapeXML } from "./util.js";
 
 
 export type InlineHandlerList = Partial<{
-    [K in InlineElementType]: (this: InlineRenderer, B: InlineElement<K>, ins: Inserter, data: InlineContent, i: number) => void | number;
+    [K in InlineElementType]: (this: InlineRenderer, B: InlineElement<K>, ins: Inserter, data: InlineContent, i: number, closing?: boolean) => void | number;
 }>;
 
 
@@ -32,7 +32,7 @@ export class InlineRenderer {
                 continue;
             case "delim":
                 const delim = elt as Delimiter;
-                this.renderDelimiter(I, delim);
+                this.renderDelimiter(I, delim, data, i);
                 break;
             case "anyI":
                 const H = this.inlineHandler[(elt as InlineElement<InlineElementType>).type];
@@ -45,10 +45,13 @@ export class InlineRenderer {
         return I.join('');
     }
 
-    renderDelimiter(I: Inserter, delim: Delimiter) {
+    renderDelimiter(I: Inserter, delim: Delimiter, data: InlineContent, i: number) {
         if(isNestableDelimiter(delim)) {
-            if(!delim.isOpener && delim.partnerDelim?.follower)
+            if(!delim.isOpener && delim.partnerDelim?.follower) { // closing delimiter of a follower-handled delimited section
+                const H = this.inlineHandler[delim.partnerDelim.follower.type];
+                (H as any).call(this, delim.partnerDelim.follower, I, data, i, true);
                 return;
+            }
             I.add(delim.delim);
             
             return; // TODO!!

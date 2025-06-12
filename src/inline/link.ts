@@ -137,8 +137,9 @@ export function referenceLinkExtra(It: BlockContentIterator) { // reference link
 
 export const link_traits: DelimFollowerTraits<"link"> = {
     startDelims: [ bracket_traits.name ],
+    contentOwner: true,
 
-    parse(this: InlineParser<"link">, openingDelim: Delimiter_nestable, It: BlockContentIterator, startPos: InlinePos): InlineElement<"link"> | false {
+    parse(this: InlineParser<"link">, B, openingDelim: Delimiter_nestable, It: BlockContentIterator, startPos: InlinePos): InlineElement<"link"> | false {
         const ret = (B: InlineElement<"link"> | false) => {
             if(B === false)
                 return false;
@@ -146,7 +147,6 @@ export const link_traits: DelimFollowerTraits<"link"> = {
             return B;
         };
 
-        const B = this.B;
         B.linkLabelContents = this.getDelimitedContent(openingDelim);
         if(containsElement(B.linkLabelContents, "link"))
             return false;

@@ -7,7 +7,7 @@ import { Inserter, EasyInserter, Renderer } from "../../renderer/renderer.js";
 import { BlockTraits, InlineElementTraits, castExtensionBlock } from "../../traits.js";
 import { makeBlockContentIterator } from "../../util.js";
 
-const tabular_type        = "ext_tier1_tabular" as const;
+export const tabular_type = "ext_tier1_tabular" as const;
 const tabular_linebr_type = "ext_tier1_tabular_cellbr" as const;
 
 export type TabularHalign = "left" | "right" | "center" | "justify";

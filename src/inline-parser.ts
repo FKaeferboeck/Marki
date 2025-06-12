@@ -20,6 +20,7 @@ export interface InlineParser<K extends InlineElementType = ExtensionInlineEleme
 
     MDP: MarkdownParser;
     B: InlineElement<K>;
+    traits: InlineElementTraits<K> | DelimFollowerTraits<K>;
 }
 
 
@@ -46,7 +47,7 @@ export class InlineParser_Standard<K extends InlineElementType = ExtensionInline
     parseFollowingDelim(D: Delimiter_nestable, It: BlockContentIterator, startCheckpoint: InlinePos): false | InlineElement<K> {
         if("startChars" in this.traits) // this function only handles DelimFollowerTraits
             return false;
-        const elt: false | InlineElement<K>  = this.traits.parse.call(this, D, It, startCheckpoint);
+        const elt: false | InlineElement<K>  = this.traits.parse.call(this, this.B, D, It, startCheckpoint);
         if(elt) {
             D.follower = elt;
             elt.followedDelimiter = D;

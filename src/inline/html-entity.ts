@@ -2,7 +2,7 @@ import { InlineParser_Standard } from "../inline-parser.js";
 import { AnyInline, InlineElement } from "../markdown-types.js";
 import { InlineElementTraits } from "../traits.js";
 //import entityList from "../htmlEntities.json" assert { type: "json" };
-const { default: entityList } = await import("../htmlEntities.json", { with: { type: "json" } });
+const { default: entityList } = await import("../htmlEntities.json", { with: { type: "json" }, assert: { type: "json" } });
 
 
 const rex = /^&(?:#\d{1,7};|#[xX][\dA-Fa-f]{1,6};|[A-Za-z][A-Za-z\d]{0,32};)/; // 32 is the length of the longest existing HTML entity

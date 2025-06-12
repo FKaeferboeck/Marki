@@ -124,16 +124,18 @@ export interface DelimiterTraits {
     //creator: (MDP: MarkdownParser) => InlineParser<T>;
 }
 
-export interface DelimFollowerTraits<T extends InlineElementType = ExtensionInlineElementType> {
+export interface DelimFollowerTraits<T extends InlineElementType = ExtensionInlineElementType,
+                                     B extends InlineElement<T>  = InlineElement<T>> {
     startDelims: string[]; // list of delimiter names; a closing delimiter of this type serves as a start char for this type of inline element
+    contentOwner: boolean; // does this delim follower manage the delimited content itself?
 
     // The implementation can modify startPos to e.g. an earlier position if the inline item wants to backtrack
     // Use this feature with caution! It cannot collide with an already parsed earlier inline item.
-    parse(this: InlineParser<T>, endOfStartDelim: Delimiter_nestable,
-          It: BlockContentIterator, startPos: InlinePos): InlineElement<T> | false;
+    parse(this: InlineParser<T>, B: B, endOfStartDelim: Delimiter_nestable,
+          It: BlockContentIterator, startPos: InlinePos): B | false;
 
     creator: (MDP: MarkdownParser) => InlineParser<T>;
-    defaultElementInstance: InlineElement<T>;
+    defaultElementInstance: B;
 }
 
 

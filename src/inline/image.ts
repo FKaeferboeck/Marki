@@ -23,8 +23,9 @@ export const bang_bracket_traits: DelimiterTraits = {
 
 export const image_traits: DelimFollowerTraits<"image"> = {
     startDelims: [ bang_bracket_traits.name ],
+    contentOwner: true,
 
-    parse(this: InlineParser<"image">, openingDelim: Delimiter_nestable, It: BlockContentIterator, startPos: InlinePos): InlineElement<"image"> | false {
+    parse(this: InlineParser<"image">, B, openingDelim: Delimiter_nestable, It: BlockContentIterator, startPos: InlinePos): InlineElement<"image"> | false {
         const ret = (B: InlineElement<"image"> | false) => {
             if(B === false)
                 return false;
@@ -32,7 +33,6 @@ export const image_traits: DelimFollowerTraits<"image"> = {
             return B;
         };
 
-        const B = this.B;
         B.linkLabelContents = this.getDelimitedContent(openingDelim);
         B.linkLabel = reassembleContent(B.linkLabelContents);
         const cpt = It.newPos();

@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "type": "module",
   "description": "extensible Markdown parser with support for incremental changes",
-  "main": "index.js",
+  "main": "dist/src/index.js",
+  "types": "types/src/index.d.ts",
   "directories": {
     "test": "test"
   },

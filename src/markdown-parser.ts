@@ -16,6 +16,8 @@ import { AnyBlock, Block, BlockBase, BlockType, BlockType_Container, ExtensionBl
 import { AnyBlockTraits, BlockTraits, BlockTraits_Container, DelimiterTraits, InlineParserTraitsList } from "./traits.js";
 import { LLinfo } from "./util.js";
 
+// context/state data for custom use by Markdown extensions (primarily for data queries between parsing and rendering)
+type MarkdownParserContext = Record<string, any>;
 
 interface BlockParserProviderItem {
 	parent: MarkdownParser;
@@ -58,6 +60,47 @@ export const standardDelimiterTraits: Record<string, DelimiterTraits> = {
 	bang_bracket:    bang_bracket_traits // ![ ... ] — in CommonMark only used for image descriptions
 }
 
+class BlockParserProvider {
+	constructor(MDP: MarkdownParser) {
+		this.MDP = MDP;
+	}
+
+	cache: Partial<BlockParserProviderCache> = { };
+	release(P: BlockParserBase) {
+		if(this.cache[P.type]?.parser !== P)
+			throw new Error(`Trying to release a block parser for "${P.type}" that isn't in the cache`);
+		this.cache[P.type] = undefined;
+		return P;
+	}
+
+	*interrupters(interruptee: BlockParser): Generator<BlockParser> { yield* this.run("interrupters", interruptee.type, interruptee.parent || this.MDP); }
+	*mainBlocks  (BC?: BlockContainer):      Generator<BlockParser> { yield* this.run("tryOrder",     undefined, BC || this.MDP); }
+
+	*run(s: "tryOrder" | "interrupters", t0: BlockType | undefined, BC: BlockContainer | undefined): Generator<BlockParser> {
+		const MDP = this.MDP;
+		const L = MDP.tryOrder;
+		const allowSelfInterrupt = (t0 && MDP.traitsList[t0]?.canSelfInterrupt);
+		for(let i = 0, iN = L.length;  i < iN;  ++i) {
+			const key = L[i];
+			if(s === "interrupters" && !MDP.traitsList[key]?.isInterrupter)
+				continue;
+			const PP = this.cache[key] || (this.cache[key] = { parent: MDP,  parser: undefined });
+			if(!PP.parser)
+				PP.parser = MDP.makeParser(key) as any;
+			const P = PP.parser as BlockParser;
+			if(P.type !== t0 || allowSelfInterrupt) {
+				P.parent = BC; // where will a finished block be stored — either the central MarkdownParser instance or a container block
+				P.isInterruption = (s === "interrupters");
+				yield P;
+			}
+		}
+	}
+	MDP: MarkdownParser;
+}
+
+
+
+
 
 export class MarkdownParser implements BlockContainer {
 	constructor() {
@@ -74,6 +117,8 @@ export class MarkdownParser implements BlockContainer {
 		};
 		this.inlineParser_minimal.delims = { ... standardDelimiterTraits };
 		this.inlineParser_minimal.makeStartCharMap();
+
+		this.blockParserProvider = new BlockParserProvider(this);
 	}
 
 	addExtensionBlocks(traits: AnyBlockTraits, position: "first" | "last"): void;
@@ -159,7 +204,7 @@ export class MarkdownParser implements BlockContainer {
 		return !!((traits && "isContainer" in traits && traits.isContainer) || false);
 	}
 
-	private makeParser<K extends BlockType>(type: K) {
+	makeParser<K extends BlockType>(type: K) {
 		const traits = this.traitsList[type] as BlockTraits<K> | undefined;
 		if(!traits)
 			throw new Error(`Missing block parser traits for block type "${type}"`)
@@ -173,41 +218,8 @@ export class MarkdownParser implements BlockContainer {
 			return new BlockParser_Standard<K>(this, type, traits);
 	}
 
-	blockParserProvider = {
-		cache: { } as BlockParserProviderCache,
-		release(P: BlockParserBase) {
-			if(this.cache[P.type]?.parser !== P)
-				throw new Error(`Trying to release a block parser for "${P.type}" that isn't in the cache`);
-			this.cache[P.type] = undefined;
-			return P;
-		},
-
-		*interrupters(interruptee: BlockParser): Generator<BlockParser> { yield* this.run("interrupters", interruptee.type, interruptee.parent || this.MDP); },
-		*mainBlocks  (BC?: BlockContainer):      Generator<BlockParser> { yield* this.run("tryOrder",     undefined, BC || this.MDP); },
-
-		*run(s: "tryOrder" | "interrupters", t0: BlockType | undefined, BC: BlockContainer | undefined): Generator<BlockParser> {
-			const self = (this.MDP as MarkdownParser);
-			const L = self.tryOrder;
-			const allowSelfInterrupt = (t0 && self.traitsList[t0]?.canSelfInterrupt);
-			for(let i = 0, iN = L.length;  i < iN;  ++i) {
-				const key = L[i];
-				if(s === "interrupters" && !self.traitsList[key]?.isInterrupter)
-					continue;
-				const PP = this.cache[key] || (this.cache[key] = { parent: self,  parser: undefined });
-				if(!PP.parser)
-					PP.parser = self.makeParser(key) as any;
-				const P = PP.parser as BlockParser;
-				if(P.type !== t0 || allowSelfInterrupt) {
-					P.parent = BC; // where will a finished block be stored — either the central MarkdownParser instance or a container block
-					P.isInterruption = (s === "interrupters");
-					yield P;
-				}
-			}
-		},
-		MDP: this,
-	}
-
-	
+	customContext: MarkdownParserContext = { };
+	blockParserProvider: BlockParserProvider;
 	addContentBlock<K extends BlockType>(B: BlockBase<K>) { this.blocks.push(B as AnyBlock); }
 	blocks: AnyBlock[] = [];
 	blockContainerType = "MarkdownParser" as const;
