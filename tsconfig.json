@@ -6,15 +6,20 @@
         "esModuleInterop": true,
         "skipLibCheck": true,
         "strict": true,
+        "rootDir": "./src",
         "outDir": "./dist",
-        "rootDir": ".",
+        "declarationDir": "./types",
         "resolveJsonModule": true,
         "sourceMap": true,
         "declaration": true,
-        "declarationDir": "./types"
+        "baseUrl": ".",
+        "paths": {
+            "marki/*": ["./src/*"],
+            "marki/inline": ["src/exports/index-inline.ts"]
+        }
     },
     "include": ["src/**/*", "test/debug.ts"],
-    "exclude": ["node_modules"],
+    "exclude": ["node_modules", "test"],
     /* Das Folgende behebt einen Fehler beim Start: */
     "ts-node": {
         "experimentalSpecifierResolution": "node",

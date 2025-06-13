@@ -1,12 +1,9 @@
-import { makeDelimiter, pairUpDelimiters, reassembleContent } from "../../delimiter-processing";
-import { InlineParser, InlineParser_Standard } from "../../inline-parser";
-import { InlineParserProvider } from "../../inline-parsing-context";
-import { bang_bracket_traits } from "../../inline/image";
-import { parseLinkDestination, referenceLinkExtra, acceptable } from "../../inline/link";
+import { makeDelimiter } from "../../delimiter-processing";
+import { InlineParser_Standard } from "../../inline-parser";
 import { MarkdownParser } from "../../markdown-parser";
-import { Delimiter_nestable, InlinePos, InlineElement } from "../../markdown-types";
+import { InlineElement } from "../../markdown-types";
 import { Inserter, Renderer } from "../../renderer/renderer";
-import { castExtensionBlock, DelimFollowerTraits, DelimiterTraits } from "../../traits";
+import { DelimFollowerTraits, DelimiterTraits } from "../../traits";
 import { BlockContentIterator } from "../../util";
 
 

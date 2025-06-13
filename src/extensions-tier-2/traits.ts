@@ -1,8 +1,8 @@
-import { LogicalLine, LogicalLine_text, standardBlockStart } from "../linify";
-import { MarkdownParser } from "../markdown-parser";
-import { Renderer } from "../renderer/renderer";
-import { register } from "./blocks/custom-styling";
-import { ext_tier2_title_render, markdown_doc_title_traits, markdown_doc_title_type } from "./blocks/markdown-doc-title";
+import { LogicalLine, LogicalLine_text, standardBlockStart } from "../linify.js";
+import { MarkdownParser } from "../markdown-parser.js";
+import { Renderer } from "../renderer/renderer.js";
+import { register } from "./blocks/custom-styling.js";
+import { ext_tier2_title_render, markdown_doc_title_traits, markdown_doc_title_type } from "./inline/markdown-doc-title.js";
 
 /* Reasonable choices for the command char are things like $, #, %, !, or \ — whichever is most appropriate for your syntax style preference */
 export function set_tier2_command_char(MDP: MarkdownParser, command_char: string) {

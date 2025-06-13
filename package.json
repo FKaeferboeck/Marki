@@ -3,10 +3,32 @@
   "version": "1.0.0",
   "type": "module",
   "description": "extensible Markdown parser with support for incremental changes",
-  "main": "dist/src/index.js",
-  "types": "types/src/index.d.ts",
+  "main":  "./dist/exports/index.js",
+  "types": "./types/exports/index.d.ts",
   "directories": {
     "test": "test"
+  },
+  "exports": {
+    ".": {
+        "import": "./dist/exports/index.js",
+        "types": "./types/exports/index.d.ts"
+    },
+    "./util": {
+        "import": "./dist/exports/index-util.js",
+        "types": "./types/exports/index-util.d.ts"
+    },
+    "./blocks": {
+        "import": "./dist/exports/index-blocks.js",
+        "types": "./types/exports/index-blocks.d.ts"
+    },
+    "./inline": {
+        "import": "./dist/exports/index-inline.js",
+        "types": "./types/exports/index-inline.d.ts"
+    },
+    "./tier2": {
+      "import": "./dist/exports/index-tier2.js",
+      "types": "./types/exports/index-tier2.d.ts"
+    }
   },
   "scripts": {
     "tsc": "tsc",
