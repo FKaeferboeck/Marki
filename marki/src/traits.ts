@@ -20,7 +20,7 @@ export interface BlockTraits<T extends BlockType = ExtensionBlockType, B extends
        If it can begin here it shoudl return a number describing the offset where the actual content of the block (after a prefix) starts,
        e.g. 2 for a blockquote starting after "> ".
        If the prefix contains additional data (e.g. the level of an atx header) the method can parse that data into the provided block object. */
-    startsHere(this: BlockParser<T, BlockTraitsExtended<T, B, Extra>>, LL: LogicalLine, B: Block<T>, interrupting?: BlockType | undefined): number;
+    startsHere(this: BlockParser<T, BlockTraitsExtended<T, B, Extra>>, LL: LogicalLine, B: Block<T> & B, interrupting?: BlockType | undefined): number;
 
     /* returning undefined means the function doesn't make a decision whether to continue the block here,
      * and leaves it to the subsequent standard algorithm instead.

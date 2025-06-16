@@ -9,7 +9,7 @@ export interface SectionHeader {
 }
 
 
-function trimEndMarker(It: BlockContentIterator) {
+export function sectionHeader_trimEndMarker(It: BlockContentIterator) {
     const P = It.newPos(); // just to make a position instance
     let n = 0, c: string | false = false;
 
@@ -62,7 +62,7 @@ export const sectionHeader_traits = makeBlockTraits("sectionHeader", {
         It.goToEnd();
 
         // Is there perhaps a closing ### ?
-        const P = trimEndMarker(It);
+        const P = sectionHeader_trimEndMarker(It);
         
         return (P ? sliceLL_to(LL, P) : LL);
     },

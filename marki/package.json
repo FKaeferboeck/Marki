@@ -25,9 +25,9 @@
         "import": "./dist/exports/index-inline.js",
         "types": "./types/exports/index-inline.d.ts"
     },
-    "./tier2": {
-      "import": "./dist/exports/index-tier2.js",
-      "types": "./types/exports/index-tier2.d.ts"
+    "./extensions": {
+      "import": "./dist/exports/index-extensions.js",
+      "types": "./types/exports/index-extensions.d.ts"
     }
   },
   "scripts": {

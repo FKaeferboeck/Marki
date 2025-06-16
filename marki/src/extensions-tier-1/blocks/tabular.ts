@@ -33,13 +33,13 @@ export interface MarkdownTabular {
 function isFormatLine(LL: LogicalLine) {
     if(LL.type !== "text" || !LL.content.startsWith('|'))
         return false;
-    let rexres = /^\|((?:[=<>]+\|)+)\s*$/.exec(LL.content);
+    let rexres = /^\|((?:[\-<>]+\|)+)\s*$/.exec(LL.content);
     if(!rexres)
         return false;
     const colsFormats = rexres[1].slice(0, -1).split('|');
     const cols: TabularColumnFormat[] = [];
     for(const f of colsFormats) {
-        if(!(rexres = /^=*(<>?|><?)?=*$/.exec(f)))
+        if(!(rexres = /^-*(<>?|><?)?-*$/.exec(f)))
             return false;
         const F: TabularColumnFormat = { halign: "left" };
         if(rexres[1])

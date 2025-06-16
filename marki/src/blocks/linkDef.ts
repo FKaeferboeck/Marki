@@ -86,7 +86,7 @@ function linkDefStep(this: LinkDefParser, It: BlockContentIterator): BlockContin
 
         // TODO!! Improve LLD construction
         const LL: LogicalLine = {
-            start: -1,  type: "text",
+            lineIdx: -1,  type: "text",
             content: this.parts.join('\n').slice(1, -1),
             indent: 0,  prefix: ''
         };

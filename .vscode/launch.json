@@ -1,16 +1,31 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
-    "configurations": [ {
-        "type": "node",
-        "request": "launch",
-        "name": "Launch Program",
-        "skipFiles": ["<node_internals>/**"],
-        "program": "${workspaceFolder}/test/debug.ts",
-        "preLaunchTask": "tsc: build - tsconfig.json",
-        "outFiles": ["${workspaceFolder}/dist/**/*.js"],
-        "runtimeArgs": ["-r", "ts-node/register"]
-    } ]
+    "configurations": [
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Launch Program",
+            "skipFiles": ["<node_internals>/**"],
+            "program": "${workspaceFolder}/marki/test/debug.ts",
+            "preLaunchTask": "tsc: build - tsconfig.json",
+            "outFiles": ["${workspaceFolder}/dist/**/*.js"],
+            "runtimeArgs": ["-r", "ts-node/register"]
+        },
+        {
+			"type": "extensionHost",
+			"request": "launch",
+			"name": "Launch SDSMD Client",
+			"runtimeExecutable": "${execPath}",
+			"args": ["--extensionDevelopmentPath=${workspaceRoot}/marki-lsp"],
+			"outFiles": [
+				"${workspaceRoot}/marki-lsp/client/out/**/*.js",
+				"${workspaceRoot}/marki-lsp/server/out/**/*.js"
+			],
+			"autoAttachChildProcesses": true,
+			"preLaunchTask": {
+				"type": "npm",
+				"script": "watch"
+			}
+		},
+    ]
 }

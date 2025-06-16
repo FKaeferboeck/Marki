@@ -1,5 +1,5 @@
 import { lineContent, LogicalLine_with_cmt, shiftCol } from "../linify.js";
-import { AnyBlock, Block, BlockType, InlineContent, inlineContentCategory, InlineElement, InlineElementType } from "../markdown-types.js";
+import { AnyBlock, Block, BlockType } from "../markdown-types.js";
 import { InlineHandlerList, InlineRenderer, renderInline } from "./inline-renderer.js";
 import { renderHTML_entity, escapeXML, escapeXML_all, urlEncode } from "./util.js";
 import { getInlineRenderer_plain } from "./utility-renderers.js";
@@ -164,6 +164,7 @@ export class Renderer {
         const H = this.blockHandler[B.type];
         if(!H)
             return I.add('<??>');
+        
         (H as any).call(this, B, I);
     }
 

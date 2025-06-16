@@ -1,16 +1,22 @@
-import { Position } from 'vscode-languageserver';
+import { Position, Range, uinteger } from 'vscode-languageserver';
+
+export interface IncrementalChange {
+	range: Range;
+	rangeLength?: uinteger;
+	text: string;
+}
 
 
 export type LogicalLineType = "empty" | "emptyish" | "comment" | "text";
 
 export interface LogicalLine_base<T extends LogicalLineType> {
-    type:  T;
-    start: number;
-    next?: LogicalLine_with_cmt;
-    isSoftContainerContinuation? : boolean; // this is dirty
+    type:    T;
+    lineIdx: number;
+    next?:   LogicalLine_with_cmt;
+    isSoftContainerContinuation? : boolean; // this is dirty — this property has no business being here, but it's easier this way
 }
 function LL_inherit<T extends LogicalLineType>(B: LogicalLine_base<LogicalLineType>, type: T, shiftCol = 0) {
-    const B1: LL_SliceBase<T> = { type,  start: B.start,  parent: B as LogicalLine_with_cmt,  shiftCol };
+    const B1: LL_SliceBase<T> = { type,  lineIdx: B.lineIdx,  parent: B as LogicalLine_with_cmt,  shiftCol };
     if(typeof B.isSoftContainerContinuation === "boolean")
         B1.isSoftContainerContinuation = B.isSoftContainerContinuation;
     return B1;
@@ -33,6 +39,13 @@ export interface LogicalLine_text extends LogicalLine_base<"text"> {
 
 export type LogicalLine          = LogicalLine_emptyish | LogicalLine_text;
 export type LogicalLine_with_cmt = LogicalLine_emptyish | LogicalLine_text | LogicalLine_comment;
+
+export interface LineStructure {
+	//all: LinePart[]; // the physical structure
+	logical_lines: LogicalLine_with_cmt[];
+}
+
+
 
 export interface LL_Slice_additions {
     shiftCol: number;
@@ -140,16 +153,16 @@ export function linify_(text: string, makeCommentLines: boolean, pos: Position, 
                 const cl = (buf.splice(buf.length - n_commentLine, n_commentLine) as (LogicalLine_emptyish | LogicalLine_text)[])
                     .map(L => (L.prefix || '') + ("content" in L ? L.content : ''));
                 cl.push(content);
-                buf.push({ type: "comment",  start: start - n_commentLine,  content: cl });
+                buf.push({ type: "comment",  lineIdx: start - n_commentLine,  content: cl });
                 n_commentLine = 0;
             }
             else if(i0 === i)
-                buf.push({ type: "empty",  start,  indent: 0 });
+                buf.push({ type: "empty",  lineIdx: start,  indent: 0 });
             else if(lineIsOnlySpace)
-                buf.push({ type: "emptyish",  start,  prefix: content,  indent: prefixSize(content).cols });
+                buf.push({ type: "emptyish",  lineIdx: start,  prefix: content,  indent: prefixSize(content).cols });
             else {
                 let { chars, cols } = prefixSize(content);
-                buf.push({ type: "text",  start,  prefix: content.slice(0, chars),  indent: cols,  content: content.slice(chars) }); // may be converted into part of a comment line later
+                buf.push({ type: "text",  lineIdx: start,  prefix: content.slice(0, chars),  indent: cols,  content: content.slice(chars) }); // may be converted into part of a comment line later
             }
             ++start;
             if(isInComment)

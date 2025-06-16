@@ -154,7 +154,7 @@ export class MarkdownParser implements BlockContainer {
 	}
 
 	/* Full parsing of a complete document (contents as string) */
-	processDocument(input: string) {
+	processDocument(input: string): AnyBlock[] {
 		this.reset();
 		const LLs = linify(input, false); // TODO!!
         const blocks = this.processContent(LLs[0]);
@@ -171,7 +171,7 @@ export class MarkdownParser implements BlockContainer {
 	processLine  = processLine;
 	processLines = processLines;
 
-	processContent(LL: LogicalLine_with_cmt) {
+	processContent(LL: LogicalLine_with_cmt): AnyBlock[] {
 		this.blocks = [];
 		let LL0: LogicalLine_with_cmt | null = LL;
 		while(LL0) {
@@ -179,7 +179,6 @@ export class MarkdownParser implements BlockContainer {
 			if(this.diagnostics)    console.log(`Coming out of parsing with open block`, P.curParser?.type, P.curParser?.getCheckpoint());
 			LL0 = (P.curParser?.finish()?.next || null);
 		}
-		
 		return this.blocks;
 	}
 
@@ -281,7 +280,7 @@ export function processLine(this: MarkdownParser, PP: ParseState, LL: LogicalLin
 	if(!curParser) { // start a new block
 		this.startBlock(PP, LL);
 		if(!PP.curParser)
-			throw new Error(`Line ${LL.start} doesn't belong to any block, that's not possible!`)
+			throw new Error(`Line ${LL.lineIdx} doesn't belong to any block, that's not possible!`)
 		return PP;
 	}
 
@@ -315,7 +314,7 @@ export function processLine(this: MarkdownParser, PP: ParseState, LL: LogicalLin
 			}
 		}
 		// soft continuation wasn't interrupted, we can accept it
-		if(this.diagnostics)    console.log(`  Not interrupted -> accept line ${LL.start} as <${PP.curParser?.type}>`)
+		if(this.diagnostics)    console.log(`  Not interrupted -> accept line ${LL.lineIdx} as <${PP.curParser?.type}>`)
 		curParser.acceptLine(LL, bct, 0);
 		return PP;
 	default: // hard accept
@@ -334,7 +333,7 @@ export function processLines(this: MarkdownParser, LL0: LogicalLine_with_cmt, LL
 			if(this.diagnostics)    console.log(`* Retry in line ${LLinfo(PP.retry)}`);
 			curLL = PP.retry;
 		} else {
-			if(this.diagnostics)    console.log(`* Proceed ${curLL.start}->${LLinfo(curLL.next)}`);
+			if(this.diagnostics)    console.log(`* Proceed ${curLL.lineIdx}->${LLinfo(curLL.next)}`);
 			curLL = curLL.next || null;
 		}
 	}

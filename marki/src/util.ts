@@ -28,7 +28,7 @@ export function LLinfo(LL: LogicalLine_with_cmt | null | undefined) {
         return '[EOF]';
     if(LL.type === "comment")
         return '[Comment line]';
-    return `[${LL.start}:${LL.indent ? `(${LL.indent})+` : ''}${lineContent(LL)}${LL.isSoftContainerContinuation ? '\\SCC' : ''}]`;
+    return `[${LL.lineIdx}:${LL.indent ? `(${LL.indent})+` : ''}${lineContent(LL)}${LL.isSoftContainerContinuation ? '\\SCC' : ''}]`;
 }
 
 export const isLineStart = (pos: InlinePos) => (pos.char_idx === 0);

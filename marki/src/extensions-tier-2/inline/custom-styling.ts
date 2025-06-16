@@ -1,10 +1,10 @@
-import { makeDelimiter } from "../../delimiter-processing";
-import { InlineParser_Standard } from "../../inline-parser";
-import { MarkdownParser } from "../../markdown-parser";
-import { InlineElement } from "../../markdown-types";
-import { Inserter, Renderer } from "../../renderer/renderer";
-import { DelimFollowerTraits, DelimiterTraits } from "../../traits";
-import { BlockContentIterator } from "../../util";
+import { makeDelimiter } from "../../delimiter-processing.js";
+import { InlineParser_Standard } from "../../inline-parser.js";
+import { MarkdownParser } from "../../markdown-parser.js";
+import { InlineElement } from "../../markdown-types.js";
+import { Inserter, Renderer } from "../../renderer/renderer.js";
+import { DelimFollowerTraits, DelimiterTraits } from "../../traits.js";
+import { BlockContentIterator } from "../../util.js";
 
 
 interface CustomStyling {

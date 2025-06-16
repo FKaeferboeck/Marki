@@ -85,7 +85,7 @@ export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits e
 	resetBlock() {
 		this.B = structuredClone(this.traits.defaultBlockInstance) as Block<K>; // make a deep copy because the individual block data can contain arrays
 		this.B.type                = this.type;
-		this.B.logical_line_start  = -1;
+		this.B.lineIdx  = -1;
 		this.B.logical_line_extent = 0;
 		return this.B;
 	}
@@ -100,7 +100,7 @@ export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits e
 		const starts = this.traits.startsHere.call(this, LL, this.B, interrupting);
 		if(starts < 0)    return -1;
 		
-		this.B.logical_line_start  = LL.start;
+		this.B.lineIdx  = LL.lineIdx;
 		this.B.logical_line_extent = 1;
 		if(this.MDP.diagnostics)
 			console.log(`Releasing [${this.type}]`);
@@ -157,10 +157,10 @@ export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits e
 			this.enqueueContentSlice(LL, prefix_length, bct);
 		}
 
-		if(this.checkpoint && LL.start > this.checkpoint.start)
+		if(this.checkpoint && LL.lineIdx > this.checkpoint.lineIdx)
 			return;
 		this.lastLine = LL;
-		this.B.logical_line_extent = LL.start - this.B.logical_line_start + 1;
+		this.B.logical_line_extent = LL.lineIdx - this.B.lineIdx + 1;
 		if(bct !== "last" || this.traits.lastIsContent) {
 			// flush pending content lines to the block contents array
 			let LL_content = (this.lastAddedContent ? this.lastAddedContent.next : this.lastEnqueuedContent!);
@@ -184,7 +184,7 @@ export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits e
 		if(this.parent)
 			this.parent.addContentBlock(this.B);
 		//container.addContentBlock(this.B);
-		if(this.MDP.diagnostics)    console.log(`  Finish [${this.type}], to continue in line ${(this.lastLine?.start || 0) + 1}`)
+		if(this.MDP.diagnostics)    console.log(`  Finish [${this.type}], to continue in line ${(this.lastLine?.lineIdx || 0) + 1}`)
 		return this.lastLine!;
 	}
 
@@ -205,7 +205,7 @@ export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits e
 
 	protected enqueueContentSlice(LL: LogicalLine, slice_col: number, bct?: BlockContinuationType | "start") {
 		// because a block container might try to double enqueue a line
-		if((this.lastEnqueuedContent?.start || -1) >= LL.start)
+		if((this.lastEnqueuedContent?.lineIdx || -1) >= LL.lineIdx)
 			//return this.lastEnqueuedContent.contentSlice!;
 			throw new Error(`Trying to double enqueue cline ${LLinfo(LL)}`);
 
@@ -247,7 +247,7 @@ export class BlockParser_Container<K extends BlockType_Container = BlockType_Con
 
     continues(LL: LogicalLine): BlockContinuationType {
         let cont = super.continues(LL);
-		if(this.MDP.diagnostics && cont !== "soft")    console.log(`  block container <${this.type}> continues at line ${LL.start}? ${cont}`);
+		if(this.MDP.diagnostics && cont !== "soft")    console.log(`  block container <${this.type}> continues at line ${LL.lineIdx}? ${cont}`);
 		if(cont === "end")
 			return cont;
 			
@@ -263,8 +263,8 @@ export class BlockParser_Container<K extends BlockType_Container = BlockType_Con
 				if(this.curContentParser.retry) {
 					curLL = this.curContentParser.retry;
 					if(this.MDP.diagnostics)    console.log(`      = Retry in line ${LLinfo(curLL)}`);
-				} else if(curLL.start < LL_c.start) { // this can only happen during backtracking due to a rejected content block
-					if(this.MDP.diagnostics)    console.log(`      = Proceed ${curLL.start}->${LLinfo(curLL.next)}  (because we haven't reached ${LLinfo(LL_c)})`);
+				} else if(curLL.lineIdx < LL_c.lineIdx) { // this can only happen during backtracking due to a rejected content block
+					if(this.MDP.diagnostics)    console.log(`      = Proceed ${curLL.lineIdx}->${LLinfo(curLL.next)}  (because we haven't reached ${LLinfo(LL_c)})`);
 					curLL = curLL.next as LogicalLine;
 				} else
 					break;
@@ -281,7 +281,7 @@ export class BlockParser_Container<K extends BlockType_Container = BlockType_Con
 			// only paragraph content can softly continue a container block
 			// if there's nested block containers the innermost content is the one that counts, so we delegate the decision to the inner container
 			if(P.blockContainerType == "none" && P.type !== "paragraph") {
-				if(this.MDP.diagnostics)    console.log(`  block container <${this.type}> softly continues at line ${LL.start} with content <${P.type}>? No, it's not paragraph content`);
+				if(this.MDP.diagnostics)    console.log(`  block container <${this.type}> softly continues at line ${LL.lineIdx} with content <${P.type}>? No, it's not paragraph content`);
 				return "end";
 			}
 
@@ -290,7 +290,7 @@ export class BlockParser_Container<K extends BlockType_Container = BlockType_Con
 			// The following behavior isn't fully clear from the CommonMark specification in my opinion, but we replicate what the CommonMark reference implementation does:
 			if(cont === "reject")
 				cont = "end";
-			if(this.MDP.diagnostics)    console.log(`  block container <${this.type}> softly continues at line ${LL.start} with content <${P.type}>? -> ${cont}`);
+			if(this.MDP.diagnostics)    console.log(`  block container <${this.type}> softly continues at line ${LL.lineIdx} with content <${P.type}>? -> ${cont}`);
         }
         return cont;
     }
@@ -327,7 +327,7 @@ export class BlockParser_EmptySpace extends BlockParser_Standard<"emptySpace"> {
     beginsHere(LL: LogicalLine): number {
         if(LL.type === "text")
             return -1;
-        this.B.logical_line_start  = LL.start;
+        this.B.lineIdx  = LL.lineIdx;
         this.B.logical_line_extent = 1;
 		this.MDP.blockParserProvider.release(this);
         return 0;

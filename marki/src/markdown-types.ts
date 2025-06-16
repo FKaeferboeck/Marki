@@ -44,7 +44,7 @@ export type BlockType = BlockType_Leaf | BlockType_Container | ExtensionBlockTyp
 
 export type BlockBase<K extends BlockType> = {
 	type:                K;
-	logical_line_start:  number;
+	lineIdx:             number;
 	logical_line_extent: number;
 	content?:            LogicalLine;
 	inlineContent?:      InlineContent; // same as "content", but inline parsed
