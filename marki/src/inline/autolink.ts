@@ -7,18 +7,20 @@ const rexEmailAutolink = /^<([a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-
 export const autolink_traits: InlineElementTraits<"autolink"> = {
     startChars: [ '<' ],
 
-    parse(It) {
+    parse(It, B) {
         let rexres = It.regexInLine(/^<([A-Za-z][A-Za-z\d+.\-]{1,31}):([^<>\x00-\x20]*)>/);
         if(rexres) {
-            this.B.scheme = rexres[1];
-            this.B.URI    = rexres[2];
-            return this.B;
+            B.scheme = rexres[1];
+            B.URI    = rexres[2];
+            return true;
         }
+        
         rexres = It.regexInLine(rexEmailAutolink);
         if(rexres) {
-            this.B.email = rexres[1];
-            return this.B;
+            B.email = rexres[1];
+            return true;
         }
+        
         return false;
     },
     

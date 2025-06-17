@@ -41,7 +41,7 @@ function parseXML_element(It: BlockContentIterator, P0: InlinePos, B: InlineElem
 export const rawHTML_traits: InlineElementTraits<"rawHTML"> = {
     startChars: [ '<' ],
 
-    parse(It, P0) {
+    parse(It, B, P0) {
         const c = It.peekN(1);
         if(c === '?') { // a processing instruction
             let c1 = It.pop(); // skip <
@@ -49,9 +49,9 @@ export const rawHTML_traits: InlineElementTraits<"rawHTML"> = {
             while((c1 = It.pop())) {
                 if(c1 === '?' && It.peek() === '>') {
                     It.pop();
-                    this.B.tag      = contentSlice(P0, It.newPos(), true);
-                    this.B.XML_type = "processingInstruction";
-                    return this.B;
+                    B.tag      = contentSlice(P0, It.newPos(), true);
+                    B.XML_type = "processingInstruction";
+                    return true;
                 }
             }
             return false;
@@ -63,9 +63,9 @@ export const rawHTML_traits: InlineElementTraits<"rawHTML"> = {
                 if(c1 === ']' && It.peek() === ']' && It.peekN(1) === '>') {
                     It.pop();
                     It.pop();
-                    this.B.tag      = contentSlice(P0, It.newPos(), true);
-                    this.B.XML_type = "CDATA";
-                    return this.B;
+                    B.tag      = contentSlice(P0, It.newPos(), true);
+                    B.XML_type = "CDATA";
+                    return true;
                 }
             }
             return false;
@@ -82,9 +82,9 @@ export const rawHTML_traits: InlineElementTraits<"rawHTML"> = {
                 if(c1 === '-' && It.peek() === '-' && It.peekN(1) === '>') {
                     It.pop();
                     It.pop();
-                    this.B.tag      = contentSlice(P0, It.newPos(), true);
-                    this.B.XML_type = "XML_comment";
-                    return this.B;
+                    B.tag      = contentSlice(P0, It.newPos(), true);
+                    B.XML_type = "XML_comment";
+                    return true;
                 }
             }
             return false;
@@ -94,16 +94,15 @@ export const rawHTML_traits: InlineElementTraits<"rawHTML"> = {
             let c1: string | false = false;
             while((c1 = It.pop())) {
                 if(c1 === '>') {
-                    this.B.tag      = contentSlice(P0, It.newPos(), true);
-                    this.B.XML_type = "declaration";
-                    return this.B;
+                    B.tag      = contentSlice(P0, It.newPos(), true);
+                    B.XML_type = "declaration";
+                    return true;
                 }
             }
             return false;
         }
 
-        const X = parseXML_element(It, P0, this.B);
-        return (X && this.B);
+        return parseXML_element(It, P0, B);
     },
     
     creator(MDP) { return new InlineParser_Standard<"rawHTML">(MDP, this); },

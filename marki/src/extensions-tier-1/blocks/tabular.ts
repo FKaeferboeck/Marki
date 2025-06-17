@@ -2,7 +2,7 @@ import { InlineParser_Standard } from "../../inline-parser.js";
 import { InlineParserProvider, InlineParsingContext } from "../../inline-parsing-context.js";
 import { LogicalLine, LogicalLine_text, standardBlockStart } from "../../linify.js";
 import { MarkdownParser, standardDelimiterTraits, standardInlineParserTraits } from "../../markdown-parser.js";
-import { Block_Extension, ExtensionBlockType, InlineContent } from "../../markdown-types.js";
+import { Block_Extension, ExtensionBlockType, InlineContent, InlineElementBase } from "../../markdown-types.js";
 import { Inserter, EasyInserter, Renderer } from "../../renderer/renderer.js";
 import { BlockTraits, InlineElementTraits, castExtensionBlock } from "../../traits.js";
 import { makeBlockContentIterator } from "../../util.js";
@@ -53,11 +53,11 @@ function isFormatLine(LL: LogicalLine) {
 
 interface TabularCellbrMarker { type: typeof tabular_linebr_type; }
 
-export const tabular_cellbr_traits: InlineElementTraits<typeof tabular_linebr_type, TabularCellbrMarker> = {
+export const tabular_cellbr_traits: InlineElementTraits<typeof tabular_linebr_type, TabularCellbrMarker & InlineElementBase<typeof tabular_linebr_type>> = {
     startChars: [ '|' ],
     parse(It) {
         It.pop();
-        return this.B as TabularCellbrMarker;
+        return true;
     },
     creator(MDP) { return new InlineParser_Standard<typeof tabular_linebr_type>(MDP, this); },
     defaultElementInstance: { type: tabular_linebr_type }

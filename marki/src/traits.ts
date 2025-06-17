@@ -100,10 +100,10 @@ export interface InlineElementTraits<T extends InlineElementType = ExtensionInli
 
     // The implementation can modify startPos to e.g. an earlier position if the inline item wants to backtrack
     // Use this feature with caution! It cannot collide with an already parsed earlier inline item.
-    parse(this: InlineParser<T>, It: BlockContentIterator, startPos: InlinePos): B | false;
+    parse(this: InlineParser<T, B>, It: BlockContentIterator, B: B, startPos: InlinePos): boolean;
 
     creator: (MDP: MarkdownParser) => InlineParser<T>;
-    defaultElementInstance: B;
+    defaultElementInstance: Omit<B, "consumedChars">;
 }
 
 
@@ -132,10 +132,10 @@ export interface DelimFollowerTraits<T extends InlineElementType = ExtensionInli
     // The implementation can modify startPos to e.g. an earlier position if the inline item wants to backtrack
     // Use this feature with caution! It cannot collide with an already parsed earlier inline item.
     parse(this: InlineParser<T>, B: B, endOfStartDelim: Delimiter_nestable,
-          It: BlockContentIterator, startPos: InlinePos): B | false;
+          It: BlockContentIterator, startPos: InlinePos): boolean;
 
     creator: (MDP: MarkdownParser) => InlineParser<T>;
-    defaultElementInstance: B;
+    defaultElementInstance: Omit<B, "consumedChars">;
 }
 
 

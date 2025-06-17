@@ -39,7 +39,7 @@ export const ext_tier2_custom_styling_traits: DelimFollowerTraits<"ext_tier2_cus
     {
         B.styleClass = openingDelim.delim.slice(2, -1);
         //pairUpDelimiters(B.linkLabelContents);
-        return B;
+        return true;
     },
     
     creator(MDP) { return new InlineParser_Standard<"ext_tier2_custom_styling">(MDP, this); },

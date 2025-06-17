@@ -139,6 +139,7 @@ export type InlineElementType = keyof InlineElementMap | ExtensionInlineElementT
 
 export interface InlineElementBase<K extends InlineElementType> {
 	type: K;
+	consumedChars: number; // how much of the input does this element consume? Caution – may contain line breaks
 	followedDelimiter?: Delimiter_nestable;
 }
 

@@ -6,12 +6,12 @@ import { DelimFollowerTraits, InlineElementTraits } from "./traits.js";
 import { BlockContentIterator } from "./util.js";
 
 
-export interface InlineParser<K extends InlineElementType = ExtensionInlineElementType> {
+export interface InlineParser<K extends InlineElementType = ExtensionInlineElementType, Elt extends InlineElement<K> = InlineElement<K>> {
     type: K;
 
     // guarantee: if an element is successfully parsed, It will afterwards point behind it
     //            if it cannot be parsed here, It will be at the same start position it was in before (though the checkpoint may have been changed)
-    parse(It: BlockContentIterator, startCheckpoint: InlinePos): InlineElement<K> | false;
+    parse(It: BlockContentIterator, startCheckpoint: InlinePos): Elt | false;
 
     parseFollowingDelim(D: Delimiter_nestable, It: BlockContentIterator, startCheckpoint: InlinePos): false | InlineElement<K>;
 
@@ -19,41 +19,47 @@ export interface InlineParser<K extends InlineElementType = ExtensionInlineEleme
     getDelimitedContent(D: Delimiter_nestable): InlineContent; // for use in parseFollowingDelim()
 
     MDP: MarkdownParser;
-    B: InlineElement<K>;
+    B: Elt;
     traits: InlineElementTraits<K> | DelimFollowerTraits<K>;
 }
 
 
-export class InlineParser_Standard<K extends InlineElementType = ExtensionInlineElementType> {
+export class InlineParser_Standard<K extends InlineElementType = ExtensionInlineElementType, Elt extends InlineElement<K> = InlineElement<K>> {
     type: K;
     buf?: InlineContent;
 
-    constructor(MDP: MarkdownParser, traits: InlineElementTraits<K> | DelimFollowerTraits<K>) {
+    constructor(MDP: MarkdownParser, traits: InlineElementTraits<K, Elt> | DelimFollowerTraits<K, Elt>) {
         this.type   = traits.defaultElementInstance.type as K;
         this.MDP    = MDP;
-        this.B      = structuredClone(traits.defaultElementInstance);
+        this.B      = structuredClone(traits.defaultElementInstance) as Elt;
+        this.B.consumedChars = 0;
         this.traits = traits;
     }
 
-    parse(It: BlockContentIterator, startCheckpoint: InlinePos): false | InlineElement<K> {
+    parse(It: BlockContentIterator, startCheckpoint: InlinePos): false | Elt {
         if(!("startChars" in this.traits)) // this function doesn't handle DelimFollowerTraits
             return false;
-        const elt: false | InlineElement<K>  = this.traits.parse.call(this, It, startCheckpoint);
-        if(!elt)
+        const found = this.traits.parse.call(this, It, this.B, startCheckpoint);
+        if(!found) {
             It.setPosition(startCheckpoint); // rewind position
-        return elt;
+            return false;
+        }
+        else {
+            this.B.consumedChars = 666;
+            return this.B;
+        }
     }
 
     parseFollowingDelim(D: Delimiter_nestable, It: BlockContentIterator, startCheckpoint: InlinePos): false | InlineElement<K> {
         if("startChars" in this.traits) // this function only handles DelimFollowerTraits
             return false;
-        const elt: false | InlineElement<K>  = this.traits.parse.call(this, this.B, D, It, startCheckpoint);
-        if(elt) {
-            D.follower = elt;
-            elt.followedDelimiter = D;
+        const found = this.traits.parse.call(this, this.B, D, It, startCheckpoint);
+        if(found) {
+            D.follower = this.B;
+            D.follower.followedDelimiter = D;
         } else
             It.setPosition(startCheckpoint); // rewind position
-        return elt;
+        return (found && this.B);
     }
 
     setBuf(buf: InlineContent) { this.buf = buf; }
@@ -69,8 +75,8 @@ export class InlineParser_Standard<K extends InlineElementType = ExtensionInline
     }
 
     MDP: MarkdownParser;
-    B: InlineElement<K>;
-    traits: InlineElementTraits<K> | DelimFollowerTraits<K>;
+    B: Elt;
+    traits: InlineElementTraits<K, Elt> | DelimFollowerTraits<K, Elt>;
 }
 
 
@@ -84,7 +90,7 @@ export function parseBackslashEscapes(s: string, buf: AnyInline[], pusher?: (s: 
             continue;
         if(i !== checkpoint)
             pusher(s.slice(checkpoint, i), buf);
-        buf.push({ type: "escaped",  character: s[i + 1] });
+        buf.push({ type: "escaped",  consumedChars: 2,  character: s[i + 1] });
         ++i;
         checkpoint = i + 1;
     }

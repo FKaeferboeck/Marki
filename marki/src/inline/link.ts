@@ -139,12 +139,12 @@ export const link_traits: DelimFollowerTraits<"link"> = {
     startDelims: [ bracket_traits.name ],
     contentOwner: true,
 
-    parse(this: InlineParser<"link">, B, openingDelim: Delimiter_nestable, It: BlockContentIterator, startPos: InlinePos): InlineElement<"link"> | false {
+    parse(B, openingDelim: Delimiter_nestable, It: BlockContentIterator, startPos: InlinePos) {
         const ret = (B: InlineElement<"link"> | false) => {
             if(B === false)
                 return false;
             pairUpDelimiters(B.linkLabelContents);
-            return B;
+            return true;
         };
 
         B.linkLabelContents = this.getDelimitedContent(openingDelim);

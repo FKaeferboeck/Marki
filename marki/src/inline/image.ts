@@ -25,12 +25,12 @@ export const image_traits: DelimFollowerTraits<"image"> = {
     startDelims: [ bang_bracket_traits.name ],
     contentOwner: true,
 
-    parse(this: InlineParser<"image">, B, openingDelim: Delimiter_nestable, It: BlockContentIterator, startPos: InlinePos): InlineElement<"image"> | false {
+    parse(B, openingDelim: Delimiter_nestable, It: BlockContentIterator, startPos: InlinePos) {
         const ret = (B: InlineElement<"image"> | false) => {
             if(B === false)
                 return false;
             pairUpDelimiters(B.linkLabelContents);
-            return B;
+            return true;
         };
 
         B.linkLabelContents = this.getDelimitedContent(openingDelim);

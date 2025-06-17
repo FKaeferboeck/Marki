@@ -24,12 +24,12 @@ function processHTML_entity(entity: RegExpMatchArray, B: InlineElement<"htmlEnti
 export const htmlEntity_traits: InlineElementTraits<"htmlEntity"> = {
     startChars: [ '&' ],
 
-    parse(It) {
+    parse(It, B) {
         const entity = It.regexInLine(rex); // advances content iterator if positive match
         if(!entity)
             return false;
-        processHTML_entity(entity as RegExpMatchArray, this.B);
-        return this.B;
+        processHTML_entity(entity as RegExpMatchArray, B);
+        return true;
     },
     
     creator(MDP) { return new InlineParser_Standard<"htmlEntity">(MDP, this); },
@@ -55,7 +55,7 @@ export function parseHTML_entities(s: string, buf: AnyInline[]) {
             continue;
         if(i !== checkpoint)
             buf.push(s.slice(checkpoint, i));
-        const B = { ... htmlEntity_traits.defaultElementInstance };
+        const B = { ... htmlEntity_traits.defaultElementInstance,  consumedChars: 0 };
         processHTML_entity(entity, B);
         buf.push(B);
         i += entity[0].length - 1;

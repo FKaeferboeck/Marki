@@ -7,7 +7,7 @@ import { contentSlice } from "../util.js";
 export const codeSpan_traits: InlineElementTraits<"codeSpan"> = {
     startChars: [ '`' ],
 
-    parse(It, pos0) {
+    parse(It, B, pos0) {
         let marker_in_length = 0;
         let s: false | string = false;
         if(It.peekN(-1) === '`') // start char is part of a longer sequence of ````, but not the first one
@@ -28,7 +28,7 @@ export const codeSpan_traits: InlineElementTraits<"codeSpan"> = {
             case '`':
                 ++non_space;
                 if(++marker_out_length === marker_in_length && It.peek() !== '`')
-                    return extractCodeSpan(pos0, It.newPos(), marker_in_length,
+                    return extractCodeSpan(B, pos0, It.newPos(), marker_in_length,
                                            space_in && space_out && non_space != marker_in_length ? "spaced" : "normal");
                 break;
             case false: // block ended in unclosed code span
@@ -54,11 +54,9 @@ export const codeSpan_traits: InlineElementTraits<"codeSpan"> = {
 
 
 
-function extractCodeSpan(p0: InlinePos, p1: InlinePos, marker_length: number, mode: "normal" | "spaced" | "unclosed") : InlineElement<"codeSpan"> {
+function extractCodeSpan(B: InlineElement<"codeSpan">, p0: InlinePos, p1: InlinePos, marker_length: number, mode: "normal" | "spaced" | "unclosed") {
     let s: string = contentSlice(p0, p1, true, ' '); // turn line endings into space
     const m = marker_length + (mode === "spaced" ? 1 : 0);
-    return {
-        type:    "codeSpan",
-        content: s.slice(m, mode === "unclosed" ? undefined : -m)
-    }
+    B.content = s.slice(m, mode === "unclosed" ? undefined : -m);
+    return true;
 }

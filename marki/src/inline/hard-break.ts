@@ -9,23 +9,23 @@ import { InlineElementTraits } from "../traits.js";
 export const hardBreak_traits: InlineElementTraits<"hardBreak"> = {
     startChars: [ '\n' ],
 
-    parse(It, pos0) {
+    parse(It, B, pos0) {
         let n = 0;
         // I. Backslashed hard break
         while(It.peekN(-(++n)) === '\\');
         if((n % 2) === 0) { // there was an odd number of backslashes, so we know (1) there is at least one and (2) the last one isn't backslash-escaped
             It.getPosition(pos0, -1);
             It.pop();
-            this.B.nSpaces = false;
-            return this.B;
+            B.nSpaces = false;
+            return true;
         };
         for(n = 1;  It.peekN(-n) === ' ';  ++n);
         if(--n < /*2*/1)
             return false;
         It.getPosition(pos0, -n);
         It.pop();
-        this.B.nSpaces = n;
-        return this.B;
+        B.nSpaces = n;
+        return true;
     },
     
     creator(MDP) { return new InlineParser_Standard<"hardBreak">(MDP, this); },
