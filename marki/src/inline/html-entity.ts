@@ -1,3 +1,4 @@
+import { PositionOps } from "../position-ops.js";
 import { InlineParser_Standard } from "../inline-parser.js";
 import { AnyInline, InlineElement } from "../markdown-types.js";
 import { InlineElementTraits } from "../traits.js";
@@ -53,12 +54,15 @@ export function parseHTML_entities(s: string, buf: AnyInline[]) {
         const entity = rex.exec(s.slice(i));
         if(!entity)
             continue;
+        const entity_length = entity[0].length;
         if(i !== checkpoint)
             buf.push(s.slice(checkpoint, i));
-        const B = { ... htmlEntity_traits.defaultElementInstance,  consumedChars: 0 };
+        const endPos = PositionOps.endPos(buf);
+        endPos.character += entity_length;
+        const B = { ... htmlEntity_traits.defaultElementInstance,  endPos };
         processHTML_entity(entity, B);
         buf.push(B);
-        i += entity[0].length - 1;
+        i += entity_length - 1;
         checkpoint = i + 1;
     }
     if(checkpoint !== s.length)

@@ -76,7 +76,7 @@ export const bracket_traits: DelimiterTraits = {
 
     parseDelimiter(It: BlockContentIterator) {
         It.pop(); // '['
-        return makeDelimiter('[', ']');
+        return makeDelimiter(It, '[', ']');
     }
 };
 

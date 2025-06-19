@@ -2,8 +2,9 @@ import { backslashEscapeds } from "./inline/backslash-escape.js";
 import { parseHTML_entities } from "./inline/html-entity.js";
 import { MarkdownParser } from "./markdown-parser.js";
 import { AnyInline, Delimiter_nestable, ExtensionInlineElementType, InlineContent, InlineElement, InlineElementType, InlinePos } from "./markdown-types.js";
+import { PositionOps } from "./position-ops.js";
 import { DelimFollowerTraits, InlineElementTraits } from "./traits.js";
-import { BlockContentIterator } from "./util.js";
+import { BlockContentIterator, charLength } from "./util.js";
 
 
 export interface InlineParser<K extends InlineElementType = ExtensionInlineElementType, Elt extends InlineElement<K> = InlineElement<K>> {
@@ -31,9 +32,9 @@ export class InlineParser_Standard<K extends InlineElementType = ExtensionInline
     constructor(MDP: MarkdownParser, traits: InlineElementTraits<K, Elt> | DelimFollowerTraits<K, Elt>) {
         this.type   = traits.defaultElementInstance.type as K;
         this.MDP    = MDP;
-        this.B      = structuredClone(traits.defaultElementInstance) as Elt;
-        this.B.consumedChars = 0;
         this.traits = traits;
+        this.B      = structuredClone(traits.defaultElementInstance) as Elt;
+        this.B.endPos = { line: 0,  character: 0 };
     }
 
     parse(It: BlockContentIterator, startCheckpoint: InlinePos): false | Elt {
@@ -45,7 +46,8 @@ export class InlineParser_Standard<K extends InlineElementType = ExtensionInline
             return false;
         }
         else {
-            this.B.consumedChars = 666;
+            this.B.endPos = It.relativePos();
+            /*const endCheckpoint = It.newPos();*/
             return this.B;
         }
     }
@@ -57,6 +59,7 @@ export class InlineParser_Standard<K extends InlineElementType = ExtensionInline
         if(found) {
             D.follower = this.B;
             D.follower.followedDelimiter = D;
+            this.B.endPos = It.relativePos();
         } else
             It.setPosition(startCheckpoint); // rewind position
         return (found && this.B);
@@ -90,7 +93,9 @@ export function parseBackslashEscapes(s: string, buf: AnyInline[], pusher?: (s: 
             continue;
         if(i !== checkpoint)
             pusher(s.slice(checkpoint, i), buf);
-        buf.push({ type: "escaped",  consumedChars: 2,  character: s[i + 1] });
+        const endPos = PositionOps.endPos(buf);
+        endPos.character += 2;
+        buf.push({ type: "escaped",  endPos,  character: s[i + 1] });
         ++i;
         checkpoint = i + 1;
     }

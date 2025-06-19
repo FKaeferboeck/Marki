@@ -15,7 +15,7 @@ export const bang_bracket_traits: DelimiterTraits = {
         It.pop(); // '!'
         if(It.pop() !== '[')
             return false;
-        return makeDelimiter('![', ']');
+        return makeDelimiter(It, '![', ']');
     }
 };
 

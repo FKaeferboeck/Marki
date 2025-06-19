@@ -2,7 +2,7 @@ import { BlockParser, BlockParser_Container } from "./block-parser.js";
 import { InlineParser } from "./inline-parser.js";
 import { LogicalLine, LogicalLine_with_cmt } from "./linify.js";
 import { MarkdownParser } from "./markdown-parser.js";
-import { BlockType, ExtensionBlockType, BlockType_Container, Block, InlineElementType, ExtensionInlineElementType, InlineElement, InlinePos, BlockIndividualData, Delimiter, Delimiter_nestable, Block_Extension, AnyBlock } from "./markdown-types.js";
+import { BlockType, ExtensionBlockType, BlockType_Container, Block, InlineElementType, ExtensionInlineElementType, InlineElement, InlinePos, BlockIndividualData, Delimiter, Delimiter_nestable, Block_Extension, AnyBlock, InlineElementBase } from "./markdown-types.js";
 import { BlockContentIterator } from "./util.js";
 
 
@@ -92,6 +92,9 @@ export type AnyBlockTraits = BlockType extends infer K ? K extends BlockType ? B
 
 /**********************************************************************************************************************/
 
+type InlineElementCustomData<T extends InlineElementType, B extends InlineElement<T>> = Omit<B, Exclude<keyof InlineElementBase<T>, "type">>;
+
+
 export interface InlineElementTraits<T extends InlineElementType = ExtensionInlineElementType,
                                      B extends InlineElement<T> = InlineElement<T>>
 {
@@ -103,7 +106,7 @@ export interface InlineElementTraits<T extends InlineElementType = ExtensionInli
     parse(this: InlineParser<T, B>, It: BlockContentIterator, B: B, startPos: InlinePos): boolean;
 
     creator: (MDP: MarkdownParser) => InlineParser<T>;
-    defaultElementInstance: Omit<B, "consumedChars">;
+    defaultElementInstance: InlineElementCustomData<T, B>;
 }
 
 
@@ -135,7 +138,7 @@ export interface DelimFollowerTraits<T extends InlineElementType = ExtensionInli
           It: BlockContentIterator, startPos: InlinePos): boolean;
 
     creator: (MDP: MarkdownParser) => InlineParser<T>;
-    defaultElementInstance: Omit<B, "consumedChars">;
+    defaultElementInstance: InlineElementCustomData<T, B>;
 }
 
 

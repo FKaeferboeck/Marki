@@ -60,7 +60,8 @@ export function parseDelimiter(It: BlockContentIterator, checkpoint1: InlinePos,
             delim:        endDelim || '',
             isOpener:     false,
             partnerDelim: toClose,
-            active:       true
+            active:       true,
+            endPos:       It.relativePos()
         };
         toClose.partnerDelim = delim;
     }
@@ -76,18 +77,20 @@ export function parseDelimiter(It: BlockContentIterator, checkpoint1: InlinePos,
 }
 
 
-export function makeDelimiter(delim: string, expected_end_delim: string | number): Delimiter {
+export function makeDelimiter(It: BlockContentIterator, delim: string, expected_end_delim: string | number): Delimiter {
     if(typeof expected_end_delim === "string")
         return {
             type: '?',
             delim,  endDelimStartChar: expected_end_delim,
-            isOpener: true,  active: true
+            isOpener: true,  active: true,
+            endPos: It.relativePos()
         };
     else
         return {
             type: '?',
             delim,
-            remaining: expected_end_delim
+            remaining: expected_end_delim,
+            endPos: It.relativePos()
         };
 }
 

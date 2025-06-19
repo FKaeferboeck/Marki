@@ -26,7 +26,7 @@ export const ext_tier2_custom_styling_delim: DelimiterTraits = {
         if(!rexres)
             return false;
 
-        return makeDelimiter('$c' + rexres[0], '}');
+        return makeDelimiter(It, '$c' + rexres[0], '}');
     }
 };
 

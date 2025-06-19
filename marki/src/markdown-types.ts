@@ -9,6 +9,7 @@ import { EmptySpace } from "./blocks/emptySpace.js";
 import { ListItem } from "./blocks/listItem.js";
 import { HTML_block } from "./blocks/html-block.js";
 import { LogicalLine, LogicalLine_with_cmt } from "./linify.js";
+import { KnowsEnd } from "./position-ops.js";
 
 export type ExtensionNamespace = string;
 
@@ -17,6 +18,15 @@ export type ExtensionBlockType = `ext_${ExtensionNamespace}_${string}`;
 export interface InlinePos {
 	LL:       LogicalLine_with_cmt;
     char_idx: number;
+}
+
+export interface Pos {
+	line:      number;
+	character: number;
+}
+export interface PosDelta {
+	y: number;
+	x: number;
 }
 
 
@@ -79,7 +89,7 @@ export const isContainer = (B: AnyBlock): B is AnyContainerBlock => ("isContaine
 
 /**********************************************************************************************************************/
 
-export interface Delimiter_nestable {
+export interface Delimiter_nestable extends KnowsEnd {
 	type:               string;
 	delim:              string;
 	endDelimStartChar?: string; // stored here instead of in the traits class because we allow it to be dynamically dependent on the opening delimiter
@@ -94,7 +104,7 @@ export interface DelimiterSide {
 	actualized?: number[]; // an array of 1s and 2s denoting a nesting of opening or closing <emph> and <strong> tags
 }
 
-export interface Delimiter_emph {
+export interface Delimiter_emph extends KnowsEnd {
 	type:      string;
 	delim:     string;
 	opening?:  DelimiterSide;
@@ -139,7 +149,7 @@ export type InlineElementType = keyof InlineElementMap | ExtensionInlineElementT
 
 export interface InlineElementBase<K extends InlineElementType> {
 	type: K;
-	consumedChars: number; // how much of the input does this element consume? Caution – may contain line breaks
+	endPos: Pos; // line is relative to block start, character is relative to line content start (which may be not identical for all lines of the block)
 	followedDelimiter?: Delimiter_nestable;
 }
 

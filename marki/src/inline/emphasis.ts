@@ -13,7 +13,7 @@ function parseDelimiter(It: BlockContentIterator) {
         ++delim_size;
         It.pop();
     }
-    return makeDelimiter(delim_char.repeat(delim_size), delim_size);
+    return makeDelimiter(It, delim_char.repeat(delim_size), delim_size);
 }
 
 

@@ -1,5 +1,6 @@
 import { lineContent, LogicalLine, LogicalLine_comment, LogicalLine_text, LogicalLine_with_cmt, LogicalLineType, shiftCol, Slice, sliceLine_to } from "./linify.js";
-import { InlinePos } from "./markdown-types.js";
+import { AnyInline, InlinePos, Pos } from "./markdown-types.js";
+import { PositionOps } from "./position-ops.js";
 
 const spaces: Record<string, boolean> = { ' ': true,  '\t': true,  '\n': true };
 
@@ -43,6 +44,26 @@ export interface InlineParsingConfig {
 }
 
 
+export function charLength(from: InlinePos, to: InlinePos) {
+    if(from.LL === to.LL) // slice of a single line (most common case)
+        return (to.char_idx - from.char_idx);
+
+    let len = Math.max(lineContent(from.LL).length - from.char_idx, 0); // remainder of start line
+
+    // add whole lines between start and end
+    let LL = from.LL;
+    while(LL.next && LL.next !== to.LL) {
+        LL = LL.next as LogicalLine; // TODO!! comment lines
+        len += 1 /* line break char */ + lineContent(LL).length;
+    }
+    if(!LL.next)
+        throw new Error('');
+
+    len += 1 /* line break char */ + to.char_idx;
+    return len;
+}
+
+
 export function contentSlice(p0: InlinePos, p1: InlinePos, includeComments: boolean, line_break_char = '\n') {
     let C = lineContent(p0.LL);
     if(p0.LL === p1.LL) // slice of a single line
@@ -81,6 +102,7 @@ export interface BlockContentIterator {
     //line_break_char: string;
 
     newPos(): InlinePos;
+    relativePos(): Pos;
 
     peek():           BlockContentChar;
     peekN(n: number): BlockContentChar;
@@ -240,6 +262,11 @@ export function makeBlockContentIterator(LL: LogicalLine, singleLine: boolean = 
         newPos: (): InlinePos => {
             const LL = LLs[H.idx];
             return { LL,  char_idx: (H.type.startsWith('EO') ? lineContent(LL).length : char_idx) };
+        },
+        relativePos: () => {
+            const LL = LLs[H.idx];
+            return { line: LL.lineIdx - LLs[0].lineIdx,
+                     character: (H.type.startsWith('EO') ? lineContent(LL).length : char_idx) };
         },
 
         peek: () => curPart[char_idx],
