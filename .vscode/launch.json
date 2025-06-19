@@ -16,10 +16,10 @@
 			"request": "launch",
 			"name": "Launch SDSMD Client",
 			"runtimeExecutable": "${execPath}",
-			"args": ["--extensionDevelopmentPath=${workspaceRoot}/marki-lsp"],
+			"args": ["--extensionDevelopmentPath=${workspaceRoot}"],
 			"outFiles": [
-				"${workspaceRoot}/marki-lsp/client/out/**/*.js",
-				"${workspaceRoot}/marki-lsp/server/out/**/*.js"
+				"${workspaceRoot}/marki-lsp-client/out/**/*.js",
+				"${workspaceRoot}/marki-lsp/out/**/*.js"
 			],
 			"autoAttachChildProcesses": true,
 			"preLaunchTask": {

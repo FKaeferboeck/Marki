@@ -12,7 +12,7 @@
 			"problemMatcher": [
 				"$tsc"
 			],
-			"options": { "cwd": "${workspaceFolder}/marki-lsp" }
+			"options": { "cwd": "${workspaceFolder}" }
 		},
 		{
 			"type": "npm",
@@ -29,7 +29,7 @@
 			"problemMatcher": [
 				"$tsc-watch"
 			],
-			"options": { "cwd": "${workspaceFolder}/marki-lsp" }
+			"options": { "cwd": "${workspaceFolder}" }
 		}
 	]
 }
