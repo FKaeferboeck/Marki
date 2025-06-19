@@ -2,30 +2,15 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "type": "node",
-            "request": "launch",
-            "name": "Launch Program",
-            "skipFiles": ["<node_internals>/**"],
-            "program": "${workspaceFolder}/marki/test/debug.ts",
-            "preLaunchTask": "tsc: build - tsconfig.json",
-            "outFiles": ["${workspaceFolder}/dist/**/*.js"],
-            "runtimeArgs": ["-r", "ts-node/register"]
-        },
-        {
 			"type": "extensionHost",
 			"request": "launch",
-			"name": "Launch SDSMD Client",
+			"name": "Launch SDSMD minimal",
 			"runtimeExecutable": "${execPath}",
-			"args": ["--extensionDevelopmentPath=${workspaceRoot}"],
+			"args": ["--extensionDevelopmentPath=${workspaceFolder}/marki-lsp-client"],
 			"outFiles": [
-				"${workspaceRoot}/marki-lsp-client/out/**/*.js",
-				"${workspaceRoot}/marki-lsp/out/**/*.js"
+				"${workspaceFolder}/marki-lsp-client/out/**/*.js"
 			],
-			"autoAttachChildProcesses": true,
-			"preLaunchTask": {
-				"type": "npm",
-				"script": "watch"
-			}
+			"autoAttachChildProcesses": true
 		},
     ]
 }
