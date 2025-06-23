@@ -13,7 +13,7 @@ const replacements: Record<string, string> = {
     '&': '&amp;',
     '"': '&quot;'
 };
-export const escapeXML = (s: string) => s.replaceAll(/[<>&"]/g, x => replacements[x]);
+export const escapeXML = (s: string) => s.replace(/[<>&"]/g, x => replacements[x]);
 
 export function escapeXML_all(C: AnyInline[]) {
     return escapeXML(C.map(s => {
@@ -41,7 +41,7 @@ export const urlEncode = (S: AnyInline[]) => {
         default:            return '';
         }
     }).join('');
-    return joined.replaceAll(/[^A-Za-z\d-._~!#$&'()*+,/:;=?@]/g, (c, i: number) => {
+    return joined.replace(/[^A-Za-z\d-._~!#$&'()*+,/:;=?@]/g, (c, i: number) => {
     //return joined.replaceAll(/[^A-Za-z\d-._~!#$&'()*+,/:;=?@\[\]]/g, (c, i: number) => {
         if(c === '%' && /^%[\dA-F]{2}/.test(joined.slice(i, i + 3)))
             return c; // skip already present character code

@@ -3,50 +3,68 @@
   "version": "1.0.0",
   "type": "module",
   "description": "extensible Markdown parser with support for incremental changes",
-  "main":  "./dist/exports/index.js",
-  "types": "./types/exports/index.d.ts",
-  "directories": {
-    "test": "test"
-  },
+  "main":  "./out/esm/exports/index.js",
+  "types": "./out/types/exports/index.d.ts",
+  "directories": { "test": "test" },
   "exports": {
     ".": {
-        "import": "./dist/exports/index.js",
-        "types": "./types/exports/index.d.ts"
+        "require": "./out/cjs/exports/index.js",
+        "import": {
+          "types":   "./out/types/exports/index.d.ts",
+          "default": "./out/esm/exports/index.js"
+        }
     },
     "./util": {
-        "import": "./dist/exports/index-util.js",
-        "types": "./types/exports/index-util.d.ts"
+      "require": "./out/cjs/exports/index-util.js",
+      "import": {
+        "types":   "./out/types/exports/index-util.d.ts",
+        "default": "./out/esm/exports/index-util.js"
+      }
     },
     "./blocks": {
-        "import": "./dist/exports/index-blocks.js",
-        "types": "./types/exports/index-blocks.d.ts"
+      "require": "./out/cjs/exports/index-blocks.js",
+      "import": {
+        "types":   "./out/types/exports/index-blocks.d.ts",
+        "default": "./out/esm/exports/index-blocks.js"
+      }
     },
     "./inline": {
-        "import": "./dist/exports/index-inline.js",
-        "types": "./types/exports/index-inline.d.ts"
+      "require": "./out/cjs/exports/index-inline.js",
+      "import": {
+        "types":   "./out/types/exports/index-inline.d.ts",
+        "default": "./out/esm/exports/index-inline.js"
+      }
     },
     "./extensions": {
-      "import": "./dist/exports/index-extensions.js",
-      "types": "./types/exports/index-extensions.d.ts"
+      "require": "./out/cjs/exports/index-extensions.js",
+      "import": {
+        "types":   "./out/types/exports/index-extensions.d.ts",
+        "default": "./out/esm/exports/index-extensions.js"
+      }
     }
   },
+  "typesVersions": { "*": {
+    ".":          [ "./out/types/exports/index.d.ts" ],
+    "util":       [ "./out/types/exports/index-util.d.ts" ],
+    "blocks":     [ "./out/types/exports/index-blocks.d.ts" ],
+    "inline":     [ "./out/types/exports/index-inline.d.ts" ],
+    "extensions": [ "./out/types/exports/index-extensions.d.ts" ]
+  } },
   "scripts": {
-    "tsc": "tsc",
-    "test": "vitest --reporter=dot extension",
-    "test2": "vitest --config ./test/vitest.config.ts"
+    "test":    "vitest --reporter=dot extension",
+    "test2":   "vitest --config ./test/vitest.config.ts",
+    "cjs":     "tsc --module commonjs --moduleResolution node10 --outDir ./out/cjs",
+    "esm":     "tsc",
+    "compile": "npm run esm && npm run cjs"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/FKaeferboeck/Marki.git"
   },
-  "keywords": [
-    "Markdown"
-  ],
+  "keywords": [ "Markdown" ],
   "author": "Florian Käferböck",
   "license": "GPL-3.0",
-  "bugs": {
-    "url": "https://github.com/FKaeferboeck/Marki/issues"
-  },
+  "bugs": { "url": "https://github.com/FKaeferboeck/Marki/issues" },
   "homepage": "https://github.com/FKaeferboeck/Marki#readme",
   "dependencies": {
     "commonmark": "^0.31.2",

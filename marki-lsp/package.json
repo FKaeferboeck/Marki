@@ -3,14 +3,17 @@
 	"description": "An customizable language server (LSP) for the Marki markdown processor",
 	"version": "1.0.0",
 	"author": "Florian Käferböck",
-	"type": "module",
 	"license": "GPL-3.0",
+	"type": "commonjs",
 	"engines": { "node": "*" },
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/FKaeferboeck/Marki"
 	},
-	"main": "./out/server.js",
+	"exports": {
+		"require": "./cjs/server.js",
+		"import": "./esm/server.js"
+	},
 	"dependencies": {
 		"marki": "file:../marki",
 		"vscode-languageserver": "^9.0.1",

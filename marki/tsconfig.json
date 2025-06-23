@@ -1,22 +1,18 @@
 {
     "compilerOptions": {
-        "module": "ESNext",
-        "target": "ESNext",
-        "moduleResolution": "Node",
-        "esModuleInterop": true,
+        "module": "node16",
+        "target": "esnext",
+        "moduleResolution": "node16",
+        //"esModuleInterop": true,
         "skipLibCheck": true,
         "strict": true,
-        "rootDir": "./src",
-        "outDir": "./dist",
-        "declarationDir": "./types",
+        "rootDir":        "./src",
+        "outDir":         "./out/esm",
+        "declarationDir": "./out/types",
         "resolveJsonModule": true,
         "sourceMap": true,
         "declaration": true,
         "baseUrl": ".",
-        "paths": {
-            "marki/*": ["./src/*"],
-            "marki/inline": ["src/exports/index-inline.ts"]
-        }
     },
     "include": ["src/**/*", "test/debug.ts"],
     "exclude": ["node_modules", "test"],

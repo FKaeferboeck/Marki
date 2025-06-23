@@ -1,15 +1,17 @@
 {
 	"compilerOptions": {
-		"target": "es2020",
+		"target": "es6",
 		"lib": ["es2020"],
-		"module": "Node16",
-		"moduleResolution": "nodenext",
+		"module": "commonjs",
+		"moduleResolution": "node",
+		"esModuleInterop": true,
 		"sourceMap": true,
 		"strict": true,
-		"outDir": "out",
-		"rootDir": "src",
-		
-		"types": ["node"]
+		"rootDir":        "./src",
+		"outDir":         "./out/esm",
+        "declarationDir": "./out/types",
+		"types": ["node"],
+		"declaration": true,
 	},
 	"include": ["src"],
 	"exclude": ["node_modules", ".vscode-test"]
