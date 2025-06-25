@@ -10,7 +10,7 @@ import { DocumentUri, TextDocument } from 'vscode-languageserver-textdocument';
 import { LineStructure, IncrementalChange, linify } from "marki";
 
 import EventEmitter = require('events');
-import { MarkiParse } from './marki-processing.js';
+import { getMarkiInstance, Marki_LSP_plugin, MarkiParse } from './marki-processing.js';
 import { AnyBlock } from 'marki';
 import { blockDistributionInfo, findBlock } from './util.js';
 import { provideTooltip } from './provide-tooltip.js';
@@ -90,12 +90,23 @@ documents.onDidClose(e => { documentSettings.delete(e.document.uri); });
 
 
 
-export function startMarkiLSP(): _Connection<_, _, _, _, _, _, InlineCompletionFeatureShape, _> {
+export function startMarkiLSP(pluginModuleFiles: string[]): _Connection<_, _, _, _, _, _, InlineCompletionFeatureShape, _> {
 	// Create a connection for the server, using Node's IPC as a transport.
 	const sdsmd_language_server = createConnection(ProposedFeatures.all);
 
 	sdsmd_language_server.onInitialize((params: InitializeParams) => {
 		const caps = params.capabilities;
+		const inst = getMarkiInstance();
+		inst.pluginFiles.push(... pluginModuleFiles);
+		const MDP = getMarkiInstance().MDP;
+		pluginModuleFiles.forEach(file => {
+			const F = require(file);
+			if(!F)
+				throw new Error(`Cannot read plugin source "${file}"`);
+			const plugin = F as Marki_LSP_plugin;
+			plugin.registerMarkiExtension?.(MDP);
+			plugin.registerTooltipProviders?.(inst.tooltip);
+		});
 
 		// Does the client support the `workspace/configuration` request?
 		// If not, we fall back using global settings.

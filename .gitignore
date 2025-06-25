@@ -85,7 +85,6 @@ web_modules/
 
 # Next.js build output
 .next
-out
 
 # Nuxt.js build / generate output
 .nuxt
@@ -130,3 +129,11 @@ types/
 .yarn/install-state.gz
 .pnp.*
 workdata/
+
+# Exclude marki/out except for file marki/out/cjs/package.json
+/marki/out/*
+!/marki/out/cjs
+/marki/out/cjs/*
+!/marki/out/cjs/package.json
+
+/marki-lsp/out

@@ -149,6 +149,18 @@ export class MarkdownParser implements BlockContainer {
 		this.tryOrder.splice(i_b_a + (position === "after" ? 1 : 0), 0, type);
 	}
 
+	scheduleExtension(prom: () => Promise<(MDP: MarkdownParser) => void>) {
+		prom().then(ext => {
+			
+			console.error('???????Wha?')
+			ext(this);
+		});
+	}
+
+	loadPlugin(pluginFile: string) {
+		
+	}
+
 	reset() {
 		this.linkDefs = {};
 	}

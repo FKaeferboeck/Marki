@@ -10,10 +10,8 @@
 		"type": "git",
 		"url": "https://github.com/FKaeferboeck/Marki"
 	},
-	"exports": {
-		"require": "./cjs/server.js",
-		"import": "./esm/server.js"
-	},
+	"main":  "./out/server.js",
+	"types": "./out/server.d.ts",
 	"dependencies": {
 		"marki": "file:../marki",
 		"vscode-languageserver": "^9.0.1",

@@ -4,19 +4,18 @@ import { InlineElement, InlineElementType } from "marki/inline";
 import { Pos, PositionOps } from "marki/util";
 
 
+export type TooltipProvider<T extends BlockType> = (B: Block<T>, P: Pos) => null | string;
+export type TooltipProviderInline<T extends InlineElementType> = (elt: InlineElement<T>) => null | string;
 
-type TooltipProvider<T extends BlockType> = (B: Block<T>, P: Pos) => null | string;
-type TooltipProviderInline<T extends InlineElementType> = (elt: InlineElement<T>) => null | string;
 
-const tooltipProviderInline: Partial<{ [K in InlineElementType]: TooltipProviderInline<K>; }> = {
+export const tooltipProviderInline: Partial<{ [K in InlineElementType]: TooltipProviderInline<K>; }> = {
     htmlEntity: elt => {
         return `HTML Entität ${elt.code} = ${elt.codePoint}`;
     }
-
 };
 
 
-const tooltipProviders: Partial<{ [K in BlockType]: TooltipProvider<K>; }> = {
+export const tooltipProviders: Partial<{ [K in BlockType]: TooltipProvider<K>; }> = {
     sectionHeader: B_ => {
         const B = B_ as Block_Leaf<"sectionHeader"> & SectionHeader_ext;
         const H = makeSectionHeader_handle(B);
@@ -50,5 +49,5 @@ export function provideTooltip(B: AnyBlock, P: Pos) {
     const fct = tooltipProviders[B.type];
     if(!fct)
         return null;
-    return (fct as any)(B, P);
+    return (fct as any)(B, P) as null | string;
 }
