@@ -1,4 +1,4 @@
-import { BlockParser, BlockParser_Container } from "./block-parser.js";
+import { BlockParser, BlockParser_Container, ParsingContext } from "./block-parser.js";
 import { InlineParser } from "./inline-parser.js";
 import { LogicalLine, LogicalLine_with_cmt } from "./linify.js";
 import { MarkdownParser } from "./markdown-parser.js";
@@ -41,11 +41,11 @@ export interface BlockTraits<T extends BlockType = ExtensionBlockType, B extends
     isInterrupter?: boolean; // Can this block interrupt soft continuations? default false
 
     hasContent?: boolean; // default true; false means that this element stores all data it has in its individual block data and doesn't use the "content" property
-    inlineProcessing?: boolean | ((this: MarkdownParser, block: AnyBlock) => void); // default true
+    inlineProcessing?: boolean | ((this: ParsingContext, block: AnyBlock) => void); // default true
     lastIsContent?: boolean; // if a line is continuation type "last" it will still be added to the block content - default false
     canSelfInterrupt?: boolean; // list items do that
     trimLeadingContentSpace?: boolean;
-    creator?: (MDP: MarkdownParser, type: T) => BlockParser<T>;
+    creator?: (ctx: ParsingContext, type: T) => BlockParser<T>;
     defaultBlockInstance: B;
 }
 
@@ -70,7 +70,7 @@ export function castExtensionBlock<B extends BlockIndividualData>
 export interface BlockTraits_Container<T extends BlockType_Container> extends BlockTraits<T> {
     isContainer: true;
 
-    creator?: (MDP: MarkdownParser, type: T) => BlockParser_Container<T>;
+    creator?: (ctx: ParsingContext, type: T) => BlockParser_Container<T>;
     defaultBlockInstance: BlockIndividualData<T>;
 }
 
@@ -105,7 +105,7 @@ export interface InlineElementTraits<T extends InlineElementType = ExtensionInli
     // Use this feature with caution! It cannot collide with an already parsed earlier inline item.
     parse(this: InlineParser<T, B>, It: BlockContentIterator, B: B, startPos: InlinePos): boolean;
 
-    creator: (MDP: MarkdownParser) => InlineParser<T>;
+    creator?: (ctx: ParsingContext) => InlineParser<T>;
     defaultElementInstance: InlineElementCustomData<T, B>;
 }
 
@@ -137,7 +137,7 @@ export interface DelimFollowerTraits<T extends InlineElementType = ExtensionInli
     parse(this: InlineParser<T>, B: B, endOfStartDelim: Delimiter_nestable,
           It: BlockContentIterator, startPos: InlinePos): boolean;
 
-    creator: (MDP: MarkdownParser) => InlineParser<T>;
+    creator?: (ctx: ParsingContext) => InlineParser<T>;
     defaultElementInstance: InlineElementCustomData<T, B>;
 }
 

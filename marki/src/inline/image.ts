@@ -1,5 +1,4 @@
 import { makeDelimiter, pairUpDelimiters, reassembleContent } from "../delimiter-processing.js";
-import { InlineParser_Standard, InlineParser } from "../inline-parser.js";
 import { InlinePos, InlineElement, Delimiter_nestable } from "../markdown-types.js";
 import { DelimFollowerTraits, DelimiterTraits } from "../traits.js";
 import { BlockContentIterator } from "../util.js";
@@ -63,8 +62,6 @@ export const image_traits: DelimFollowerTraits<"image"> = {
         B.linkType = "shortcut";
         return ret(acceptable(this.MDP, B));
     },
-    
-    creator(MDP) { return new InlineParser_Standard<"image">(MDP, this); },
 
     defaultElementInstance: {
         type:              "image",

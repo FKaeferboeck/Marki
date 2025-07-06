@@ -9,6 +9,9 @@ export const markdown_doc_title_type = "ext_tier2_title" as const;
 export interface MarkdownDocTitle {
     title: string;
 }
+export interface MarkdownDocTitle_ctx {
+    doc_title?: string;
+}
 
 
 export const markdown_doc_title_traits: ExtensionBlockTraits<MarkdownDocTitle> = {
@@ -28,7 +31,8 @@ export const markdown_doc_title_traits: ExtensionBlockTraits<MarkdownDocTitle> =
     continuesHere: () => "end",
 
     finalizeBlockHook() {
-        this.MDP.customContext['doc_title'] = this.B.title;
+        const ctx = this.localCtx as MarkdownDocTitle_ctx;
+        ctx.doc_title = this.B.title;
     },
 
     allowSoftContinuations: false,

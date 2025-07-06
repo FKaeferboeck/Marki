@@ -15,6 +15,9 @@ export type ExtensionNamespace = string;
 
 export type ExtensionBlockType = `ext_${ExtensionNamespace}_${string}`;
 
+// context/state data for custom use by Markdown extensions (primarily for data queries between parsing and rendering)
+export type MarkdownParserContext = Record<string, any>;
+
 export interface InlinePos {
 	LL:       LogicalLine_with_cmt;
     char_idx: number;

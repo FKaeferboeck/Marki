@@ -23,8 +23,6 @@ export const autolink_traits: InlineElementTraits<"autolink"> = {
         
         return false;
     },
-    
-    creator(MDP) { return new InlineParser_Standard<"autolink">(MDP, this); },
 
     defaultElementInstance: {
         type:   "autolink",

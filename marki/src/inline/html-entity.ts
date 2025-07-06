@@ -1,5 +1,4 @@
 import { PositionOps } from "../position-ops.js";
-import { InlineParser_Standard } from "../inline-parser.js";
 import { AnyInline, InlineElement } from "../markdown-types.js";
 import { InlineElementTraits } from "../traits.js";
 
@@ -38,8 +37,6 @@ export const htmlEntity_traits: InlineElementTraits<"htmlEntity"> = {
         processHTML_entity(entity as RegExpMatchArray, B);
         return true;
     },
-    
-    creator(MDP) { return new InlineParser_Standard<"htmlEntity">(MDP, this); },
 
     defaultElementInstance: {
         type:      "htmlEntity",

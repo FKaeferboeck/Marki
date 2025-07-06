@@ -1,13 +1,16 @@
+import { ParsingContext } from "./block-parser.js";
 import { backslashEscapeds } from "./inline/backslash-escape.js";
 import { parseHTML_entities } from "./inline/html-entity.js";
 import { MarkdownParser } from "./markdown-parser.js";
-import { AnyInline, Delimiter_nestable, ExtensionInlineElementType, InlineContent, InlineElement, InlineElementType, InlinePos } from "./markdown-types.js";
+import { AnyInline, Delimiter_nestable, ExtensionInlineElementType, InlineContent, InlineElement, InlineElementType, InlinePos, MarkdownParserContext } from "./markdown-types.js";
 import { PositionOps } from "./position-ops.js";
 import { DelimFollowerTraits, InlineElementTraits } from "./traits.js";
-import { BlockContentIterator, charLength } from "./util.js";
+import { BlockContentIterator } from "./util.js";
 
 
-export interface InlineParser<K extends InlineElementType = ExtensionInlineElementType, Elt extends InlineElement<K> = InlineElement<K>> {
+export interface InlineParser<K extends InlineElementType = ExtensionInlineElementType, Elt extends InlineElement<K> = InlineElement<K>>
+    extends ParsingContext
+{
     type: K;
 
     // guarantee: if an element is successfully parsed, It will afterwards point behind it
@@ -19,7 +22,6 @@ export interface InlineParser<K extends InlineElementType = ExtensionInlineEleme
     setBuf(buf: InlineContent): void;
     getDelimitedContent(D: Delimiter_nestable): InlineContent; // for use in parseFollowingDelim()
 
-    MDP: MarkdownParser;
     B: Elt;
     traits: InlineElementTraits<K> | DelimFollowerTraits<K>;
 }
@@ -29,12 +31,14 @@ export class InlineParser_Standard<K extends InlineElementType = ExtensionInline
     type: K;
     buf?: InlineContent;
 
-    constructor(MDP: MarkdownParser, traits: InlineElementTraits<K, Elt> | DelimFollowerTraits<K, Elt>) {
-        this.type   = traits.defaultElementInstance.type as K;
-        this.MDP    = MDP;
-        this.traits = traits;
-        this.B      = structuredClone(traits.defaultElementInstance) as Elt;
-        this.B.endPos = { line: 0,  character: 0 };
+    constructor(ctx: ParsingContext, traits: InlineElementTraits<K, Elt> | DelimFollowerTraits<K, Elt>) {
+        this.type      = traits.defaultElementInstance.type as K;
+        this.MDP       = ctx.MDP;
+		this.globalCtx = ctx.globalCtx;
+		this.localCtx  = ctx.localCtx;
+        this.traits    = traits;
+        this.B         = structuredClone(traits.defaultElementInstance) as Elt;
+        this.B.endPos  = { line: 0,  character: 0 };
     }
 
     parse(It: BlockContentIterator, startCheckpoint: InlinePos): false | Elt {
@@ -78,6 +82,8 @@ export class InlineParser_Standard<K extends InlineElementType = ExtensionInline
     }
 
     MDP: MarkdownParser;
+    globalCtx: MarkdownParserContext;
+    localCtx:  MarkdownParserContext;
     B: Elt;
     traits: InlineElementTraits<K, Elt> | DelimFollowerTraits<K, Elt>;
 }

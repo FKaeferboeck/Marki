@@ -1,4 +1,3 @@
-import { InlineParser_Standard } from "../inline-parser.js";
 import { InlineElement, InlinePos } from "../markdown-types.js";
 import { InlineElementTraits } from "../traits.js";
 import { BlockContentIterator, contentSlice } from "../util.js";
@@ -104,8 +103,6 @@ export const rawHTML_traits: InlineElementTraits<"rawHTML"> = {
 
         return parseXML_element(It, P0, B);
     },
-    
-    creator(MDP) { return new InlineParser_Standard<"rawHTML">(MDP, this); },
 
     defaultElementInstance: {
         type:     "rawHTML",

@@ -1,3 +1,4 @@
+import { ParsingContext } from "src/block-parser.js";
 import { InlineParser_Standard } from "../../inline-parser.js";
 import { InlineParserProvider, InlineParsingContext } from "../../inline-parsing-context.js";
 import { LogicalLine, LogicalLine_text, standardBlockStart } from "../../linify.js";
@@ -59,21 +60,21 @@ export const tabular_cellbr_traits: InlineElementTraits<typeof tabular_linebr_ty
         It.pop();
         return true;
     },
-    creator(MDP) { return new InlineParser_Standard<typeof tabular_linebr_type>(MDP, this); },
+    creator(ctx) { return new InlineParser_Standard<typeof tabular_linebr_type>(ctx, this); },
     defaultElementInstance: { type: tabular_linebr_type }
 };
 
 
-function getTableCellParserProvider(MDP: MarkdownParser) {
-    if(!MDP.customInlineParserProviders[tabular_type]) {
-        const IPP = new InlineParserProvider(MDP);
+function getTableCellParserProvider(ctx: ParsingContext) {
+    if(!ctx.MDP.customInlineParserProviders[tabular_type]) {
+        const IPP = new InlineParserProvider(ctx);
         IPP.traits = { ... standardInlineParserTraits,
                        ext_tier1_tabular_cellbr: tabular_cellbr_traits };
         IPP.delims = { ... standardDelimiterTraits };
         IPP.makeStartCharMap();
-        MDP.customInlineParserProviders[tabular_type] = IPP;
+        ctx.MDP.customInlineParserProviders[tabular_type] = IPP;
     }
-    return MDP.customInlineParserProviders[tabular_type];
+    return ctx.MDP.customInlineParserProviders[tabular_type];
 }
 
 function inlineProcessTabularRow(IPP: InlineParserProvider, H: MarkdownTabularRow) {

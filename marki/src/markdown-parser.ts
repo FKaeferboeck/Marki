@@ -1,6 +1,7 @@
-import { BlockContainer, BlockParser, BlockParserBase, BlockParser_Container, BlockParser_Standard, standardBlockTryOrder } from "./block-parser.js";
+import { BlockContainer, BlockParser, BlockParserBase, BlockParser_Container, BlockParser_Standard, ParsingContext, standardBlockTryOrder } from "./block-parser.js";
 import { collectLists } from "./blocks/listItem.js";
 import { pairUpDelimiters } from "./delimiter-processing.js";
+import { Tier2_ctx } from "./extensions-tier-2/traits.js";
 import { InlineParserProvider, processInline } from "./inline-parsing-context.js";
 import { autolink_traits } from "./inline/autolink.js";
 import { escaped_traits } from "./inline/backslash-escape.js";
@@ -12,12 +13,9 @@ import { bang_bracket_traits, image_traits } from "./inline/image.js";
 import { bracket_traits, link_traits } from "./inline/link.js";
 import { rawHTML_traits } from "./inline/raw-html.js";
 import { linify, LogicalLine, LogicalLine_with_cmt } from "./linify.js";
-import { AnyBlock, Block, BlockBase, BlockType, BlockType_Container, ExtensionBlockType, isContainer } from "./markdown-types.js";
+import { AnyBlock, Block, BlockBase, BlockType, BlockType_Container, isContainer, MarkdownParserContext } from "./markdown-types.js";
 import { AnyBlockTraits, BlockTraits, BlockTraits_Container, DelimiterTraits, InlineParserTraitsList } from "./traits.js";
 import { LLinfo } from "./util.js";
-
-// context/state data for custom use by Markdown extensions (primarily for data queries between parsing and rendering)
-type MarkdownParserContext = Record<string, any>;
 
 interface BlockParserProviderItem {
 	parent: MarkdownParser;
@@ -61,8 +59,8 @@ export const standardDelimiterTraits: Record<string, DelimiterTraits> = {
 }
 
 class BlockParserProvider {
-	constructor(MDP: MarkdownParser) {
-		this.MDP = MDP;
+	constructor(ctx: ParsingContext) {
+		this.ctx = ctx;
 	}
 
 	cache: Partial<BlockParserProviderCache> = { };
@@ -73,11 +71,11 @@ class BlockParserProvider {
 		return P;
 	}
 
-	*interrupters(interruptee: BlockParser): Generator<BlockParser> { yield* this.run("interrupters", interruptee.type, interruptee.parent || this.MDP); }
-	*mainBlocks  (BC?: BlockContainer):      Generator<BlockParser> { yield* this.run("tryOrder",     undefined, BC || this.MDP); }
+	*interrupters(interruptee: BlockParser): Generator<BlockParser> { yield* this.run("interrupters", interruptee.type, interruptee.parent || this.ctx.MDP); }
+	*mainBlocks  (BC?: BlockContainer):      Generator<BlockParser> { yield* this.run("tryOrder",     undefined, BC || this.ctx.MDP); }
 
 	*run(s: "tryOrder" | "interrupters", t0: BlockType | undefined, BC: BlockContainer | undefined): Generator<BlockParser> {
-		const MDP = this.MDP;
+		const MDP = this.ctx.MDP;
 		const L = MDP.tryOrder;
 		const allowSelfInterrupt = (t0 && MDP.traitsList[t0]?.canSelfInterrupt);
 		for(let i = 0, iN = L.length;  i < iN;  ++i) {
@@ -86,7 +84,7 @@ class BlockParserProvider {
 				continue;
 			const PP = this.cache[key] || (this.cache[key] = { parent: MDP,  parser: undefined });
 			if(!PP.parser)
-				PP.parser = MDP.makeParser(key) as any;
+				PP.parser = MDP.makeParser(key, this.ctx) as any;
 			const P = PP.parser as BlockParser;
 			if(P.type !== t0 || allowSelfInterrupt) {
 				P.parent = BC; // where will a finished block be stored — either the central MarkdownParser instance or a container block
@@ -95,7 +93,7 @@ class BlockParserProvider {
 			}
 		}
 	}
-	MDP: MarkdownParser;
+	ctx: ParsingContext;
 }
 
 
@@ -106,6 +104,15 @@ export class MarkdownParser implements BlockContainer {
 	constructor() {
 		this.traitsList = { };
 		this.tryOrder = standardBlockTryOrder.map(bt => (this.traitsList[bt.blockType] = bt).blockType);
+
+		this.ctx = {
+			MDP: this,
+			globalCtx: { tier2_command_char: '$' } as Tier2_ctx,
+			localCtx: { } // TODO!!
+		};
+
+		this.inlineParser_standard = new InlineParserProvider(this.ctx);
+		this.inlineParser_minimal  = new InlineParserProvider(this.ctx);
 
 		this.inlineParser_standard.traits = { ... standardInlineParserTraits };
 		this.inlineParser_standard.delims = { ... standardDelimiterTraits };
@@ -118,7 +125,7 @@ export class MarkdownParser implements BlockContainer {
 		this.inlineParser_minimal.delims = { ... standardDelimiterTraits };
 		this.inlineParser_minimal.makeStartCharMap();
 
-		this.blockParserProvider = new BlockParserProvider(this);
+		this.blockParserProvider = new BlockParserProvider(this.ctx); // TODO!!
 	}
 
 	addExtensionBlocks(traits: AnyBlockTraits, position: "first" | "last"): void;
@@ -168,11 +175,12 @@ export class MarkdownParser implements BlockContainer {
 	/* Full parsing of a complete document (contents as string) */
 	processDocument(input: string): AnyBlock[] {
 		this.reset();
+		const ctx = this.ctx; // TODO!!
 		const LLs = linify(input, false); // TODO!!
         const blocks = this.processContent(LLs[0]);
         collectLists(blocks);
         blocks.forEach(B => {
-            this.processBlock(B);
+            this.processBlock(B, ctx);
             if(B.inlineContent)
                 pairUpDelimiters(B.inlineContent);
         });
@@ -194,15 +202,15 @@ export class MarkdownParser implements BlockContainer {
 		return this.blocks;
 	}
 
-	processBlock(B: AnyBlock) {
+	processBlock(B: AnyBlock, ctx: ParsingContext) {
 		const T = this.traitsList[B.type];
 		if(!T)    throw new Error(`Cannot process content of block "${B.type}"`);
 		if(isContainer(B))
-			B.blocks.forEach(B1 => this.processBlock(B1));
+			B.blocks.forEach(B1 => this.processBlock(B1, ctx));
 		else if((T.inlineProcessing === undefined || T.inlineProcessing === true) && B.content)
 			B.inlineContent = this.processInline(B.content);
 		else if(typeof T.inlineProcessing === "function")
-			T.inlineProcessing.call(this as MarkdownParser, B);
+			T.inlineProcessing.call(ctx, B);
 	}
 
     processInline = processInline;
@@ -215,21 +223,21 @@ export class MarkdownParser implements BlockContainer {
 		return !!((traits && "isContainer" in traits && traits.isContainer) || false);
 	}
 
-	makeParser<K extends BlockType>(type: K) {
+	makeParser<K extends BlockType>(type: K, ctx: ParsingContext) {
 		const traits = this.traitsList[type] as BlockTraits<K> | undefined;
 		if(!traits)
 			throw new Error(`Missing block parser traits for block type "${type}"`)
 		if(traits.creator)
-			return traits.creator(this, type);
+			return traits.creator(ctx, type);
 
 		// No individual parser creator function found -> use the default version
 		if(this.isContainerType(type))
-			return new BlockParser_Container<typeof type>(this, type, traits as BlockTraits_Container<typeof type>);
+			return new BlockParser_Container<typeof type>(ctx, type, traits as BlockTraits_Container<typeof type>);
 		else
-			return new BlockParser_Standard<K>(this, type, traits);
+			return new BlockParser_Standard<K>(ctx, type, traits);
 	}
 
-	customContext: MarkdownParserContext = { };
+	ctx: ParsingContext;
 	blockParserProvider: BlockParserProvider;
 	addContentBlock<K extends BlockType>(B: BlockBase<K>) { this.blocks.push(B as AnyBlock); }
 	blocks: AnyBlock[] = [];
@@ -251,8 +259,8 @@ export class MarkdownParser implements BlockContainer {
 
     /******************************************************************************************************************/
 
-    inlineParser_standard = new InlineParserProvider(this);
-	inlineParser_minimal  = new InlineParserProvider(this);
+    inlineParser_standard: InlineParserProvider;
+	inlineParser_minimal:  InlineParserProvider;
 	customInlineParserProviders: Record<string, InlineParserProvider> = { };
 };
 

@@ -1,5 +1,5 @@
 import { makeDelimiter, pairUpDelimiters, reassembleContent } from "../delimiter-processing.js";
-import { InlineParser, InlineParser_Standard, parseBackslashEscapes } from "../inline-parser.js";
+import { parseBackslashEscapes } from "../inline-parser.js";
 import { MarkdownParser } from "../markdown-parser.js";
 import { AnyInline, Delimiter_nestable, InlineContent, InlineElement, InlineElementType, InlinePos } from "../markdown-types.js";
 import { DelimFollowerTraits, DelimiterTraits } from "../traits.js";
@@ -179,8 +179,6 @@ export const link_traits: DelimFollowerTraits<"link"> = {
         B.linkType = "shortcut";
         return ret(acceptable(this.MDP, B));
     },
-    
-    creator(MDP) { return new InlineParser_Standard<"link">(MDP, this); },
 
     defaultElementInstance: {
         type:              "link",

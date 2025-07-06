@@ -1,7 +1,9 @@
+import { ParsingContext } from "./block-parser.js";
 import { parseDelimiter } from "./delimiter-processing.js";
+import { InlineParser_Standard } from "./inline-parser.js";
 import { LogicalLine } from "./linify.js";
 import { MarkdownParser } from "./markdown-parser.js";
-import { InlineElementType, Delimiter_nestable, InlineContent, InlineElement, Delimiter, InlinePos, isNestableDelimiter } from "./markdown-types.js";
+import { InlineElementType, Delimiter_nestable, InlineContent, InlineElement, Delimiter, InlinePos, isNestableDelimiter, MarkdownParserContext } from "./markdown-types.js";
 import { LinePart } from "./parser.js";
 import { InlineParserTraitsList, DelimiterTraits, isDelimFollowerTraits } from "./traits.js";
 import { BlockContentIterator, contentSlice, makeBlockContentIterator } from "./util.js";
@@ -13,9 +15,9 @@ export class InlineParserProvider {
     delims: Record<string, DelimiterTraits> = { };
     startCharMap:     Record<string, (InlineElementType | DelimiterTraits)[]> = { };
     delimFollowerMap: Record<string,  InlineElementType[]> = { };
-    MDP: MarkdownParser;
+    ctx: ParsingContext;
 
-    constructor(MDP: MarkdownParser) { this.MDP = MDP; }
+    constructor(ctx: ParsingContext) { this.ctx = ctx; }
 
     getInlineParser<K extends InlineElementType>(type: K, followingDelim?: Delimiter_nestable) {
         const traits = this.traits[type];
@@ -23,7 +25,11 @@ export class InlineParserProvider {
             throw new Error(`Missing inline parser traits for inline element type "${type}"`)
         if(followingDelim && !isDelimFollowerTraits(traits))
             throw new Error(`Expecting a delimiter-following inline parser for delimiter "${followingDelim.type}", but traits for "${type}" isn't`);
-        return traits.creator(this.MDP);
+        if(traits.creator)
+            return traits.creator(this.ctx);
+        else
+            return new InlineParser_Standard(this.ctx, traits);
+
     }
     
     makeStartCharMap() {
@@ -57,11 +63,11 @@ export class InlineParsingContext {
     delimFollowerMap: Record<string,  InlineElementType[]> = { };
     delimiterStack: Delimiter_nestable[] = [];
     curDelimClosingStartChar: string = '';
-    MDP: MarkdownParser;
+    ctx: ParsingContext
 
     constructor(provider: InlineParserProvider) {
         this.provider         = provider;
-        this.MDP              = provider.MDP;
+        this.ctx              = provider.ctx;
         this.startCharMap     = provider.startCharMap;
         this.delimFollowerMap = provider.delimFollowerMap;
     }

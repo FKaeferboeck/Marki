@@ -4,8 +4,8 @@ import { InlineElement, InlineElementType } from "marki/inline";
 import { Pos, PositionOps } from "marki/util";
 
 
-export type TooltipProvider<T extends BlockType> = (B: Block<T>, P: Pos) => null | string;
-export type TooltipProviderInline<T extends InlineElementType> = (elt: InlineElement<T>) => null | string;
+export type TooltipProvider<T extends BlockType> = (B: Block<T>, P: Pos) => null | string | Promise<string>;
+export type TooltipProviderInline<T extends InlineElementType> = (elt: InlineElement<T>) => null | string | Promise<string>;
 
 
 export const tooltipProviderInline: Partial<{ [K in InlineElementType]: TooltipProviderInline<K>; }> = {
@@ -49,5 +49,5 @@ export function provideTooltip(B: AnyBlock, P: Pos) {
     const fct = tooltipProviders[B.type];
     if(!fct)
         return null;
-    return (fct as any)(B, P) as null | string;
+    return (fct as any)(B, P) as null | string | Promise<string>;
 }

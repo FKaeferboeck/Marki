@@ -215,7 +215,7 @@ export function startMarkiLSP(pluginModuleFiles: string[]): _Connection<_, _, _,
 		}
 	});
 	
-	sdsmd_language_server.onHover((params: TextDocumentPositionParams): Hover | null => {
+	sdsmd_language_server.onHover(async (params: TextDocumentPositionParams): Promise<Hover | null> => {
 		console.log(`Hover on "${params.textDocument.uri}" ${params.position.line}/${params.position.character}`);
 		const doc = documents.get(params.textDocument.uri);
 		if(!doc)    return null;
@@ -225,9 +225,11 @@ export function startMarkiLSP(pluginModuleFiles: string[]): _Connection<_, _, _,
 		const P = { ... params.position };
 		P.line -= B.lineIdx;
 		const contents = provideTooltip(B, P);
-		if(contents)
+		if(!contents)
+			return null;
+		if(typeof contents === "string")
 			return { contents };
-		return null;
+		return contents.then(contents => ({ contents }));
 	});
 	
 	/*connection.onDidChangeWatchedFiles(_change => {

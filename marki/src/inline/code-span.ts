@@ -1,4 +1,3 @@
-import { InlineParser_Standard } from "../inline-parser.js";
 import { InlinePos, InlineElement } from "../markdown-types.js";
 import { InlineElementTraits } from "../traits.js";
 import { contentSlice } from "../util.js";
@@ -42,16 +41,12 @@ export const codeSpan_traits: InlineElementTraits<"codeSpan"> = {
             s = It.pop();
         }
     },
-    
-    creator(MDP) { return new InlineParser_Standard<"codeSpan">(MDP, this); },
 
     defaultElementInstance: {
         type:    "codeSpan",
         content: ''
     }
 };
-
-
 
 
 function extractCodeSpan(B: InlineElement<"codeSpan">, p0: InlinePos, p1: InlinePos, marker_length: number, mode: "normal" | "spaced" | "unclosed") {

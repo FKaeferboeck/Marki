@@ -6,7 +6,7 @@ import { indentedCodeBlock_traits } from './blocks/indentedCodeBlock.js';
 import { paragraph_traits } from './blocks/paragraph.js';
 import { sectionHeader_traits } from './blocks/sectionHeader.js';
 import { sectionHeader_setext_traits } from './blocks/sectionHeader_setext.js';
-import { AnyBlock, Block, BlockBase, BlockType, BlockType_Container, BlockType_Leaf } from './markdown-types.js';
+import { AnyBlock, Block, BlockBase, BlockType, BlockType_Container, BlockType_Leaf, MarkdownParserContext } from './markdown-types.js';
 import { LogicalLineType } from './parser.js';
 import { BlockContinuationType, BlockTraits, BlockTraits_Container } from './traits.js';
 import { LLinfo } from './util.js';
@@ -38,14 +38,21 @@ export interface BlockContainer {
 }
 
 
+export interface ParsingContext {
+	MDP:       MarkdownParser;
+	globalCtx: MarkdownParserContext; // for caching not restricted to a particular document
+	localCtx:  MarkdownParserContext; // for data local to a single document
+}
+
+
 export interface BlockParserBase {
 	type: BlockType;
 }
 
 export interface BlockParser<K      extends BlockType = BlockType,
-                             Traits extends BlockTraits<K> = BlockTraits<K>> extends BlockParserBase
+                             Traits extends BlockTraits<K> = BlockTraits<K>>
+	extends BlockParserBase, ParsingContext
 {
-	type: BlockType;
 	// Does a block of this type begin in that logical line, and can it interrupt the given currently open block?
 	beginsHere(LL: LogicalLine_with_cmt, interrupting?: BlockType | undefined): number;
 
@@ -59,7 +66,6 @@ export interface BlockParser<K      extends BlockType = BlockType,
 	setCheckpoint(LL: LogicalLine): void;
 	getCheckpoint(): LogicalLine | null;
 	resetBlock(): Block<K>;
-	MDP: MarkdownParser;
 	parent: BlockContainer | undefined;
 	traits: Traits;//BlockTraits<K>;
 	B: Block<K> & Traits["defaultBlockInstance"];
@@ -72,13 +78,15 @@ export interface BlockParser<K      extends BlockType = BlockType,
 export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits extends BlockTraits<K> = BlockTraits<K>> implements BlockParser<K, Traits> {
 	type: K;
 
-	constructor(MDP: MarkdownParser, type: K, traits: Traits, useSoftContinuations: boolean = true) {
-		this.MDP = MDP;
-		this.type = type;
-		this.traits = traits;
-		if(MDP.diagnostics)
+	constructor(ctx: ParsingContext, type: K, traits: Traits, useSoftContinuations: boolean = true) {
+		this.MDP       = ctx.MDP;
+		this.globalCtx = ctx.globalCtx;
+		this.localCtx  = ctx.localCtx;
+		this.type      = type;
+		this.traits    = traits;
+		if(ctx.MDP.diagnostics)
 			console.log(`Making new parser [${type}]`)
-		this.B = this.resetBlock();
+		this.B         = this.resetBlock();
 		this.useSoftContinuations = useSoftContinuations;
 	}
 
@@ -191,6 +199,8 @@ export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits e
 	setCheckpoint(LL: LogicalLine) { this.checkpoint = LL; }
 	getCheckpoint(): LogicalLine | null { return this.checkpoint || null; }
 	MDP: MarkdownParser;
+	globalCtx: MarkdownParserContext;
+	localCtx:  MarkdownParserContext;
 	parent: BlockContainer | undefined;
 	traits: Traits;
 	B: Block<K>; //Traits["defaultBlockInstance"];
@@ -227,8 +237,8 @@ export class BlockParser_Container<K extends BlockType_Container = BlockType_Con
     extends BlockParser_Standard<K, BlockTraits_Container<K>>
     implements BlockContainer
 {
-    constructor(MDP: MarkdownParser, type: K, traits: BlockTraits_Container<K>, useSoftContinuations: boolean = true) {
-        super(MDP, type, traits, useSoftContinuations);
+    constructor(ctx: ParsingContext, type: K, traits: BlockTraits_Container<K>, useSoftContinuations: boolean = true) {
+        super(ctx, type, traits, useSoftContinuations);
 		this.B.isContainer = true;
 		this.B.blocks      = [];
         this.curContentParser = { container: this,  curParser: null,  generator: null };
@@ -320,8 +330,8 @@ export class BlockParser_Container<K extends BlockType_Container = BlockType_Con
 
 
 export class BlockParser_EmptySpace extends BlockParser_Standard<"emptySpace"> {
-    constructor(MDP: MarkdownParser, type: "emptySpace", traits: BlockTraits<"emptySpace">, useSoftContinuations: boolean = true) {
-        super(MDP, type, traits, useSoftContinuations);
+    constructor(ctx: ParsingContext, type: "emptySpace", traits: BlockTraits<"emptySpace">, useSoftContinuations: boolean = true) {
+        super(ctx, type, traits, useSoftContinuations);
 	}
 
     beginsHere(LL: LogicalLine): number {
