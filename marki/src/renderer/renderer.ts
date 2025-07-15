@@ -1,3 +1,4 @@
+import { ParsingContext } from "../block-parser.js";
 import { lineContent, LogicalLine_with_cmt, shiftCol } from "../linify.js";
 import { AnyBlock, Block, BlockType } from "../markdown-types.js";
 import { InlineHandlerList, InlineRenderer, renderInline } from "./inline-renderer.js";
@@ -62,9 +63,11 @@ function actualizeTab(pfx: string, preIndent: number) {
 
 export class Renderer {
     inlineRenderer: InlineRenderer;
+    ctx: ParsingContext;
 
-    constructor() {
-        this.inlineRenderer = new InlineRenderer(this.inlineHandler);
+    constructor(ctx: ParsingContext) {
+        this.ctx = ctx;
+        this.inlineRenderer = new InlineRenderer(this.inlineHandler, ctx); // TODO!!
     }
 
     referenceRender(content: AnyBlock[], verbose?: boolean, appendSpace: boolean = true) {
@@ -143,7 +146,7 @@ export class Renderer {
             const dest  = elt.reference?.destination || elt.destination;
             const title = elt.reference?.linkTitle   || elt.linkTitle;
             I.add(`<img src="${dest.join('+')}"`);
-            const inlineRenderer_plain = getInlineRenderer_plain();
+            const inlineRenderer_plain = getInlineRenderer_plain(this.ctx);
             I.add(` alt="${renderInline(elt.linkLabelContents, inlineRenderer_plain)}"`);
             if(title?.length)
                 I.add(` title="${renderInline(title, inlineRenderer_plain)}"`);

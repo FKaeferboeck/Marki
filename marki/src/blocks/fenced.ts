@@ -1,4 +1,4 @@
-import { InlineParsingContext } from "../inline-parsing-context.js";
+import { makeInlineContext_minimal } from "../inline-parsing-context.js";
 import { isSpaceLine, sliceLine, standardBlockStart } from "../linify.js";
 import { AnyInline } from "../markdown-types.js";
 import { makeBlockTraits } from "../traits.js";
@@ -34,7 +34,7 @@ export const fenced_traits = makeBlockTraits("fenced", {
             const It_info = makeBlockContentIterator(LL_info);
             It_info.skipNobrSpace();
 
-            const context = new InlineParsingContext(this.MDP.inlineParser_minimal);
+            const context = makeInlineContext_minimal(this);
             context.inlineParseLoop(It_info, B.info_string);
             //B.info_string  = LLD.content.slice(B.fence_length).trim();
             //console.log(B.info_string)

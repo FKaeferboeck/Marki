@@ -27,7 +27,8 @@ interface MyTextDocument {
 	uri:           DocumentUri;
 	doc:           TextDocument;
 	lineStructure: LineStructure;
-	blocks:        AnyBlock[]
+	pending:       Promise<AnyBlock[]> | undefined;
+	blocks:        AnyBlock[];
 	changeBuffer:  IncrementalChange[];
 	builder:       SemanticTokensBuilder;
 }
@@ -35,14 +36,17 @@ interface MyTextDocument {
 const MyTextDocument: TextDocumentsConfiguration<MyTextDocument> = {
 	create: function(uri: DocumentUri, languageId: string, version: number, content: string): MyTextDocument {
 		//console.log(`Create document [${uri}]`);
-		const blocks = MarkiParse(content);
-		console.log(blockDistributionInfo(blocks));
+		const pending = MarkiParse(content).then(blocks => {
+			console.log(blockDistributionInfo(blocks));
+			return blocks;
+		});
 
 		const D: MyTextDocument = {
 			uri:           uri,
 			doc:           TextDocument.create(uri, languageId, version, content),
 			lineStructure: { logical_lines: linify(content, true) },
-			blocks:        blocks,
+			pending,
+			blocks:        [],
 			changeBuffer:  [],
 			builder:       new SemanticTokensBuilder()
 		};
@@ -220,6 +224,11 @@ export function startMarkiLSP(pluginModuleFiles: string[]): _Connection<_, _, _,
 		const doc = documents.get(params.textDocument.uri);
 		if(!doc)    return null;
 	
+		if(doc.pending)
+			await doc.pending.then(Bs => {
+				doc.blocks = Bs;
+				doc.pending = undefined;
+			});
 		const B = findBlock(doc.blocks, params.position.line);
 		if(!B || B.type === "emptySpace")    return null;
 		const P = { ... params.position };

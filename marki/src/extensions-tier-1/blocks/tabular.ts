@@ -66,22 +66,23 @@ export const tabular_cellbr_traits: InlineElementTraits<typeof tabular_linebr_ty
 
 
 function getTableCellParserProvider(ctx: ParsingContext) {
-    if(!ctx.MDP.customInlineParserProviders[tabular_type]) {
-        const IPP = new InlineParserProvider(ctx);
+    const customInlineParserProviders = ctx.MDP.MDPT.customInlineParserProviders;
+    if(!customInlineParserProviders[tabular_type]) {
+        const IPP = new InlineParserProvider();
         IPP.traits = { ... standardInlineParserTraits,
                        ext_tier1_tabular_cellbr: tabular_cellbr_traits };
         IPP.delims = { ... standardDelimiterTraits };
         IPP.makeStartCharMap();
-        ctx.MDP.customInlineParserProviders[tabular_type] = IPP;
+        customInlineParserProviders[tabular_type] = IPP;
     }
-    return ctx.MDP.customInlineParserProviders[tabular_type];
+    return customInlineParserProviders[tabular_type];
 }
 
-function inlineProcessTabularRow(IPP: InlineParserProvider, H: MarkdownTabularRow) {
+function inlineProcessTabularRow(ctx: ParsingContext, IPP: InlineParserProvider, H: MarkdownTabularRow) {
     let It = makeBlockContentIterator(H.LL, true); // TODO!! There should not be a "next"
     It.pop(); // skip the first '|'
     const buf: InlineContent = [];
-    const context = new InlineParsingContext(IPP);
+    const context = new InlineParsingContext(IPP, ctx.MDP);
     context.inlineParseLoop(It, buf);
     let i0 = 0;
     buf.forEach((elt, i) => {
@@ -133,8 +134,8 @@ export const markdown_tabular_traits: BlockTraits<ExtensionBlockType, MarkdownTa
     inlineProcessing(B) {
         if(!castExtensionBlock(B, markdown_tabular_traits))    return;
         const IPP = getTableCellParserProvider(this);
-        B.tableHead.forEach(R => inlineProcessTabularRow(IPP, R));
-        B.tableBody.forEach(R => inlineProcessTabularRow(IPP, R));
+        B.tableHead.forEach(R => inlineProcessTabularRow(this, IPP, R));
+        B.tableBody.forEach(R => inlineProcessTabularRow(this, IPP, R));
     },
 
     defaultBlockInstance: {

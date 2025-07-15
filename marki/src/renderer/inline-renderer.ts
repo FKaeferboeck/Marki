@@ -1,3 +1,4 @@
+import { ParsingContext } from "../block-parser.js";
 import { InlineContent, inlineContentCategory, Delimiter, InlineElement, InlineElementType, isNestableDelimiter } from "../markdown-types.js";
 import { EasyInserter, Inserter } from "./renderer.js";
 import { escapeXML } from "./util.js";
@@ -10,9 +11,11 @@ export type InlineHandlerList = Partial<{
 
 export class InlineRenderer {
     inlineHandler: InlineHandlerList;
+    ctx: ParsingContext;
 
-    constructor(inlineHandler: InlineHandlerList) {
+    constructor(inlineHandler: InlineHandlerList, ctx: ParsingContext) {
         this.inlineHandler = inlineHandler;
+        this.ctx = ctx;
     }
 
     render(data: InlineContent, I: Inserter, trimmed?: boolean) {

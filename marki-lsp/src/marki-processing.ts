@@ -1,11 +1,11 @@
-import { BlockType, MarkdownParser, Renderer } from "marki";
+import { BlockType, global_MDPT, MarkdownParser, MarkdownParserTraits, Renderer } from "marki";
 import { doSectionNumbering, extendTier1, extendTier2 } from "marki/extensions";
 import { TooltipProvider, tooltipProviderInline, TooltipProviderInline, tooltipProviders } from "./provide-tooltip";
 import { InlineElementType } from "marki/inline";
 
-const MDR = new Renderer();
 
 export interface MarkiInstance {
+    MDPT: MarkdownParserTraits;
     MDP: MarkdownParser;
     pluginFiles: string[];
     tooltip: {
@@ -15,6 +15,7 @@ export interface MarkiInstance {
 }
 
 const markiInstance: MarkiInstance = {
+    MDPT: global_MDPT,
     MDP: new MarkdownParser(),
     pluginFiles: [],
     tooltip: {
@@ -24,14 +25,17 @@ const markiInstance: MarkiInstance = {
 };
 
 
+const MDR = new Renderer(markiInstance.MDP);
+
+
 export interface Marki_LSP_plugin {
     registerMarkiExtension?   (MDP: MarkdownParser): void;
     registerTooltipProviders? (tt: MarkiInstance["tooltip"]): void;
 }
 
 
-extendTier1(markiInstance.MDP, MDR);
-extendTier2(markiInstance.MDP, MDR);
+extendTier1(markiInstance.MDPT, MDR);
+extendTier2(markiInstance.MDPT, MDR);
 //register_dataModelRef(MDP, MDR);
 //register_taskLinkSection(MDP, MDR);
 
@@ -41,8 +45,9 @@ export function getMarkiParser() { return markiInstance.MDP; }
 
 
 export function MarkiParse(content: string) {
-    const Bs = markiInstance.MDP.processDocument(content);
-    doSectionNumbering(Bs);
-    return Bs;
+    return markiInstance.MDP.processDocument(content)
+    .then(Bs => {
+        doSectionNumbering(Bs);
+        return Bs;
+    });
 }
-

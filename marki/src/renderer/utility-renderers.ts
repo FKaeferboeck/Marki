@@ -1,3 +1,4 @@
+import { ParsingContext } from "src/block-parser.js";
 import { parseBackslashEscapes } from "../inline-parser.js";
 import { AnyInline, Delimiter } from "../markdown-types.js";
 import { InlineHandlerList, InlineRenderer } from "./inline-renderer.js";
@@ -22,9 +23,9 @@ const inlineHandler_plain: InlineHandlerList = {
 
 
 let inlineRenderer_plain: InlineRenderer | undefined;
-export function getInlineRenderer_plain() {
-    if (!inlineRenderer_plain) {
-        inlineRenderer_plain = new InlineRenderer(inlineHandler_plain);
+export function getInlineRenderer_plain(ctx: ParsingContext) {
+    if (!inlineRenderer_plain || ctx !== inlineRenderer_plain.ctx) {
+        inlineRenderer_plain = new InlineRenderer(inlineHandler_plain, ctx);
         inlineRenderer_plain.insertDelimiterTag = function(I: Inserter, type: string, weight: number, closing: boolean) { };
     }
     return inlineRenderer_plain;
@@ -47,9 +48,9 @@ const inlineHandler_reassemble: InlineHandlerList = {
 
 
 let inlineRenderer_reassemble: InlineRenderer | undefined;
-export function getInlineRenderer_reassemble() {
-    if (!inlineRenderer_reassemble) {
-        inlineRenderer_reassemble = new InlineRenderer(inlineHandler_reassemble);
+export function getInlineRenderer_reassemble(ctx: ParsingContext) {
+    if (!inlineRenderer_reassemble || inlineRenderer_reassemble.ctx !== ctx) {
+        inlineRenderer_reassemble = new InlineRenderer(inlineHandler_reassemble, ctx);
         inlineRenderer_reassemble.renderDelimiter = (I: Inserter, delim: Delimiter) => I.add(delim.delim);;
     }
     return inlineRenderer_reassemble;

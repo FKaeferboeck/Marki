@@ -105,6 +105,12 @@ export interface InlineElementTraits<T extends InlineElementType = ExtensionInli
     // Use this feature with caution! It cannot collide with an already parsed earlier inline item.
     parse(this: InlineParser<T, B>, It: BlockContentIterator, B: B, startPos: InlinePos): boolean;
 
+    // Optionally a processing step that is performed after inline parsing but before rendering.
+    // It is meant for running DB queries and similar for data stored into the ParsingContext object during parsing.
+    // It's called a single time and should hande all instances of this inline element type together.
+    // CommonMark doesn't use this feature, it's for extensions.
+    processingStep?(this: ParsingContext): Promise<void>;
+
     creator?: (ctx: ParsingContext) => InlineParser<T>;
     defaultElementInstance: InlineElementCustomData<T, B>;
 }
@@ -136,6 +142,8 @@ export interface DelimFollowerTraits<T extends InlineElementType = ExtensionInli
     // Use this feature with caution! It cannot collide with an already parsed earlier inline item.
     parse(this: InlineParser<T>, B: B, endOfStartDelim: Delimiter_nestable,
           It: BlockContentIterator, startPos: InlinePos): boolean;
+
+    processingStep?(this: ParsingContext): Promise<void>;
 
     creator?: (ctx: ParsingContext) => InlineParser<T>;
     defaultElementInstance: InlineElementCustomData<T, B>;

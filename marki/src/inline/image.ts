@@ -33,7 +33,7 @@ export const image_traits: DelimFollowerTraits<"image"> = {
         };
 
         B.linkLabelContents = this.getDelimitedContent(openingDelim);
-        B.linkLabel = reassembleContent(B.linkLabelContents);
+        B.linkLabel = reassembleContent(B.linkLabelContents, this);
         const cpt = It.newPos();
 
         if(It.peek() === '(') { // inline link

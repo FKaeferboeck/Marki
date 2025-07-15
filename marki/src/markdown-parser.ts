@@ -13,7 +13,7 @@ import { bang_bracket_traits, image_traits } from "./inline/image.js";
 import { bracket_traits, link_traits } from "./inline/link.js";
 import { rawHTML_traits } from "./inline/raw-html.js";
 import { linify, LogicalLine, LogicalLine_with_cmt } from "./linify.js";
-import { AnyBlock, Block, BlockBase, BlockType, BlockType_Container, isContainer, MarkdownParserContext } from "./markdown-types.js";
+import { AnyBlock, Block, BlockBase, BlockType, BlockType_Container, InlineElementType, isContainer, MarkdownParserContext } from "./markdown-types.js";
 import { AnyBlockTraits, BlockTraits, BlockTraits_Container, DelimiterTraits, InlineParserTraitsList } from "./traits.js";
 import { LLinfo } from "./util.js";
 
@@ -59,8 +59,9 @@ export const standardDelimiterTraits: Record<string, DelimiterTraits> = {
 }
 
 class BlockParserProvider {
-	constructor(ctx: ParsingContext) {
-		this.ctx = ctx;
+	constructor(MDPT: MarkdownParserTraits, ctx: ParsingContext) {
+		this.ctx  = ctx;
+		this.MDPT = MDPT;
 	}
 
 	cache: Partial<BlockParserProviderCache> = { };
@@ -76,11 +77,12 @@ class BlockParserProvider {
 
 	*run(s: "tryOrder" | "interrupters", t0: BlockType | undefined, BC: BlockContainer | undefined): Generator<BlockParser> {
 		const MDP = this.ctx.MDP;
-		const L = MDP.tryOrder;
-		const allowSelfInterrupt = (t0 && MDP.traitsList[t0]?.canSelfInterrupt);
+		const L = this.MDPT.tryOrder;
+		const blockTraitsList = this.MDPT.blockTraitsList;
+		const allowSelfInterrupt = (t0 && blockTraitsList[t0]?.canSelfInterrupt);
 		for(let i = 0, iN = L.length;  i < iN;  ++i) {
 			const key = L[i];
-			if(s === "interrupters" && !MDP.traitsList[key]?.isInterrupter)
+			if(s === "interrupters" && !blockTraitsList[key]?.isInterrupter)
 				continue;
 			const PP = this.cache[key] || (this.cache[key] = { parent: MDP,  parser: undefined });
 			if(!PP.parser)
@@ -93,26 +95,23 @@ class BlockParserProvider {
 			}
 		}
 	}
+
+	MDPT: MarkdownParserTraits;
 	ctx: ParsingContext;
 }
 
 
 
+export class MarkdownParserTraits {
+	blockTraitsList: Partial<Record<BlockType, AnyBlockTraits>>;
+	tryOrder: BlockType[];
 
-
-export class MarkdownParser implements BlockContainer {
 	constructor() {
-		this.traitsList = { };
-		this.tryOrder = standardBlockTryOrder.map(bt => (this.traitsList[bt.blockType] = bt).blockType);
+		this.blockTraitsList = { };
+		this.tryOrder = standardBlockTryOrder.map(bt => (this.blockTraitsList[bt.blockType] = bt).blockType);
 
-		this.ctx = {
-			MDP: this,
-			globalCtx: { tier2_command_char: '$' } as Tier2_ctx,
-			localCtx: { } // TODO!!
-		};
-
-		this.inlineParser_standard = new InlineParserProvider(this.ctx);
-		this.inlineParser_minimal  = new InlineParserProvider(this.ctx);
+		this.inlineParser_standard = new InlineParserProvider();
+		this.inlineParser_minimal  = new InlineParserProvider();
 
 		this.inlineParser_standard.traits = { ... standardInlineParserTraits };
 		this.inlineParser_standard.delims = { ... standardDelimiterTraits };
@@ -125,8 +124,14 @@ export class MarkdownParser implements BlockContainer {
 		this.inlineParser_minimal.delims = { ... standardDelimiterTraits };
 		this.inlineParser_minimal.makeStartCharMap();
 
-		this.blockParserProvider = new BlockParserProvider(this.ctx); // TODO!!
+		this.globalCtx = { tier2_command_char: '$' } as Tier2_ctx; // If the tier 2 extension isn't hooked in this has no effect
 	}
+
+	inlineParser_standard: InlineParserProvider;
+	inlineParser_minimal:  InlineParserProvider;
+	customInlineParserProviders: Record<string, InlineParserProvider> = { };
+	afterInlineSteps: InlineElementType[] = [];
+	globalCtx: MarkdownParserContext; // for caching of data which isn't restricted to a particular document
 
 	addExtensionBlocks(traits: AnyBlockTraits, position: "first" | "last"): void;
 	addExtensionBlocks(traits: AnyBlockTraits, position: "before" | "after", before_after: BlockType): void;
@@ -134,12 +139,12 @@ export class MarkdownParser implements BlockContainer {
 		const type = traits.blockType;
 		if((position === "first" || position === "last") != !before_after)
 			throw new Error('Wrong input for addExtensionBlocks');
-		if(this.traitsList[type]) {
+		if(this.blockTraitsList[type]) {
 			// just replace existing block type, don't change position
-			this.traitsList[type] = traits;
+			this.blockTraitsList[type] = traits;
 			return;
 		}
-		this.traitsList[type] = traits;
+		this.blockTraitsList[type] = traits;
 
 		if(position === "first") {
 			position = "after";
@@ -155,10 +160,29 @@ export class MarkdownParser implements BlockContainer {
 			throw new Error(`Wanting to place extension ${position} "${before_after}", but we don't have that block type in the list.`);
 		this.tryOrder.splice(i_b_a + (position === "after" ? 1 : 0), 0, type);
 	}
+}
 
-	scheduleExtension(prom: () => Promise<(MDP: MarkdownParser) => void>) {
+
+export const global_MDPT = new MarkdownParserTraits();
+
+
+
+export class MarkdownParser implements BlockContainer, ParsingContext {
+	MDPT: MarkdownParserTraits;
+	globalCtx: MarkdownParserContext;
+	localCtx: MarkdownParserContext;
+	MDP: MarkdownParser;
+
+	constructor(MDPT?: MarkdownParserTraits) {
+		this.MDP       = this;
+		this.MDPT      = MDPT || global_MDPT;
+		this.globalCtx = this.MDPT.globalCtx;
+		this.localCtx  = { }; // TODO!!
+		this.blockParserProvider = new BlockParserProvider(this.MDPT, this); // TODO!!
+	}
+
+	/*scheduleExtension(prom: () => Promise<(MDP: MarkdownParser) => void>) {
 		prom().then(ext => {
-			
 			console.error('???????Wha?')
 			ext(this);
 		});
@@ -166,25 +190,24 @@ export class MarkdownParser implements BlockContainer {
 
 	loadPlugin(pluginFile: string) {
 		
-	}
+	}*/
 
 	reset() {
 		this.linkDefs = {};
 	}
 
 	/* Full parsing of a complete document (contents as string) */
-	processDocument(input: string): AnyBlock[] {
+	processDocument(input: string): Promise<AnyBlock[]> {
 		this.reset();
-		const ctx = this.ctx; // TODO!!
 		const LLs = linify(input, false); // TODO!!
         const blocks = this.processContent(LLs[0]);
         collectLists(blocks);
         blocks.forEach(B => {
-            this.processBlock(B, ctx);
+            this.processBlock(B, this);
             if(B.inlineContent)
                 pairUpDelimiters(B.inlineContent);
         });
-		return blocks;
+		return this.processAfterInlineStep().then(() => blocks);
 	}
 
 	startBlock   = startBlock;
@@ -203,7 +226,7 @@ export class MarkdownParser implements BlockContainer {
 	}
 
 	processBlock(B: AnyBlock, ctx: ParsingContext) {
-		const T = this.traitsList[B.type];
+		const T = this.MDPT.blockTraitsList[B.type];
 		if(!T)    throw new Error(`Cannot process content of block "${B.type}"`);
 		if(isContainer(B))
 			B.blocks.forEach(B1 => this.processBlock(B1, ctx));
@@ -215,16 +238,20 @@ export class MarkdownParser implements BlockContainer {
 
     processInline = processInline;
 
-	traitsList: Partial<Record<BlockType, AnyBlockTraits>>;
-	tryOrder: BlockType[];
+	processAfterInlineStep() {
+		return Promise.all(this.MDPT.afterInlineSteps.map(k => {
+			const fct = this.MDPT.inlineParser_standard.traits[k]?.processingStep;
+			return (fct ? fct.call(this) : Promise.resolve());
+		}));
+	}
 
 	isContainerType(type: BlockType): type is BlockType_Container {
-		const traits = this.traitsList[type];
+		const traits = this.MDPT.blockTraitsList[type];
 		return !!((traits && "isContainer" in traits && traits.isContainer) || false);
 	}
 
 	makeParser<K extends BlockType>(type: K, ctx: ParsingContext) {
-		const traits = this.traitsList[type] as BlockTraits<K> | undefined;
+		const traits = this.MDPT.blockTraitsList[type] as BlockTraits<K> | undefined;
 		if(!traits)
 			throw new Error(`Missing block parser traits for block type "${type}"`)
 		if(traits.creator)
@@ -237,7 +264,6 @@ export class MarkdownParser implements BlockContainer {
 			return new BlockParser_Standard<K>(ctx, type, traits);
 	}
 
-	ctx: ParsingContext;
 	blockParserProvider: BlockParserProvider;
 	addContentBlock<K extends BlockType>(B: BlockBase<K>) { this.blocks.push(B as AnyBlock); }
 	blocks: AnyBlock[] = [];
@@ -256,12 +282,6 @@ export class MarkdownParser implements BlockContainer {
 		label = label.trim().replace(/[ \t\r\n]+/g, ' ').toLowerCase().toUpperCase();
 		return this.linkDefs[label];
 	}
-
-    /******************************************************************************************************************/
-
-    inlineParser_standard: InlineParserProvider;
-	inlineParser_minimal:  InlineParserProvider;
-	customInlineParserProviders: Record<string, InlineParserProvider> = { };
 };
 
 

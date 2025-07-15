@@ -1,4 +1,4 @@
-import { ParsingContext } from "./block-parser.js";
+import { BlockParser, BlockParserBase, ParsingContext } from "./block-parser.js";
 import { parseDelimiter } from "./delimiter-processing.js";
 import { InlineParser_Standard } from "./inline-parser.js";
 import { LogicalLine } from "./linify.js";
@@ -15,20 +15,17 @@ export class InlineParserProvider {
     delims: Record<string, DelimiterTraits> = { };
     startCharMap:     Record<string, (InlineElementType | DelimiterTraits)[]> = { };
     delimFollowerMap: Record<string,  InlineElementType[]> = { };
-    ctx: ParsingContext;
 
-    constructor(ctx: ParsingContext) { this.ctx = ctx; }
-
-    getInlineParser<K extends InlineElementType>(type: K, followingDelim?: Delimiter_nestable) {
+    getInlineParser<K extends InlineElementType>(type: K, ctx: ParsingContext, followingDelim?: Delimiter_nestable) {
         const traits = this.traits[type];
         if(!traits)
             throw new Error(`Missing inline parser traits for inline element type "${type}"`)
         if(followingDelim && !isDelimFollowerTraits(traits))
             throw new Error(`Expecting a delimiter-following inline parser for delimiter "${followingDelim.type}", but traits for "${type}" isn't`);
         if(traits.creator)
-            return traits.creator(this.ctx);
+            return traits.creator(ctx);
         else
-            return new InlineParser_Standard(this.ctx, traits);
+            return new InlineParser_Standard(ctx, traits);
 
     }
     
@@ -65,9 +62,9 @@ export class InlineParsingContext {
     curDelimClosingStartChar: string = '';
     ctx: ParsingContext
 
-    constructor(provider: InlineParserProvider) {
+    constructor(provider: InlineParserProvider, ctx: ParsingContext) {
         this.provider         = provider;
-        this.ctx              = provider.ctx;
+        this.ctx              = ctx;
         this.startCharMap     = provider.startCharMap;
         this.delimFollowerMap = provider.delimFollowerMap;
     }
@@ -153,6 +150,7 @@ export class InlineParsingContext {
 } // class InlineParsingContext
 
 
+export const makeInlineContext_minimal = (P: BlockParser<any, any>) => new InlineParsingContext(P.MDP.MDPT.inlineParser_minimal, P.MDP);
 
 
 function inlineParse_try(this: InlineParsingContext, t: InlineElementType | DelimiterTraits,
@@ -161,7 +159,7 @@ function inlineParse_try(this: InlineParsingContext, t: InlineElementType | Deli
 {
     let elt: InlineElement<InlineElementType> | Delimiter | false = false;
     if(typeof t === "string") {
-        const P = this.provider.getInlineParser(t, openDelim);
+        const P = this.provider.getInlineParser(t, this.ctx, openDelim);
         if(openDelim) {
             P.setBuf(buf);
             elt = P.parseFollowingDelim(openDelim, It, checkpoint1);
@@ -208,7 +206,7 @@ function inlineParse_try(this: InlineParsingContext, t: InlineElementType | Deli
 export function processInline(this: MarkdownParser, LL: LogicalLine) {
 	let It = makeBlockContentIterator(LL);
 	const buf: InlineContent = [];
-	const context = new InlineParsingContext(this.inlineParser_standard);
+	const context = new InlineParsingContext(this.MDPT.inlineParser_standard, this);
 	context.inlineParseLoop(It, buf);
 	return buf;
 }

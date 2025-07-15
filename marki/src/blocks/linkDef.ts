@@ -1,5 +1,5 @@
 import { BlockParser } from "../block-parser.js";
-import { InlineParsingContext } from "../inline-parsing-context.js";
+import { makeInlineContext_minimal } from "../inline-parsing-context.js";
 import { takeLinkDestination } from "../inline/link.js";
 import { isSpaceLine, LogicalLine, standardBlockStart } from "../linify.js";
 import { AnyInline } from "../markdown-types.js";
@@ -90,7 +90,7 @@ function linkDefStep(this: LinkDefParser, It: BlockContentIterator): BlockContin
             content: this.parts.join('\n').slice(1, -1),
             indent: 0,  prefix: ''
         };
-        const context = new InlineParsingContext(this.MDP.inlineParser_standard);
+        const context = makeInlineContext_minimal(this);
         context.inlineParseLoop(makeBlockContentIterator(LL),
                                 this.B.linkTitle = []);
         return "last";

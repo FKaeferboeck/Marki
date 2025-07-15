@@ -150,7 +150,7 @@ export const link_traits: DelimFollowerTraits<"link"> = {
         B.linkLabelContents = this.getDelimitedContent(openingDelim);
         if(containsElement(B.linkLabelContents, "link"))
             return false;
-        B.linkLabel = reassembleContent(B.linkLabelContents);
+        B.linkLabel = reassembleContent(B.linkLabelContents, this);
         const cpt = It.newPos();
 
         if(It.peek() === '(') { // inline link
