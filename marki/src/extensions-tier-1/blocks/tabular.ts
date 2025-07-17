@@ -4,7 +4,7 @@ import { InlineParserProvider, InlineParsingContext } from "../../inline-parsing
 import { LogicalLine, LogicalLine_text, standardBlockStart } from "../../linify.js";
 import { MarkdownParser, standardDelimiterTraits, standardInlineParserTraits } from "../../markdown-parser.js";
 import { Block_Extension, ExtensionBlockType, InlineContent, InlineElementBase } from "../../markdown-types.js";
-import { Inserter, EasyInserter, Renderer } from "../../renderer/renderer.js";
+import { Inserter, EasyInserter, MarkdownRendererInstance } from "../../renderer/renderer.js";
 import { BlockTraits, InlineElementTraits, castExtensionBlock } from "../../traits.js";
 import { makeBlockContentIterator } from "../../util.js";
 
@@ -68,7 +68,7 @@ export const tabular_cellbr_traits: InlineElementTraits<typeof tabular_linebr_ty
 function getTableCellParserProvider(ctx: ParsingContext) {
     const customInlineParserProviders = ctx.MDP.MDPT.customInlineParserProviders;
     if(!customInlineParserProviders[tabular_type]) {
-        const IPP = new InlineParserProvider();
+        const IPP = new InlineParserProvider(ctx.MDP.MDPT);
         IPP.traits = { ... standardInlineParserTraits,
                        ext_tier1_tabular_cellbr: tabular_cellbr_traits };
         IPP.delims = { ... standardDelimiterTraits };
@@ -167,7 +167,7 @@ export const markdown_tabular_traits: BlockTraits<ExtensionBlockType, MarkdownTa
     I.add('</colgroup>');
 }*/
 
-function printTableRow(renderer: Renderer, R: MarkdownTabularRow, Fs: TabularColumnFormat[] | null, I: Inserter, header: boolean) {
+function printTableRow(renderer: MarkdownRendererInstance, R: MarkdownTabularRow, Fs: TabularColumnFormat[] | null, I: Inserter, header: boolean) {
     const I1 = new EasyInserter();
     I1.add('  <tr>');
     const open = (header ? '<th' : '<td'), close = (header ? '</th>' : '</td>');
@@ -187,7 +187,7 @@ function printTableRow(renderer: Renderer, R: MarkdownTabularRow, Fs: TabularCol
     I.add(I1.join(''));
 }
 
-export function ext_tier1_tabular_render(this: Renderer, B: Block_Extension, I: Inserter) {
+export function ext_tier1_tabular_render(this: MarkdownRendererInstance, B: Block_Extension, I: Inserter) {
     if(!castExtensionBlock(B, markdown_tabular_traits))    return;
     I.add(`<table>`);
     //printTabularColFormats(B.format, I);

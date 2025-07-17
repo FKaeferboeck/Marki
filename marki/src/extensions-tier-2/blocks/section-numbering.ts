@@ -2,7 +2,7 @@ import { sectionHeader_trimEndMarker } from "../../blocks/sectionHeader.js";
 import { measureColOffset, standardBlockStart } from "../../linify.js";
 import { BlockTraitsExtended } from "../../traits.js";
 import { makeBlockContentIterator, sliceLL_to } from "../../util.js";
-import { Renderer, Inserter } from "../../renderer/renderer.js";
+import { MarkdownRendererInstance, Inserter } from "../../renderer/renderer.js";
 import { AnyBlock, Block_Leaf } from "../../markdown-types.js";
 
 
@@ -153,7 +153,7 @@ export function makeSectionHeader_handle(B: SectionHeader_ext) {
 }
 
 
-export function sectionHeader_ext_render(this: Renderer, B_: Block_Leaf<"sectionHeader">, I: Inserter) {
+export function sectionHeader_ext_render(this: MarkdownRendererInstance, B_: Block_Leaf<"sectionHeader">, I: Inserter) {
     const B = B_ as Block_Leaf<"sectionHeader"> & SectionHeader_ext;
     if(typeof B.anon !== "boolean")
         throw new Error('Wrong rendering function for section header block extension');

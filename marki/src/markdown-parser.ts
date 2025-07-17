@@ -110,8 +110,8 @@ export class MarkdownParserTraits {
 		this.blockTraitsList = { };
 		this.tryOrder = standardBlockTryOrder.map(bt => (this.blockTraitsList[bt.blockType] = bt).blockType);
 
-		this.inlineParser_standard = new InlineParserProvider();
-		this.inlineParser_minimal  = new InlineParserProvider();
+		this.inlineParser_standard = new InlineParserProvider(this);
+		this.inlineParser_minimal  = new InlineParserProvider(this);
 
 		this.inlineParser_standard.traits = { ... standardInlineParserTraits };
 		this.inlineParser_standard.delims = { ... standardDelimiterTraits };
@@ -160,6 +160,11 @@ export class MarkdownParserTraits {
 			throw new Error(`Wanting to place extension ${position} "${before_after}", but we don't have that block type in the list.`);
 		this.tryOrder.splice(i_b_a + (position === "after" ? 1 : 0), 0, type);
 	}
+
+	updateStartCharMaps() {
+		this.inlineParser_standard.makeStartCharMap();
+		this.inlineParser_minimal .makeStartCharMap();
+	}
 }
 
 
@@ -179,6 +184,8 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 		this.globalCtx = this.MDPT.globalCtx;
 		this.localCtx  = { }; // TODO!!
 		this.blockParserProvider = new BlockParserProvider(this.MDPT, this); // TODO!!
+
+		this.MDPT.updateStartCharMaps();
 	}
 
 	/*scheduleExtension(prom: () => Promise<(MDP: MarkdownParser) => void>) {

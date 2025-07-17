@@ -1,4 +1,4 @@
-import { BlockType, global_MDPT, MarkdownParser, MarkdownParserTraits, Renderer } from "marki";
+import { BlockType, global_MDPT, MarkdownParser, MarkdownParserTraits, MarkdownRendererTraits, markdownRendererTraits_standard } from "marki";
 import { doSectionNumbering, extendTier1, extendTier2 } from "marki/extensions";
 import { TooltipProvider, tooltipProviderInline, TooltipProviderInline, tooltipProviders } from "./provide-tooltip";
 import { InlineElementType } from "marki/inline";
@@ -6,6 +6,7 @@ import { InlineElementType } from "marki/inline";
 
 export interface MarkiInstance {
     MDPT: MarkdownParserTraits;
+    MDRT: MarkdownRendererTraits;
     MDP: MarkdownParser;
     pluginFiles: string[];
     tooltip: {
@@ -16,6 +17,7 @@ export interface MarkiInstance {
 
 const markiInstance: MarkiInstance = {
     MDPT: global_MDPT,
+    MDRT: markdownRendererTraits_standard,
     MDP: new MarkdownParser(),
     pluginFiles: [],
     tooltip: {
@@ -25,17 +27,14 @@ const markiInstance: MarkiInstance = {
 };
 
 
-const MDR = new Renderer(markiInstance.MDP);
-
-
 export interface Marki_LSP_plugin {
     registerMarkiExtension?   (MDP: MarkdownParser): void;
     registerTooltipProviders? (tt: MarkiInstance["tooltip"]): void;
 }
 
 
-extendTier1(markiInstance.MDPT, MDR);
-extendTier2(markiInstance.MDPT, MDR);
+extendTier1(markiInstance.MDPT, markiInstance.MDRT);
+extendTier2(markiInstance.MDPT, markiInstance.MDRT);
 //register_dataModelRef(MDP, MDR);
 //register_taskLinkSection(MDP, MDR);
 

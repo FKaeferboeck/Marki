@@ -1,7 +1,7 @@
 import { makeDelimiter } from "../../delimiter-processing.js";
 import { MarkdownParserTraits } from "../../markdown-parser.js";
 import { InlineElement } from "../../markdown-types.js";
-import { Inserter, Renderer } from "../../renderer/renderer.js";
+import { Inserter, MarkdownRendererTraits } from "../../renderer/renderer.js";
 import { DelimFollowerTraits, DelimiterTraits } from "../../traits.js";
 import { BlockContentIterator } from "../../util.js";
 
@@ -48,10 +48,9 @@ export const ext_tier2_custom_styling_traits: DelimFollowerTraits<"ext_tier2_cus
 };
 
 
-export function register(MDPT: MarkdownParserTraits, MDR?: Renderer) {
+export function register(MDPT: MarkdownParserTraits, MDR?: MarkdownRendererTraits) {
     MDPT.inlineParser_standard.delims['ext_tier2_custom_styling_delim'] = ext_tier2_custom_styling_delim;
     MDPT.inlineParser_standard.traits['ext_tier2_custom_styling'] = ext_tier2_custom_styling_traits;
-    MDPT.inlineParser_standard.makeStartCharMap();
 
     if(MDR)
         MDR.inlineHandler["ext_tier2_custom_styling"] = function(elt, I: Inserter, data, i, closing?: boolean) {

@@ -1,9 +1,10 @@
 import { LogicalLine, LogicalLine_text, standardBlockStart } from "../linify.js";
 import { MarkdownParser, MarkdownParserTraits } from "../markdown-parser.js";
-import { Renderer } from "../renderer/renderer.js";
+import { MarkdownRendererTraits } from "../renderer/renderer.js";
 import { register } from "./inline/custom-styling.js";
 import { ext_tier2_title_render, markdown_doc_title_traits, markdown_doc_title_type } from "./blocks/markdown-doc-title.js";
 import { sectionHeader_ext_render, sectionHeader_ext_traits } from "./blocks/section-numbering.js";
+import { register_SpecialSymbol } from "./inline/symbols.js";
 
 export interface Tier2_ctx {
     tier2_command_char: string;
@@ -25,7 +26,7 @@ export const tier2_command_block_start = (MDP: MarkdownParser, LL: LogicalLine):
 
 
 
-export function extendTier2(MDPT: MarkdownParserTraits, renderer? : Renderer) {
+export function extendTier2(MDPT: MarkdownParserTraits, renderer? : MarkdownRendererTraits) {
     set_tier2_command_char(MDPT, '$');
     MDPT.addExtensionBlocks(markdown_doc_title_traits, "last");
     MDPT.blockTraitsList[sectionHeader_ext_traits.blockType] = sectionHeader_ext_traits;
@@ -35,5 +36,6 @@ export function extendTier2(MDPT: MarkdownParserTraits, renderer? : Renderer) {
         renderer.blockHandler[sectionHeader_ext_traits.blockType] = sectionHeader_ext_render;
     }
 
+    register_SpecialSymbol(MDPT, renderer);
     register(MDPT, renderer);
 }

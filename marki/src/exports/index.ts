@@ -1,5 +1,6 @@
 export * from "../markdown-parser.js";
 export * from "../renderer/renderer.js";
+export * from "../renderer/renderer-standard.js";
 
 export * from "../linify.js";
 

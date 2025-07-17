@@ -1,9 +1,9 @@
 import { ParsingContext } from "../block-parser.js";
 import { lineContent, LogicalLine_with_cmt, shiftCol } from "../linify.js";
 import { AnyBlock, Block, BlockType } from "../markdown-types.js";
-import { InlineHandlerList, InlineRenderer, renderInline } from "./inline-renderer.js";
-import { renderHTML_entity, escapeXML, escapeXML_all, urlEncode } from "./util.js";
-import { getInlineRenderer_plain } from "./utility-renderers.js";
+import { InlineHandlerList, InlineRenderer as InlineRendererInstance } from "./inline-renderer.js";
+import { markdownRendererTraits_standard } from "./renderer-standard.js";
+import { actualizeTab, escapeXML } from "./util.js";
 
 export interface Inserter {
     add(... S: string[]): void;
@@ -17,57 +17,28 @@ export class EasyInserter implements Inserter {
 }
 
 export type BlockHandlerList = Partial<{
-    [K in BlockType]: (B: Block<K>, ins: Inserter) => void;
+    [K in BlockType]: (this: MarkdownRendererInstance, B: Block<K>, ins: Inserter) => void;
 }>;
 
 
-function fencedOpener(this: Renderer, B: Block<"fenced">) {
-    const info = this.inlineRenderer.render(B.info_string, new EasyInserter());
-    const firstWord = /^\S+/.exec(info)?.[0];
-    if (!firstWord)
-        return `<code>`;
-    return `<code class="language-${firstWord}">`;
-}
-
-function posInList(B: Block<"listItem">) {
-    if(!B.parentList || B.parentList.contents.length === 0)
-        throw new Error('Missing list');
-    const C = B.parentList.contents;
-    return { isFirst: B === C[0],
-             isLast:  B === C[C.length - 1] };
+export interface MarkdownRendererTraits {
+    blockHandler:  BlockHandlerList;
+    inlineHandler: InlineHandlerList;
 }
 
 
-/*function delimitedSection(data: InlineContent, i0: number) {
-    const elt = data[i0];
-    if(!elt || inlineContentCategory(elt) !== "anyI")
-        return false;
-    const closingDelim = (elt as InlineElement<InlineElementType>).followedDelimiter?.partnerDelim;
-    if(!closingDelim)
-        return false;
-    let i1 = i0, iN = data.length;
-    while(++i1 < iN && data[i1] !== closingDelim) ;
-    return {
-        contents:   data.slice(i0 + 1, i1),
-        closingIdx: i1
-    };
-}*/
-
-
-function actualizeTab(pfx: string, preIndent: number) {
-    if((preIndent % 4) !== 0 && pfx[0] === '\t')
-        return ' '.repeat(4 - (preIndent % 4)) + pfx.slice(1);
-    return pfx;
-}
-
-
-export class Renderer {
-    inlineRenderer: InlineRenderer;
+export class MarkdownRendererInstance implements MarkdownRendererTraits {
+    inlineRenderer: InlineRendererInstance;
     ctx: ParsingContext;
+    blockHandler:  BlockHandlerList;
+    inlineHandler: InlineHandlerList;
 
-    constructor(ctx: ParsingContext) {
+    constructor(ctx: ParsingContext, traits?: MarkdownRendererTraits) {
         this.ctx = ctx;
-        this.inlineRenderer = new InlineRenderer(this.inlineHandler, ctx); // TODO!!
+        traits ||= markdownRendererTraits_standard;
+        this.blockHandler   = traits.blockHandler;
+        this.inlineHandler  = traits.inlineHandler;
+        this.inlineRenderer = new InlineRendererInstance(this.inlineHandler, ctx); // TODO!!
     }
 
     referenceRender(content: AnyBlock[], verbose?: boolean, appendSpace: boolean = true) {
@@ -80,89 +51,6 @@ export class Renderer {
         return (S_joined && appendSpace ? S_joined + '\n' : S_joined);
     }
 
-    blockHandler: BlockHandlerList = {
-        "thematicBreak" :       (B, I) => I.add(`<hr />`),
-        "paragraph":            (B, I) => I.add(`<p>${this.renderBlockContent(B, null, "trimmed")}</p>`),
-        "indentedCodeBlock":    (B, I) => I.add(`<pre><code>${this.renderBlockContent(B, null, "literal")}</code></pre>`),
-        "fenced":               (B, I) => I.add(`<pre>${this.fencedOpener(B)}${this.renderBlockContent(B, null, "literal")}</code></pre>`),
-        "blockQuote":           (B, I) => {
-            I.add(`<blockquote>`);
-            this.renderBlockContent(B, I, "blockquote");
-            I.add(`</blockquote>`);
-        },
-        "sectionHeader_setext": (B, I) => I.add(`<h${B.level}>${this.renderBlockContent(B, null)}</h${B.level}>`),
-        "sectionHeader":        (B, I) => I.add(`<h${B.level}>${this.renderBlockContent(B, null)}</h${B.level}>`),
-        "listItem":             (B, I) => {
-            const pos = posInList(B);
-            const L = B.parentList!;
-
-            // render start of list
-            if(pos.isFirst) {
-                const B0 = L.contents[0];
-                let start = '';
-                if(typeof B0.marker_number === "number" && B0.marker_number !== 1)
-                    start = ` start="${B0.marker_number}"`;
-                I.add(`<${L.listType === "Ordered" ? 'ol' : 'ul'}${start}>`); // start new list (<ul> or <ol>)
-            }
-
-            // render <li> element
-            if(B.blocks.length === 1 && B.blocks[0].type === "emptySpace")
-                I.add(`<li></li>`);
-            else if(L.isLoose) {
-                I.add(`<li>`);
-                for(const B1 of B.blocks)
-                    this.renderBlock(B1, I);
-                I.add(`</li>`);
-            } else
-                I.add(`<li>${this.renderBlockContent(B, null, "tightListItem")}</li>`);
-
-            // render end of list
-            if(pos.isLast)
-                I.add(`</${L.listType === "Ordered" ? 'ol' : 'ul'}>`);
-        },
-        "emptySpace": (B, I) => { },
-        "linkDef":    (B, I) => { },
-        "htmlBlock":  (B, I) => { this.renderBlockContent(B, I, "literal"); }
-    };
-
-    inlineHandler: InlineHandlerList = {
-        "escaped":    (elt, I) => I.add(escapeXML(elt.character)),
-        "codeSpan":   (elt, I) => I.add(`<code>${escapeXML(elt.content)}</code>`),
-        "link":       function(elt, I) {
-            const dest  = elt.reference?.destination || elt.destination;
-            const title = elt.reference?.linkTitle   || elt.linkTitle;
-            const title_s = (title && title.length > 0 ? escapeXML_all(title) : undefined);
-            I.add(`<a href="${urlEncode(dest)}"${title_s ? ` title="${title_s}"` : ''}>`);
-            /*const buf2: AnyInline[] = [];
-            parseBackslashEscapes(elt.linkLabel, buf2);
-            I.add(... buf2.map(s => (typeof s === "string" ? s : s.type === "escaped" ? s.character : '??')));*/
-            this.render(elt.linkLabelContents, I);
-            //I.add(elt.linkLabel);
-            I.add('</a>');
-        },
-        "hardBreak":  (elt, I) => I.add(elt.nSpaces === 1 ? '\n' : '<br />\n'),
-        "htmlEntity": (elt, I) => I.add(escapeXML(renderHTML_entity(elt))),
-        "image":      function(elt, I) {
-            const dest  = elt.reference?.destination || elt.destination;
-            const title = elt.reference?.linkTitle   || elt.linkTitle;
-            I.add(`<img src="${dest.join('+')}"`);
-            const inlineRenderer_plain = getInlineRenderer_plain(this.ctx);
-            I.add(` alt="${renderInline(elt.linkLabelContents, inlineRenderer_plain)}"`);
-            if(title?.length)
-                I.add(` title="${renderInline(title, inlineRenderer_plain)}"`);
-            I.add(' />');
-        },
-        "autolink": (elt, I) => {
-            if(elt.email)
-                I.add(`<a href="mailto:${elt.email}">${elt.email}</a>`);
-            else {
-                const URI = escapeXML(elt.URI);
-                I.add(`<a href="${elt.scheme}:${urlEncode([URI])}">${elt.scheme}:${URI}</a>`);
-            }
-        },
-        "rawHTML": (elt, I) => I.add(elt.tag)
-    };
-
     renderBlock(B: AnyBlock, I: Inserter) {
         const H = this.blockHandler[B.type];
         if(!H)
@@ -171,7 +59,14 @@ export class Renderer {
         (H as any).call(this, B, I);
     }
 
-    fencedOpener = fencedOpener;
+    fencedOpener(B: Block<"fenced">) {
+        const info = this.inlineRenderer.render(B.info_string, new EasyInserter());
+        const firstWord = /^\S+/.exec(info)?.[0];
+        if (!firstWord)
+            return `<code>`;
+        return `<code class="language-${firstWord}">`;
+    }
+
     renderBlockContent(B: AnyBlock, I: Inserter | null, mode?: "literal" | "tightListItem" | "blockquote" | "trimmed"): string {
         if("blocks" in B) {
             const blocks = (B.blocks as AnyBlock[]);
@@ -225,5 +120,4 @@ export class Renderer {
         I?.add(s);
         return s1;
     }
-} // class Renderer
-
+} // class MarkdownRendererInstance

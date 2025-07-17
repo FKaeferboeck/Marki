@@ -55,3 +55,12 @@ export const urlEncode = (S: AnyInline[]) => {
         return hexByte(0xF0 | (n >> 18)) + hexByte(0x80 | ((n >> 12) & 0x3F)) + hexByte(0x80 | ((n >> 6) & 0x3F)) + hexByte(0x80 | (n & 0x3F));
     });
 }
+
+
+/* If given a string starting with a tab that doesn't equal exactly four spaces (because it starts at a column position not divisible by four)
+   the tab is instead replaced by the appropriate (lower) number of spaces. */
+export function actualizeTab(pfx: string, preIndent: number) {
+    if((preIndent % 4) !== 0 && pfx[0] === '\t')
+        return ' '.repeat(4 - (preIndent % 4)) + pfx.slice(1);
+    return pfx;
+}

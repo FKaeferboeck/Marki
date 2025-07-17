@@ -92,7 +92,7 @@ export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits e
 
 	resetBlock() {
 		this.B = structuredClone(this.traits.defaultBlockInstance) as Block<K>; // make a deep copy because the individual block data can contain arrays
-		this.B.type                = this.type;
+		this.B.type     = this.type;
 		this.B.lineIdx  = -1;
 		this.B.logical_line_extent = 0;
 		return this.B;

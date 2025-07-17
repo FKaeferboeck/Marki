@@ -41,6 +41,10 @@
         "types":   "./out/types/exports/index-extensions.d.ts",
         "default": "./out/esm/exports/index-extensions.js"
       }
+    },
+    "./url-resolve.js": {
+      "import": "./out/esm/url-resolve.js",
+      "require": "./out/cjs/url-resolve.js"
     }
   },
   "typesVersions": { "*": {

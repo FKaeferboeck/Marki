@@ -2,7 +2,7 @@ import { BlockParser, BlockParserBase, ParsingContext } from "./block-parser.js"
 import { parseDelimiter } from "./delimiter-processing.js";
 import { InlineParser_Standard } from "./inline-parser.js";
 import { LogicalLine } from "./linify.js";
-import { MarkdownParser } from "./markdown-parser.js";
+import { MarkdownParser, MarkdownParserTraits } from "./markdown-parser.js";
 import { InlineElementType, Delimiter_nestable, InlineContent, InlineElement, Delimiter, InlinePos, isNestableDelimiter, MarkdownParserContext } from "./markdown-types.js";
 import { LinePart } from "./parser.js";
 import { InlineParserTraitsList, DelimiterTraits, isDelimFollowerTraits } from "./traits.js";
@@ -15,6 +15,11 @@ export class InlineParserProvider {
     delims: Record<string, DelimiterTraits> = { };
     startCharMap:     Record<string, (InlineElementType | DelimiterTraits)[]> = { };
     delimFollowerMap: Record<string,  InlineElementType[]> = { };
+    MPT: MarkdownParserTraits;
+
+    constructor(MPT: MarkdownParserTraits) {
+        this.MPT = MPT;
+    }
 
     getInlineParser<K extends InlineElementType>(type: K, ctx: ParsingContext, followingDelim?: Delimiter_nestable) {
         const traits = this.traits[type];
@@ -35,10 +40,12 @@ export class InlineParserProvider {
         for(const t in this.traits) {
             const iet = t as InlineElementType;
             const traits = this.traits[iet];
-            if(traits && "startChars" in traits)
-                traits.startChars.forEach(sc => {
+            if(traits && "startChars" in traits) {
+                const startChars = (typeof traits.startChars === "function" ? traits.startChars.call(this.MPT) : traits.startChars);
+                startChars.forEach(sc => {
                     (this.startCharMap[sc] ||= [] as InlineElementType[]).push(iet);
                 });
+            }
             if(traits && "startDelims" in traits)
                 traits.startDelims.forEach(sd => {
                     (this.delimFollowerMap[sd] ||= [] as InlineElementType[]).push(iet);

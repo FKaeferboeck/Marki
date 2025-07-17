@@ -6,8 +6,9 @@ import { InlineElementTraits } from "../traits.js";
 //import entityList from "../htmlEntities.json" assert { type: "json" };
 //const { default: entityList } = await import("../htmlEntities.json", { with: { type: "json" }, assert: { type: "json" } });
 import * as fs from 'fs';
-import * as path from "path";
-const jsonFile = path.resolve(__dirname, '../htmlEntities.json');
+// @ts-ignore
+import { resolveDataFilepath } from "../url-resolve.js";
+const jsonFile = resolveDataFilepath('htmlEntities.json');
 const entityList = JSON.parse(fs.readFileSync(jsonFile, 'utf8')) as Record<string, number | number[]>;
 
 

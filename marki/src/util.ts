@@ -114,6 +114,7 @@ export interface BlockContentIterator {
     skipNobrSpace(): number;
     skipXMLspace(): boolean; // returns if anything was skipped
 
+    startsWith(str: string, advance_if_match?: boolean): boolean;
     regexInLine(rexes: RegExp): false | RegExpMatchArray;
     regexInLine(...rexes: (RegExp | boolean)[]): false | (RegExpMatchArray | boolean)[];
 
@@ -315,6 +316,19 @@ export function makeBlockContentIterator(LL: LogicalLine, singleLine: boolean = 
             if(char_idx === curPartLength)
                 nextPart();
             return d;
+        },
+
+        startsWith: (str: string, advance_if_match?: boolean) => {
+            if(typeof curPart !== "string")
+                return (str.length === 0);
+            if(!curPart.startsWith(str, char_idx))
+                return false;
+            if(advance_if_match) {
+                char_idx += str.length;
+                if(char_idx === curPartLength)
+                    nextPart();
+            }
+            return true;
         },
 
         regexInLine: (...rexes: (RegExp | boolean)[]): any => {

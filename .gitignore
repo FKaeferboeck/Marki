@@ -86,11 +86,6 @@ web_modules/
 # Next.js build output
 .next
 
-# Nuxt.js build / generate output
-.nuxt
-dist/
-types/
-
 # Gatsby files
 .cache/
 # Comment in the public line in if your project uses Gatsby and not Next.js
@@ -130,10 +125,15 @@ types/
 .pnp.*
 workdata/
 
-# Exclude marki/out except for file marki/out/cjs/package.json
-/marki/out/*
-!/marki/out/cjs
+# Exclude marki/out except for a few specific files marki/out/cjs/package.json
 /marki/out/cjs/*
 !/marki/out/cjs/package.json
+!/marki/out/cjs/url-resolve.js
+
+/marki/out/esm/*
+!/marki/out/esm/url-resolve.js
+
+/marki/out/types/*
+!/marki/out/types/url-resolve.d.ts
 
 /marki-lsp/out

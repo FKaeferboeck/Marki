@@ -1,7 +1,7 @@
 import { BlockParser, BlockParser_Container, ParsingContext } from "./block-parser.js";
 import { InlineParser } from "./inline-parser.js";
 import { LogicalLine, LogicalLine_with_cmt } from "./linify.js";
-import { MarkdownParser } from "./markdown-parser.js";
+import { MarkdownParser, MarkdownParserTraits } from "./markdown-parser.js";
 import { BlockType, ExtensionBlockType, BlockType_Container, Block, InlineElementType, ExtensionInlineElementType, InlineElement, InlinePos, BlockIndividualData, Delimiter, Delimiter_nestable, Block_Extension, AnyBlock, InlineElementBase } from "./markdown-types.js";
 import { BlockContentIterator } from "./util.js";
 
@@ -98,7 +98,8 @@ type InlineElementCustomData<T extends InlineElementType, B extends InlineElemen
 export interface InlineElementTraits<T extends InlineElementType = ExtensionInlineElementType,
                                      B extends InlineElement<T> = InlineElement<T>>
 {
-    startChars: string[]; // characters where inline element can possibly start — doesn't have to be a sufficient condition
+    startChars: string[] | ((this: MarkdownParserTraits) => string[]); // characters where inline element can possibly start — doesn't have to be a sufficient condition
+                                                                       // They can be dynamically defined (callback)
     mode?: "normal" | "delimited"; // default is "normal"
 
     // The implementation can modify startPos to e.g. an earlier position if the inline item wants to backtrack
