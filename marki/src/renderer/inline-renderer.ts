@@ -19,8 +19,6 @@ export class InlineRenderer {
     }
 
     render(data: InlineContent, I: Inserter, trimmed?: boolean) {
-        /*if(!I)
-            I = new EasyInserter();*/
         for(let i = 0, iE = data.length - 1;  i <= iE;  ++i) {
             const elt = data[i];
             switch(inlineContentCategory(elt))

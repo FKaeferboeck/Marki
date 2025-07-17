@@ -21,6 +21,10 @@ export function tier2_command_char(MDP: MarkdownParser) {
     return (MDP.globalCtx as Tier2_ctx).tier2_command_char;
 }
 
+export function startChar_tier2(this: MarkdownParserTraits) {
+    return [ (this.globalCtx as Tier2_ctx).tier2_command_char || '$' ];
+}
+
 export const tier2_command_block_start = (MDP: MarkdownParser, LL: LogicalLine): LL is LogicalLine_text =>
     (standardBlockStart(LL) && LL.content.startsWith(tier2_command_char(MDP)));
 
