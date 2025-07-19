@@ -94,6 +94,7 @@ export const isContainer = (B: AnyBlock): B is AnyContainerBlock => ("isContaine
 
 export interface Delimiter_nestable extends KnowsEnd {
 	type:               string;
+	subtype?:           string;
 	delim:              string;
 	endDelimStartChar?: string; // stored here instead of in the traits class because we allow it to be dynamically dependent on the opening delimiter
 	isOpener:           boolean;
@@ -109,6 +110,7 @@ export interface DelimiterSide {
 
 export interface Delimiter_emph extends KnowsEnd {
 	type:      string;
+	subtype?:  string;
 	delim:     string;
 	opening?:  DelimiterSide;
 	closing?:  DelimiterSide;

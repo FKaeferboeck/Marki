@@ -13,16 +13,17 @@ import { BlockContentIterator, contentSlice, makeBlockContentIterator } from "./
 export class InlineParserProvider {
     traits: InlineParserTraitsList = { };
     delims: Record<string, DelimiterTraits> = { };
+    parent?: InlineParserProvider; // an InlineParserProvider can optionally be derived from another
     startCharMap:     Record<string, (InlineElementType | DelimiterTraits)[]> = { };
     delimFollowerMap: Record<string,  InlineElementType[]> = { };
     MPT: MarkdownParserTraits;
 
-    constructor(MPT: MarkdownParserTraits) {
+    constructor(MPT: MarkdownParserTraits, parent?: InlineParserProvider) {
         this.MPT = MPT;
     }
 
     getInlineParser<K extends InlineElementType>(type: K, ctx: ParsingContext, followingDelim?: Delimiter_nestable) {
-        const traits = this.traits[type];
+        const traits = this.traits[type] || this.parent?.traits[type];
         if(!traits)
             throw new Error(`Missing inline parser traits for inline element type "${type}"`)
         if(followingDelim && !isDelimFollowerTraits(traits))
@@ -37,24 +38,28 @@ export class InlineParserProvider {
     makeStartCharMap() {
         this.startCharMap = {};
         this.delimFollowerMap = {};
-        for(const t in this.traits) {
+        const traits = (this.parent ? { ... this.traits, ...this.parent.traits } : this.traits);
+        for(const t in traits) {
             const iet = t as InlineElementType;
-            const traits = this.traits[iet];
-            if(traits && "startChars" in traits) {
-                const startChars = (typeof traits.startChars === "function" ? traits.startChars.call(this.MPT) : traits.startChars);
+            const trait = traits[iet];
+            if(trait && "startChars" in trait) {
+                const startChars = (typeof trait.startChars === "function" ? trait.startChars.call(this.MPT) : trait.startChars);
                 startChars.forEach(sc => {
                     (this.startCharMap[sc] ||= [] as InlineElementType[]).push(iet);
                 });
             }
-            if(traits && "startDelims" in traits)
-                traits.startDelims.forEach(sd => {
+            if(trait && "startDelims" in trait)
+                trait.startDelims.forEach(sd => {
                     (this.delimFollowerMap[sd] ||= [] as InlineElementType[]).push(iet);
                 });
         }
         // delimiter openers are mixed together with the normal start chars
-        for(const t in this.delims) {
-            this.delims[t].startChars.forEach(sc => {
-                (this.startCharMap[sc] ||= []).push(this.delims[t]);
+        const delims = (this.parent ? { ... this.delims, ...this.parent.delims } : this.delims);
+        for(const t in delims) {
+            const sc_ = delims[t].startChars;
+            const startChars = (typeof sc_ === "function" ? sc_.call(this.MPT) : sc_);
+            startChars.forEach(sc => {
+                (this.startCharMap[sc] ||= []).push(delims[t]);
             });
         }
     }
@@ -183,7 +188,7 @@ function inlineParse_try(this: InlineParsingContext, t: InlineElementType | Deli
         } else
             elt = P.parse(It, checkpoint1);
     } else { // it's a delimiter
-        elt = parseDelimiter(It, checkpoint1, t, openDelim);
+        elt = parseDelimiter(this, It, checkpoint1, t, openDelim);
         if(!elt)
             It.setPosition(checkpoint1);
     }
@@ -210,10 +215,10 @@ function inlineParse_try(this: InlineParsingContext, t: InlineElementType | Deli
 
 
 
-export function processInline(this: MarkdownParser, LL: LogicalLine) {
+export function processInline(this: MarkdownParser, LL: LogicalLine, customContentParser?: InlineParserProvider) {
 	let It = makeBlockContentIterator(LL);
 	const buf: InlineContent = [];
-	const context = new InlineParsingContext(this.MDPT.inlineParser_standard, this);
+	const context = new InlineParsingContext(customContentParser || this.MDPT.inlineParser_standard, this);
 	context.inlineParseLoop(It, buf);
 	return buf;
 }

@@ -13,7 +13,7 @@ import { bang_bracket_traits, image_traits } from "./inline/image.js";
 import { bracket_traits, link_traits } from "./inline/link.js";
 import { rawHTML_traits } from "./inline/raw-html.js";
 import { linify, LogicalLine, LogicalLine_with_cmt } from "./linify.js";
-import { AnyBlock, Block, BlockBase, BlockType, BlockType_Container, InlineElementType, isContainer, MarkdownParserContext } from "./markdown-types.js";
+import { AnyBlock, Block, BlockBase, BlockType, BlockType_Container, InlineElement, InlineElementType, isContainer, MarkdownParserContext } from "./markdown-types.js";
 import { AnyBlockTraits, BlockTraits, BlockTraits_Container, DelimiterTraits, InlineParserTraitsList } from "./traits.js";
 import { LLinfo } from "./util.js";
 
@@ -165,6 +165,11 @@ export class MarkdownParserTraits {
 		this.inlineParser_standard.makeStartCharMap();
 		this.inlineParser_minimal .makeStartCharMap();
 	}
+
+	findLinkDef(MDP: MarkdownParser, label: string, B: InlineElement<"link"> | InlineElement<"image">): Block<"linkDef"> | undefined {
+		label = label.trim().replace(/[ \t\r\n]+/g, ' ').toLowerCase().toUpperCase();
+		return MDP.localCtx.linkDefs[label];
+	}
 }
 
 
@@ -175,14 +180,16 @@ export const global_MDPT = new MarkdownParserTraits();
 export class MarkdownParser implements BlockContainer, ParsingContext {
 	MDPT: MarkdownParserTraits;
 	globalCtx: MarkdownParserContext;
-	localCtx: MarkdownParserContext;
+	localCtx: MarkdownParserContext & { linkDefs: Record<string, Block<"linkDef">>; };
 	MDP: MarkdownParser;
 
 	constructor(MDPT?: MarkdownParserTraits) {
 		this.MDP       = this;
 		this.MDPT      = MDPT || global_MDPT;
 		this.globalCtx = this.MDPT.globalCtx;
-		this.localCtx  = { }; // TODO!!
+		this.localCtx  = {
+			linkDefs: { }
+		}; // TODO!!
 		this.blockParserProvider = new BlockParserProvider(this.MDPT, this); // TODO!!
 
 		this.MDPT.updateStartCharMaps();
@@ -200,7 +207,9 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 	}*/
 
 	reset() {
-		this.linkDefs = {};
+		for (const key in this.localCtx)
+			delete this.localCtx[key];
+		this.localCtx.linkDefs = { };
 	}
 
 	/* Full parsing of a complete document (contents as string) */
@@ -232,13 +241,15 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 		return this.blocks;
 	}
 
-	processBlock(B: AnyBlock, ctx: ParsingContext) {
+	processBlock(B: AnyBlock, ctx: ParsingContext, PP?: InlineParserProvider) {
 		const T = this.MDPT.blockTraitsList[B.type];
 		if(!T)    throw new Error(`Cannot process content of block "${B.type}"`);
-		if(isContainer(B))
-			B.blocks.forEach(B1 => this.processBlock(B1, ctx));
+		if(isContainer(B)) {
+			const T1 = T as BlockTraits_Container<any>;
+			B.blocks.forEach((B1, i) => this.processBlock(B1, ctx, T1.customChildParser?.(B, i)));
+		}
 		else if((T.inlineProcessing === undefined || T.inlineProcessing === true) && B.content)
-			B.inlineContent = this.processInline(B.content);
+			B.inlineContent = this.processInline(B.content, PP || T.customContentParser);
 		else if(typeof T.inlineProcessing === "function")
 			T.inlineProcessing.call(ctx, B);
 	}
@@ -277,19 +288,14 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 	blockContainerType = "MarkdownParser" as const;
 	diagnostics = false;
 
-	private linkDefs: Record<string, Block<"linkDef">> = { };
 	registerLinkDef(B: Block<"linkDef">) {
 		/* CommonMark: "Consecutive internal spaces, tabs, and line endings are treated as one space for purposes of determining matching" */
 		// Note: CommonMark prescribes "Unicode case fold", but the reference implementation just does this ".toLowerCase().toUpperCase()"
 		//       procedure, so apparently that's good enough.
 		const label = B.linkLabel.trim().replace(/[ \t\r\n]+/g, ' ').toLowerCase().toUpperCase();
-		this.linkDefs[label] ||= B; // ||= because the first occurance of a link label takes precedence
+		this.localCtx.linkDefs[label] ||= B; // ||= because the first occurance of a link label takes precedence
 	}
-	findLinkDef(label: string): Block<"linkDef"> | undefined {
-		label = label.trim().replace(/[ \t\r\n]+/g, ' ').toLowerCase().toUpperCase();
-		return this.linkDefs[label];
-	}
-};
+}; // class MarkdownParser
 
 
 

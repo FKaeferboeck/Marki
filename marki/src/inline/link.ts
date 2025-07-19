@@ -10,7 +10,7 @@ export function acceptable<T extends "link" | "image">(MDP: MarkdownParser, B: I
     switch(B.linkType) {
     case "reference":
         {
-            const L = MDP.findLinkDef(B.destination[0] as string); // TODO!! Improve!
+            const L = MDP.MDPT.findLinkDef(MDP, B.destination[0] as string, B); // TODO!! Improve!
             if(!L)    return false; // link not found
             B.reference = L;
             return B;
@@ -18,7 +18,7 @@ export function acceptable<T extends "link" | "image">(MDP: MarkdownParser, B: I
     case "collapsed":
     case "shortcut":
         {
-            const L = MDP.findLinkDef(B.linkLabel); // TODO!! Improve!
+            const L = MDP.MDPT.findLinkDef(MDP, B.linkLabel, B);
             if(!L)    return false; // link not found
             B.reference = L;
             return B;

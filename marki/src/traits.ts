@@ -1,5 +1,6 @@
 import { BlockParser, BlockParser_Container, ParsingContext } from "./block-parser.js";
 import { InlineParser } from "./inline-parser.js";
+import { InlineParserProvider, InlineParsingContext } from "./inline-parsing-context.js";
 import { LogicalLine, LogicalLine_with_cmt } from "./linify.js";
 import { MarkdownParser, MarkdownParserTraits } from "./markdown-parser.js";
 import { BlockType, ExtensionBlockType, BlockType_Container, Block, InlineElementType, ExtensionInlineElementType, InlineElement, InlinePos, BlockIndividualData, Delimiter, Delimiter_nestable, Block_Extension, AnyBlock, InlineElementBase } from "./markdown-types.js";
@@ -39,6 +40,7 @@ export interface BlockTraits<T extends BlockType = ExtensionBlockType, B extends
     canBeSoftContinuation?: boolean; // default true
     allowCommentLines: boolean;
     isInterrupter?: boolean; // Can this block interrupt soft continuations? default false
+    customContentParser?: InlineParserProvider; // some block types may want to do their own thing
 
     hasContent?: boolean; // default true; false means that this element stores all data it has in its individual block data and doesn't use the "content" property
     inlineProcessing?: boolean | ((this: ParsingContext, block: AnyBlock) => void); // default true
@@ -67,11 +69,14 @@ export function castExtensionBlock<B extends BlockIndividualData>
 }
 
 
-export interface BlockTraits_Container<T extends BlockType_Container> extends BlockTraits<T> {
+export interface BlockTraits_Container<T extends BlockType_Container | ExtensionBlockType,
+                                       B     extends BlockIndividualData<T> = BlockIndividualData<T>,
+                                       Extra extends {} = {}> extends BlockTraits<T, B, Extra>
+{
     isContainer: true;
-
-    creator?: (ctx: ParsingContext, type: T) => BlockParser_Container<T>;
-    defaultBlockInstance: BlockIndividualData<T>;
+    customChildParser?: (block: Block<T> & B, i: number) => InlineParserProvider | undefined;
+    creator?: (ctx: ParsingContext, type: T) => (T extends BlockType_Container ? BlockParser_Container<T> : never);
+    defaultBlockInstance: B;
 }
 
 
@@ -85,6 +90,23 @@ export function makeBlockContainerTraits<bt extends BlockType_Container, T exten
     traits.blockType = type;
     return traits;
 }
+
+export type BlockContainerTraitsExtended<T     extends BlockType_Container | ExtensionBlockType = ExtensionBlockType,
+                                         B     extends BlockIndividualData<T> = BlockIndividualData<T>,
+                                         Extra extends {} = {}>
+    = BlockTraits_Container<T, B, Extra> & Extra;
+
+export type ExtensionBlockContainerTraits<B extends BlockIndividualData = BlockIndividualData, Extra extends {} = {}>
+    = BlockContainerTraitsExtended<ExtensionBlockType, B, Extra>;
+
+/*export function castExtensionBlock<B extends BlockIndividualData>
+    (block: AnyBlock, traits: ExtensionBlockTraits<B>): block is Block_Extension & B
+{
+    if(block.type !== traits.blockType)
+        throw new Error(`castBlock: expected block of type "${traits.blockType}", but encountered "${block.type}"`);
+    return true;
+}*/
+
 
 export type AnyBlockTraits = BlockType extends infer K ? K extends BlockType ? BlockTraits<K> : never : never;
 
@@ -121,17 +143,15 @@ type DelimiterCategory = "emphLoose" | "emphStrict" | "paired";
 
 export interface DelimiterTraits {
     name:       string;
-    startChars: string[]; // characters with which this delimiter can possibly start — doesn't have to be a sufficient condition
+    startChars: string[] | ((this: MarkdownParserTraits) => string[]); // characters with which this delimiter can possibly start — doesn't have to be a sufficient condition
     category:   DelimiterCategory;
 
     // Do not check for prefixes/suffixes yourself! It gets done automatically depending on the delimiter category
-    parseDelimiter(It: BlockContentIterator, startPos: InlinePos): Delimiter | false;
+    parseDelimiter(this: InlineParsingContext, It: BlockContentIterator, startPos: InlinePos): Delimiter | false;
 
     // Called when a nested delimiter of this type is open and encounters its end character.
     // This method is often not necessary – use it when the end delimiter is more than just one character.
     parseCloser?(It: BlockContentIterator, startPos: InlinePos): string | false;
-
-    //creator: (MDP: MarkdownParser) => InlineParser<T>;
 }
 
 export interface DelimFollowerTraits<T extends InlineElementType = ExtensionInlineElementType,

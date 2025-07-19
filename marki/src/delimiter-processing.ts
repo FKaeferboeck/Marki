@@ -1,4 +1,5 @@
 import { ParsingContext } from "./block-parser.js";
+import { InlineParsingContext } from "./inline-parsing-context.js";
 import { Delimiter_emph, Delimiter, InlinePos, InlineContent, InlineContentElement, DelimiterSide, Delimiter_nestable, isNestableDelimiter } from "./markdown-types.js";
 import { renderInline } from "./renderer/inline-renderer.js";
 import { getInlineRenderer_reassemble } from "./renderer/utility-renderers.js";
@@ -47,7 +48,7 @@ function checkEmphDelimiterContext(D: Delimiter_emph, T: DelimiterTraits, It: Bl
 }
 
 
-export function parseDelimiter(It: BlockContentIterator, checkpoint1: InlinePos, T: DelimiterTraits, toClose: Delimiter_nestable | undefined,) {
+export function parseDelimiter(context: InlineParsingContext, It: BlockContentIterator, checkpoint1: InlinePos, T: DelimiterTraits, toClose: Delimiter_nestable | undefined,) {
     let delim: false | Delimiter = false;
     if(toClose) {
         let endDelim: string | false = false;
@@ -67,7 +68,7 @@ export function parseDelimiter(It: BlockContentIterator, checkpoint1: InlinePos,
         toClose.partnerDelim = delim;
     }
     else
-        delim = T.parseDelimiter(It, checkpoint1);
+        delim = T.parseDelimiter.call(context, It, checkpoint1);
 
     if(!delim)
         return false;
