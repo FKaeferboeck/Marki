@@ -164,6 +164,8 @@ export class MarkdownParserTraits {
 	updateStartCharMaps() {
 		this.inlineParser_standard.makeStartCharMap();
 		this.inlineParser_minimal .makeStartCharMap();
+		for(const IPP in this.customInlineParserProviders)
+			this.customInlineParserProviders[IPP].makeStartCharMap();
 	}
 
 	findLinkDef(MDP: MarkdownParser, label: string, B: InlineElement<"link"> | InlineElement<"image">): Block<"linkDef"> | undefined {
@@ -246,7 +248,7 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 		if(!T)    throw new Error(`Cannot process content of block "${B.type}"`);
 		if(isContainer(B)) {
 			const T1 = T as BlockTraits_Container<any>;
-			B.blocks.forEach((B1, i) => this.processBlock(B1, ctx, T1.customChildParser?.(B, i)));
+			B.blocks.forEach((B1, i) => this.processBlock(B1, ctx, T1.customChildParser?.(B, i, ctx)));
 		}
 		else if((T.inlineProcessing === undefined || T.inlineProcessing === true) && B.content)
 			B.inlineContent = this.processInline(B.content, PP || T.customContentParser);

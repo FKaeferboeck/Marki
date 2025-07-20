@@ -19,7 +19,8 @@ export class InlineParserProvider {
     MPT: MarkdownParserTraits;
 
     constructor(MPT: MarkdownParserTraits, parent?: InlineParserProvider) {
-        this.MPT = MPT;
+        this.MPT    = MPT;
+        this.parent = parent;
     }
 
     getInlineParser<K extends InlineElementType>(type: K, ctx: ParsingContext, followingDelim?: Delimiter_nestable) {
