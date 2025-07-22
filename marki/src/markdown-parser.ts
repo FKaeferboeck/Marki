@@ -130,6 +130,7 @@ export class MarkdownParserTraits {
 	inlineParser_standard: InlineParserProvider;
 	inlineParser_minimal:  InlineParserProvider;
 	customInlineParserProviders: Record<string, InlineParserProvider> = { };
+	afterBlockParsingSteps: BlockType[] = [];
 	afterInlineSteps: InlineElementType[] = [];
 	globalCtx: MarkdownParserContext; // for caching of data which isn't restricted to a particular document
 
@@ -139,6 +140,10 @@ export class MarkdownParserTraits {
 		const type = traits.blockType;
 		if((position === "first" || position === "last") != !before_after)
 			throw new Error('Wrong input for addExtensionBlocks');
+
+		if(traits.processingStep && !this.afterBlockParsingSteps.some(t => t === type))
+			this.afterBlockParsingSteps.push(type);
+
 		if(this.blockTraitsList[type]) {
 			// just replace existing block type, don't change position
 			this.blockTraitsList[type] = traits;
@@ -220,12 +225,14 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 		const LLs = linify(input, false); // TODO!!
         const blocks = this.processContent(LLs[0]);
         collectLists(blocks);
-        blocks.forEach(B => {
-            this.processBlock(B, this);
-            if(B.inlineContent)
-                pairUpDelimiters(B.inlineContent);
-        });
-		return this.processAfterInlineStep().then(() => blocks);
+		return this.processAfterBlockParsing().then(() => {
+			blocks.forEach(B => {
+				this.processBlock(B, this);
+				if(B.inlineContent)
+					pairUpDelimiters(B.inlineContent);
+			});
+		}).then(() => this.processAfterInlineStep()).then(() => blocks)
+		.catch(exc => { console.log('Error in processDocument', exc); return blocks; });
 	}
 
 	startBlock   = startBlock;
@@ -258,11 +265,20 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 
     processInline = processInline;
 
+	processAfterBlockParsing() {
+		return Promise.all(this.MDPT.afterBlockParsingSteps.map(k => {
+			const fct = this.MDPT.blockTraitsList[k]?.processingStep;
+			if(!fct)
+				throw new Error(`Block traits "${k}" is listed in afterBlockParsingSteps but has no processingStep function`);
+			return fct.call(this);
+		})).then(() => {});
+	}
+
 	processAfterInlineStep() {
 		return Promise.all(this.MDPT.afterInlineSteps.map(k => {
 			const fct = this.MDPT.inlineParser_standard.traits[k]?.processingStep;
 			return (fct ? fct.call(this) : Promise.resolve());
-		}));
+		})).then(() => {});
 	}
 
 	isContainerType(type: BlockType): type is BlockType_Container {

@@ -448,3 +448,14 @@ export function trimEndSpace(LL: LogicalLine_with_cmt) {
     LL1.content = LL1.content.trimEnd();
     return LL;
 }
+
+
+export function spreadLines(LL: LogicalLine_with_cmt | undefined) {
+    const arr: string[] = [ ];
+    while(LL) {
+        if(LL.type === "text")
+            arr.push(LL.content);
+        LL = LL.next;
+    }
+    return arr;
+}

@@ -34,6 +34,12 @@ export interface BlockTraits<T extends BlockType = ExtensionBlockType, B extends
     /* in case content lines need to be transformed in some way when adding them to the block content */
     postprocessContentLine?(this: BlockParser<T>, LL: LogicalLine, bct: BlockContinuationType | "start") : LogicalLine_with_cmt;
 
+    // Optionally a processing step that is performed after block parsing but before inline parsing.
+    // It is meant for running DB queries and similar for data stored into the ParsingContext object during parsing.
+    // It's called a single time and should hande all instances of this block type together.
+    // CommonMark doesn't use this feature, it's for extensions.
+    processingStep?(this: ParsingContext): Promise<void>;
+
     continuationPrefix?: RegExp| ((LL: LogicalLine, B: Block<T>) => number);
     
     allowSoftContinuations: boolean;

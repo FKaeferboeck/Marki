@@ -1,3 +1,4 @@
+import { reassembleContent } from "../delimiter-processing.js";
 import { makeInlineContext_minimal } from "../inline-parsing-context.js";
 import { isSpaceLine, sliceLine, standardBlockStart } from "../linify.js";
 import { AnyInline } from "../markdown-types.js";
@@ -10,6 +11,7 @@ export interface FencedBlock {
 	fence_length: number; // will be 3 most commonly
 	indentation:  number;
 	info_string:  AnyInline[];
+    language:     string | undefined;
 }
 
 
@@ -26,18 +28,15 @@ export const fenced_traits = makeBlockTraits("fenced", {
 
         // process info string — it's not just verbatim text
         const LL_info = sliceLine(LL, LL.indent + B.fence_length);
-        /*if(LLD_info.type === "text")
-            //LLD_info.parts = [LLD_info.parts[0]];
-            { }*/
         if(!isSpaceLine(LL_info)) {
-            //console.log(LLD_info);
             const It_info = makeBlockContentIterator(LL_info);
             It_info.skipNobrSpace();
 
             const context = makeInlineContext_minimal(this);
             context.inlineParseLoop(It_info, B.info_string);
-            //B.info_string  = LLD.content.slice(B.fence_length).trim();
-            //console.log(B.info_string)
+
+            const info = reassembleContent(B.info_string, this);
+            B.language = /^\S+/.exec(info)?.[0] || undefined;
         }
 
         B.indentation  = LL.indent; // space before the fence -> will be trimmed from content lines too
@@ -71,6 +70,7 @@ export const fenced_traits = makeBlockTraits("fenced", {
         fence_type:   "`",
         fence_length: 3,
         indentation:  0,
-        info_string:  []
+        info_string:  [],
+        language:     undefined
     }
 });

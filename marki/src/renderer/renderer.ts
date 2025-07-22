@@ -21,9 +21,15 @@ export type BlockHandlerList = Partial<{
 }>;
 
 
+export interface LanguageRenderer {
+    render(B: Block<"fenced">, I: Inserter): void;
+}
+
+
 export interface MarkdownRendererTraits {
     blockHandler:  BlockHandlerList;
     inlineHandler: InlineHandlerList;
+    customLanguageRenderer: Record<string, LanguageRenderer>;
 }
 
 
@@ -32,12 +38,14 @@ export class MarkdownRendererInstance implements MarkdownRendererTraits {
     ctx: ParsingContext;
     blockHandler:  BlockHandlerList;
     inlineHandler: InlineHandlerList;
+    customLanguageRenderer: Record<string, LanguageRenderer>;
 
     constructor(ctx: ParsingContext, traits?: MarkdownRendererTraits) {
         this.ctx = ctx;
         traits ||= markdownRendererTraits_standard;
-        this.blockHandler   = traits.blockHandler;
-        this.inlineHandler  = traits.inlineHandler;
+        this.blockHandler           = traits.blockHandler;
+        this.inlineHandler          = traits.inlineHandler;
+        this.customLanguageRenderer = traits.customLanguageRenderer;
         this.inlineRenderer = new InlineRendererInstance(this.inlineHandler, ctx); // TODO!!
     }
 
@@ -60,11 +68,7 @@ export class MarkdownRendererInstance implements MarkdownRendererTraits {
     }
 
     fencedOpener(B: Block<"fenced">) {
-        const info = this.inlineRenderer.render(B.info_string, new EasyInserter());
-        const firstWord = /^\S+/.exec(info)?.[0];
-        if (!firstWord)
-            return `<code>`;
-        return `<code class="language-${firstWord}">`;
+        return (B.language ? `<code class="language-${B.language}">` : '<code>');
     }
 
     renderBlockContent(B: AnyBlock, I: Inserter | null, mode?: "literal" | "tightListItem" | "blockquote" | "trimmed"): string {

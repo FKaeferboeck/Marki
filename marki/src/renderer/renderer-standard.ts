@@ -16,10 +16,15 @@ function posInList(B: Block<"listItem">) {
 
 export const markdownRendererTraits_standard: MarkdownRendererTraits = {
     blockHandler: {
-        "thematicBreak" :       (B, I) => I.add(`<hr />`),
+        "thematicBreak" :       (_, I) => I.add(`<hr />`),
         "paragraph":            function (B, I) { I.add(`<p>${this.renderBlockContent(B, null, "trimmed")}</p>`); },
         "indentedCodeBlock":    function (B, I) { I.add(`<pre><code>${this.renderBlockContent(B, null, "literal")}</code></pre>`); },
-        "fenced":               function (B, I) { I.add(`<pre>${this.fencedOpener(B)}${this.renderBlockContent(B, null, "literal")}</code></pre>`); },
+        "fenced":               function (B, I) {
+            if(B.language && this.customLanguageRenderer[B.language])
+                this.customLanguageRenderer[B.language].render(B, I);
+            else
+                I.add(`<pre>${this.fencedOpener(B)}${this.renderBlockContent(B, null, "literal")}</code></pre>`);
+        },
         "blockQuote":           function (B, I) {
             I.add(`<blockquote>`);
             this.renderBlockContent(B, I, "blockquote");
@@ -96,5 +101,7 @@ export const markdownRendererTraits_standard: MarkdownRendererTraits = {
             }
         },
         "rawHTML": (elt, I) => I.add(elt.tag)
-    }
+    },
+
+    customLanguageRenderer: { }
 };
