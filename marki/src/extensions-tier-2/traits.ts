@@ -3,7 +3,7 @@ import { MarkdownParser, MarkdownParserTraits } from "../markdown-parser.js";
 import { MarkdownRendererTraits } from "../renderer/renderer.js";
 import { register } from "./inline/custom-styling.js";
 import { ext_tier2_title_render, markdown_doc_title_traits, markdown_doc_title_type } from "./blocks/markdown-doc-title.js";
-import { sectionHeader_ext_render, sectionHeader_ext_traits } from "./blocks/section-numbering.js";
+import { ext_tier2_table_of_contents_render, major_section_ext_traits, markdown_table_of_contents_traits, sectionHeader_ext_render, sectionHeader_ext_traits } from "./blocks/section-numbering.js";
 import { register_SpecialSymbol } from "./inline/symbols.js";
 
 export interface Tier2_ctx {
@@ -33,11 +33,15 @@ export const tier2_command_block_start = (MDP: MarkdownParser, LL: LogicalLine):
 export function extendTier2(MDPT: MarkdownParserTraits, renderer? : MarkdownRendererTraits) {
     set_tier2_command_char(MDPT, '$');
     MDPT.addExtensionBlocks(markdown_doc_title_traits, "last");
+    MDPT.addExtensionBlocks(major_section_ext_traits, "last");
+    MDPT.addExtensionBlocks(markdown_table_of_contents_traits, "last");
     MDPT.blockTraitsList[sectionHeader_ext_traits.blockType] = sectionHeader_ext_traits;
 
     if(renderer) {
         renderer.blockHandler[markdown_doc_title_type] = ext_tier2_title_render;
         renderer.blockHandler[sectionHeader_ext_traits.blockType] = sectionHeader_ext_render;
+        renderer.blockHandler[major_section_ext_traits.blockType] = sectionHeader_ext_render;
+        renderer.blockHandler[markdown_table_of_contents_traits.blockType] = ext_tier2_table_of_contents_render;
     }
 
     register_SpecialSymbol(MDPT, renderer);

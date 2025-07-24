@@ -1,5 +1,5 @@
 import { BlockParser, BlockParserBase, ParsingContext } from "./block-parser.js";
-import { parseDelimiter } from "./delimiter-processing.js";
+import { pairUpDelimiters, parseDelimiter } from "./delimiter-processing.js";
 import { InlineParser_Standard } from "./inline-parser.js";
 import { LogicalLine } from "./linify.js";
 import { MarkdownParser, MarkdownParserTraits } from "./markdown-parser.js";
@@ -72,7 +72,7 @@ export class InlineParsingContext {
     startCharMap:     Record<string, (InlineElementType | DelimiterTraits)[]>;
     delimFollowerMap: Record<string,  InlineElementType[]> = { };
     delimiterStack: Delimiter_nestable[] = [];
-    curDelimClosingStartChar: string = '';
+    curDelimClosingStartChar: string | false = ''; // false signifies a delimiter ending at EOL
     ctx: ParsingContext
 
     constructor(provider: InlineParserProvider, ctx: ParsingContext) {
@@ -81,12 +81,6 @@ export class InlineParsingContext {
         this.startCharMap     = provider.startCharMap;
         this.delimFollowerMap = provider.delimFollowerMap;
     }
-
-    /* During inline parsing we check for element start chars before calling their full parsers, so the order below only
-     * matters between elements that share a start char. */
-    /*inlineTryOrder: InlineElementType[] = [
-        "codeSpan"
-    ];*/
 
     inlineParseLoop(this: InlineParsingContext, It: BlockContentIterator, buf: InlineContent,
                     contCbk?:  (It: BlockContentIterator, c: string | LinePart) => boolean,
@@ -139,22 +133,28 @@ export class InlineParsingContext {
                 break;
             }
     
-            /*if(typeof c !== "string") {
-                It.setCheckPoint(checkpoint1);
-                const flush = contentSlice(checkpoint, checkpoint1, false);
-                if(flush)
-                    buf.push(flush);
-                const elt: AnyInline = { type: "html",  stuff: c.content };
-                if(c.type === "HTML_Tag" && c.continues)
-                    elt.continues = true;
-                buf.push(elt);
-                It.nextItem();
-                It.setCheckPoint(checkpoint);
-                continue;
-            }*/
-    
             It.pop();
+        } // while
+
+        if(this.curDelimClosingStartChar === false) {
+            It.setCheckPoint(checkpoint1);
+            const curOpenDelimiter = this.delimiterStack[this.delimiterStack.length - 1];
+            const curOpenDelimiterTraits = this.provider.delims[curOpenDelimiter.type];
+            if(!curOpenDelimiterTraits)
+                throw new Error(`Failed to acquire traits for currently open delimiter "${curOpenDelimiter.type}"`);
+            // With a closing delimiter that is EOL there's not much to check, but there might be lookbehinds:
+            let found = inlineParse_try.call(this, curOpenDelimiterTraits, curOpenDelimiter, It, buf, checkpoint, checkpoint1);
+            if(found && this.delimFollowerMap[curOpenDelimiter.type]) { // open delimiter successfully closed, now we'll look if it has a delimiter follower
+                It.setCheckPoint(checkpoint1);
+                for(const t of this.delimFollowerMap[curOpenDelimiter.type]) {
+                    if(inlineParse_try.call(this, t, curOpenDelimiter, It, buf, checkpoint, checkpoint1)) {
+                        found = true;
+                        break;
+                    }
+                }
+            }
         }
+
         const flush = contentSlice(checkpoint, It.newPos(), false);
         if(flush)
             buf.push(flush);
@@ -207,7 +207,11 @@ function inlineParse_try(this: InlineParsingContext, t: InlineElementType | Deli
         else
             this.delimiterStack.pop();
         const n = this.delimiterStack.length;
-        this.curDelimClosingStartChar = (n > 0 ? this.delimiterStack[n - 1].endDelimStartChar || '' : '');
+        this.curDelimClosingStartChar = '';
+        if(n > 0) {
+            const c = this.delimiterStack[n - 1].endDelimStartChar;
+            this.curDelimClosingStartChar = (c === undefined ? '' : c);
+        }
     }
 
     It.setCheckPoint(checkpoint);
@@ -221,5 +225,6 @@ export function processInline(this: MarkdownParser, LL: LogicalLine, customConte
 	const buf: InlineContent = [];
 	const context = new InlineParsingContext(customContentParser || this.MDPT.inlineParser_standard, this);
 	context.inlineParseLoop(It, buf);
+    pairUpDelimiters(buf);
 	return buf;
 }

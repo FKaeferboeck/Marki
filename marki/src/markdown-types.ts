@@ -96,7 +96,8 @@ export interface Delimiter_nestable extends KnowsEnd {
 	type:               string;
 	subtype?:           string;
 	delim:              string;
-	endDelimStartChar?: string; // stored here instead of in the traits class because we allow it to be dynamically dependent on the opening delimiter
+	endDelimStartChar?: string | false; // stored here instead of in the traits class because we allow it to be dynamically dependent on the opening delimiter
+	                                    // false means the closing delimiter is EOL
 	isOpener:           boolean;
 	partnerDelim?:      Delimiter_nestable;
 	follower?:          Exclude<AnyInline, string>; // a DelimFollower inline element that "owns" this delimited section

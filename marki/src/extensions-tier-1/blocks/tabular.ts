@@ -2,9 +2,9 @@ import { ParsingContext } from "src/block-parser.js";
 import { InlineParser_Standard } from "../../inline-parser.js";
 import { InlineParserProvider, InlineParsingContext } from "../../inline-parsing-context.js";
 import { LogicalLine, LogicalLine_text, standardBlockStart } from "../../linify.js";
-import { MarkdownParser, standardDelimiterTraits, standardInlineParserTraits } from "../../markdown-parser.js";
+import { MarkdownParser, MarkdownParserTraits, standardDelimiterTraits, standardInlineParserTraits } from "../../markdown-parser.js";
 import { Block_Extension, ExtensionBlockType, InlineContent, InlineElementBase } from "../../markdown-types.js";
-import { Inserter, EasyInserter, MarkdownRendererInstance } from "../../renderer/renderer.js";
+import { Inserter, EasyInserter, MarkdownRendererInstance, MarkdownRendererTraits } from "../../renderer/renderer.js";
 import { BlockTraits, InlineElementTraits, castExtensionBlock } from "../../traits.js";
 import { makeBlockContentIterator } from "../../util.js";
 
@@ -64,20 +64,6 @@ export const tabular_cellbr_traits: InlineElementTraits<typeof tabular_linebr_ty
     defaultElementInstance: { type: tabular_linebr_type }
 };
 
-
-function getTableCellParserProvider(ctx: ParsingContext) {
-    const customInlineParserProviders = ctx.MDP.MDPT.customInlineParserProviders;
-    if(!customInlineParserProviders[tabular_type]) {
-        const IPP = new InlineParserProvider(ctx.MDP.MDPT);
-        IPP.traits = { ... standardInlineParserTraits,
-                       ext_tier1_tabular_cellbr: tabular_cellbr_traits };
-        IPP.delims = { ... standardDelimiterTraits };
-        IPP.makeStartCharMap();
-        customInlineParserProviders[tabular_type] = IPP;
-    }
-    return customInlineParserProviders[tabular_type];
-}
-
 function inlineProcessTabularRow(ctx: ParsingContext, IPP: InlineParserProvider, H: MarkdownTabularRow) {
     let It = makeBlockContentIterator(H.LL, true); // TODO!! There should not be a "next"
     It.pop(); // skip the first '|'
@@ -133,7 +119,8 @@ export const markdown_tabular_traits: BlockTraits<ExtensionBlockType, MarkdownTa
 
     inlineProcessing(B) {
         if(!castExtensionBlock(B, markdown_tabular_traits))    return;
-        const IPP = getTableCellParserProvider(this);
+        const IPP = this.MDP.MDPT.customInlineParserProviders[tabular_type];
+        if(!IPP)    return;
         B.tableHead.forEach(R => inlineProcessTabularRow(this, IPP, R));
         B.tableBody.forEach(R => inlineProcessTabularRow(this, IPP, R));
     },
@@ -205,3 +192,11 @@ export function ext_tier1_tabular_render(this: MarkdownRendererInstance, B: Bloc
     }
     I.add('</table>');
 };
+
+
+export function extend_tier1_tabular(MDPT: MarkdownParserTraits, MDRT?: MarkdownRendererTraits) {
+    const table_cell_parser = new InlineParserProvider(MDPT, MDPT.inlineParser_standard);
+    //table_cell_parser.delims[braced_start_traits.name] = braced_start_traits;
+    table_cell_parser.traits[tabular_linebr_type] = tabular_cellbr_traits;
+    MDPT.customInlineParserProviders[tabular_type] = table_cell_parser;
+}
