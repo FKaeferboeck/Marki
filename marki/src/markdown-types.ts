@@ -120,6 +120,7 @@ export interface Delimiter_emph extends KnowsEnd {
 export type Delimiter = Delimiter_nestable | Delimiter_emph;
 
 export const isNestableDelimiter = (elt: InlineElement<InlineElementType> | Delimiter): elt is Delimiter_nestable => ("isOpener" in elt);
+export const isDelimiter = (elt: InlineElement<InlineElementType> | Delimiter): elt is Delimiter => ("delim" in elt);
 
 
 export interface InlineElementMap {

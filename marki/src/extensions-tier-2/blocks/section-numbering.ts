@@ -6,14 +6,14 @@ import { MarkdownRendererInstance, Inserter } from "../../renderer/renderer.js";
 import { AnyBlock, Block_Leaf } from "../../markdown-types.js";
 
 
-interface NumberingElement { label?: string;  num: number; };
+export interface SectionHeaderNumberingElement { label?: string;  num: number; };
 
 export interface SectionHeader_ext {
 	level:      number;
     anon:       boolean; // anonymous section (i.e. without label)
     anchor?:    string;
     label?:     string; // individual label overriding natural numbering
-    numbering?: (NumberingElement | { anon: number[]; })[];
+    numbering?: (SectionHeaderNumberingElement | { anon: number[]; })[];
 }
 
 
@@ -76,7 +76,7 @@ export const sectionHeader_ext_traits: BlockTraitsExtended<"sectionHeader", Sect
 
 
 export function doSectionNumbering(Bs: AnyBlock[]) {
-    const numberingStack: NumberingElement[] = [];
+    const numberingStack: SectionHeaderNumberingElement[] = [];
     const anonStack: number[] = [];
     let anonLevel = 100;
 

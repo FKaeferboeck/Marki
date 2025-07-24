@@ -114,6 +114,11 @@ function tabbedSlice(text: string, colFrom: number, startCol: number = 0): strin
 }
 
 
+/* Measures the column position up to the character with index `char_offset` within the LogicalLine's content.
+ * The line's leading indent (LogicalLine.indent) is not included in the count, it only measures from the start of the nontrivial content.
+ * The column number by which the whole line is shifted (LogicalLine.shiftCol if present) is taken into account to determine
+ * the correct tab stops for \t characters.
+ */
 export function measureColOffset(LL: LogicalLine, char_offset: number) {
     if(LL.type !== "text")
         return 0;
