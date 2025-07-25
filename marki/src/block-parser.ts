@@ -11,7 +11,7 @@ import { LogicalLineType } from './parser.js';
 import { BlockContinuationType, BlockTraits, BlockTraits_Container } from './traits.js';
 import { LLinfo } from './util.js';
 import { listItem_traits } from './blocks/listItem.js';
-import { MarkdownParser, ParseState } from './markdown-parser.js';
+import { BlockParserProvider, MarkdownParser, ParseState } from './markdown-parser.js';
 import { linkDef_traits } from './blocks/linkDef.js';
 import { htmlBlock_traits } from './blocks/html-block.js';
 import { isSpaceLine, LogicalLine, LogicalLine_with_cmt, sliceLine } from './linify.js';
@@ -78,7 +78,9 @@ export interface BlockParser<K      extends BlockType = BlockType,
 export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits extends BlockTraits<K> = BlockTraits<K>> implements BlockParser<K, Traits> {
 	type: K;
 
-	constructor(ctx: ParsingContext, type: K, traits: Traits, useSoftContinuations: boolean = true) {
+	constructor(/*ctx: ParsingContext*/PP: BlockParserProvider, type: K, traits: Traits, useSoftContinuations: boolean = true) {
+		this.PP = PP;
+		const ctx = PP.ctx;
 		this.MDP       = ctx.MDP;
 		this.globalCtx = ctx.globalCtx;
 		this.localCtx  = ctx.localCtx;
@@ -113,7 +115,9 @@ export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits e
 		if(this.MDP.diagnostics)
 			console.log(`Releasing [${this.type}]`);
 		
-		this.MDP.blockParserProvider.release(this);
+		this.PP.release(this);
+		//this.MDP.getBlockParserProvider(this.traits.)
+		//this.MDP.blockParserProvider.release(this);
 		return starts;
 	}
 
@@ -198,6 +202,7 @@ export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits e
 
 	setCheckpoint(LL: LogicalLine) { this.checkpoint = LL; }
 	getCheckpoint(): LogicalLine | null { return this.checkpoint || null; }
+	PP: BlockParserProvider;
 	MDP: MarkdownParser;
 	globalCtx: MarkdownParserContext;
 	localCtx:  MarkdownParserContext;
@@ -237,11 +242,12 @@ export class BlockParser_Container<K extends BlockType_Container = BlockType_Con
     extends BlockParser_Standard<K, BlockTraits_Container<K>>
     implements BlockContainer
 {
-    constructor(ctx: ParsingContext, type: K, traits: BlockTraits_Container<K>, useSoftContinuations: boolean = true) {
-        super(ctx, type, traits, useSoftContinuations);
+    constructor(PP: BlockParserProvider, type: K, traits: BlockTraits_Container<K>, useSoftContinuations: boolean = true) {
+        super(PP, type, traits, useSoftContinuations);
 		this.B.isContainer = true;
 		this.B.blocks      = [];
-        this.curContentParser = { container: this,  curParser: null,  generator: null };
+		this.contentParserTryOrder = traits.contentParserTryOrder;
+        this.curContentParser = { tryOrderName: this.contentParserTryOrder,  container: this,  curParser: null,  generator: null };
     }
 
     beginsHere(LL: LogicalLine, interrupting?: BlockType | undefined): number {
@@ -249,7 +255,7 @@ export class BlockParser_Container<K extends BlockType_Container = BlockType_Con
 		if(n0 < 0)
 			return n0;
 		const LLD_c = this.enqueueContentSlice(LL, n0);
-        this.curContentParser = this.MDP.processLine({ container: this,  curParser: null,  generator: null }, LLD_c);
+        this.curContentParser = this.MDP.processLine({ tryOrderName: this.contentParserTryOrder,  container: this,  curParser: null,  generator: null }, LLD_c);
         if(!this.curContentParser.curParser)
             throw new Error(`Content of container ${this.type} not recognized as any block type!`);
 		return n0;
@@ -325,13 +331,14 @@ export class BlockParser_Container<K extends BlockType_Container = BlockType_Con
 	}
 
     private curContentParser: ParseState;
+	private contentParserTryOrder: string | undefined;
 	blockContainerType = "containerBlock" as const;
 }
 
 
 export class BlockParser_EmptySpace extends BlockParser_Standard<"emptySpace"> {
-    constructor(ctx: ParsingContext, type: "emptySpace", traits: BlockTraits<"emptySpace">, useSoftContinuations: boolean = true) {
-        super(ctx, type, traits, useSoftContinuations);
+    constructor(PP: BlockParserProvider, type: "emptySpace", traits: BlockTraits<"emptySpace">, useSoftContinuations: boolean = true) {
+        super(PP, type, traits, useSoftContinuations);
 	}
 
     beginsHere(LL: LogicalLine): number {
@@ -339,7 +346,8 @@ export class BlockParser_EmptySpace extends BlockParser_Standard<"emptySpace"> {
             return -1;
         this.B.lineIdx  = LL.lineIdx;
         this.B.logical_line_extent = 1;
-		this.MDP.blockParserProvider.release(this);
+		//this.MDP.blockParserProvider.release(this);
+		this.PP.release(this);
         return 0;
     }
 

@@ -13,6 +13,6 @@ export const emptySpace_traits = makeBlockTraits("emptySpace", {
     allowCommentLines: true,
     hasContent: false,
     
-    creator(this: BlockTraits<"emptySpace">, ctx, type) { return new BlockParser_EmptySpace(ctx, type, this); },
+    creator(this: BlockTraits<"emptySpace">, PP, type) { return new BlockParser_EmptySpace(PP, type, this); },
     defaultBlockInstance: { }
 });

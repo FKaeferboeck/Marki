@@ -12,7 +12,7 @@ import { htmlEntity_traits } from "./inline/html-entity.js";
 import { bang_bracket_traits, image_traits } from "./inline/image.js";
 import { bracket_traits, link_traits } from "./inline/link.js";
 import { rawHTML_traits } from "./inline/raw-html.js";
-import { linify, LogicalLine, LogicalLine_with_cmt } from "./linify.js";
+import { lineContent, linify, LogicalLine, LogicalLine_with_cmt } from "./linify.js";
 import { AnyBlock, Block, BlockBase, BlockType, BlockType_Container, InlineElement, InlineElementType, isContainer, MarkdownParserContext } from "./markdown-types.js";
 import { AnyBlockTraits, BlockTraits, BlockTraits_Container, DelimiterTraits, InlineParserTraitsList } from "./traits.js";
 import { LLinfo } from "./util.js";
@@ -26,10 +26,11 @@ type BlockParserProviderCache = {
 };
 
 export interface ParseState {
-	container: BlockContainer;
-	curParser: BlockParser | null;
-	generator: Generator<BlockParser> | null;
-	retry?:    LogicalLine;
+	tryOrderName: string | undefined;
+	container:    BlockContainer;
+	curParser:    BlockParser | null;
+	generator:    Generator<BlockParser> | null;
+	retry?:       LogicalLine;
 }
 
 
@@ -58,10 +59,16 @@ export const standardDelimiterTraits: Record<string, DelimiterTraits> = {
 	bang_bracket:    bang_bracket_traits // ![ ... ] — in CommonMark only used for image descriptions
 }
 
-class BlockParserProvider {
-	constructor(MDPT: MarkdownParserTraits, ctx: ParsingContext) {
+export class BlockParserProvider {
+	constructor(MDPT: MarkdownParserTraits, ctx: ParsingContext, customTryOderName?: string) {
 		this.ctx  = ctx;
 		this.MDPT = MDPT;
+		this.tryOrder = MDPT.tryOrder;
+		if(customTryOderName) {
+			this.tryOrder = MDPT.customTryOrders[customTryOderName];
+			if(!this.tryOrder)
+				throw new Error(`Custom block try order "${customTryOderName}" not found in MarkdownParserTraits`);
+		}
 	}
 
 	cache: Partial<BlockParserProviderCache> = { };
@@ -77,7 +84,7 @@ class BlockParserProvider {
 
 	*run(s: "tryOrder" | "interrupters", t0: BlockType | undefined, BC: BlockContainer | undefined): Generator<BlockParser> {
 		const MDP = this.ctx.MDP;
-		const L = this.MDPT.tryOrder;
+		const L = this.tryOrder;
 		const blockTraitsList = this.MDPT.blockTraitsList;
 		const allowSelfInterrupt = (t0 && blockTraitsList[t0]?.canSelfInterrupt);
 		for(let i = 0, iN = L.length;  i < iN;  ++i) {
@@ -86,7 +93,7 @@ class BlockParserProvider {
 				continue;
 			const PP = this.cache[key] || (this.cache[key] = { parent: MDP,  parser: undefined });
 			if(!PP.parser)
-				PP.parser = MDP.makeParser(key, this.ctx) as any;
+				PP.parser = MDP.makeParser(key, this) as any;
 			const P = PP.parser as BlockParser;
 			if(P.type !== t0 || allowSelfInterrupt) {
 				P.parent = BC; // where will a finished block be stored — either the central MarkdownParser instance or a container block
@@ -98,6 +105,7 @@ class BlockParserProvider {
 
 	MDPT: MarkdownParserTraits;
 	ctx: ParsingContext;
+	tryOrder: BlockType[];
 }
 
 
@@ -130,15 +138,16 @@ export class MarkdownParserTraits {
 	inlineParser_standard: InlineParserProvider;
 	inlineParser_minimal:  InlineParserProvider;
 	customInlineParserProviders: Record<string, InlineParserProvider> = { };
+	customTryOrders: Record<string, BlockType[]> = { };
 	afterBlockParsingSteps: BlockType[] = [];
 	afterInlineSteps: InlineElementType[] = [];
 	globalCtx: MarkdownParserContext; // for caching of data which isn't restricted to a particular document
 
-	addExtensionBlocks(traits: AnyBlockTraits, position: "first" | "last"): void;
+	addExtensionBlocks(traits: AnyBlockTraits, position: "first" | "last" | "silent"): void; // "silent" means the block doesn't go into the main block try order; it's probably meant for use in some custom try order
 	addExtensionBlocks(traits: AnyBlockTraits, position: "before" | "after", before_after: BlockType): void;
-	addExtensionBlocks(traits: AnyBlockTraits, position: "first" | "before" | "after" | "last", before_after?: BlockType): void {
+	addExtensionBlocks(traits: AnyBlockTraits, position: "first" | "before" | "after" | "last" | "silent", before_after?: BlockType): void {
 		const type = traits.blockType;
-		if((position === "first" || position === "last") != !before_after)
+		if((position === "first" || position === "last" || position === "silent") != !before_after)
 			throw new Error('Wrong input for addExtensionBlocks');
 
 		if(traits.processingStep && !this.afterBlockParsingSteps.some(t => t === type))
@@ -151,6 +160,8 @@ export class MarkdownParserTraits {
 		}
 		this.blockTraitsList[type] = traits;
 
+		if(position === "silent")
+			return;
 		if(position === "first") {
 			position = "after";
 			before_after = "emptySpace";
@@ -197,7 +208,7 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 		this.localCtx  = {
 			linkDefs: { }
 		}; // TODO!!
-		this.blockParserProvider = new BlockParserProvider(this.MDPT, this); // TODO!!
+		this.blockParserProvider = new BlockParserProvider(this.MDPT, this);
 
 		this.MDPT.updateStartCharMaps();
 	}
@@ -223,7 +234,7 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 	processDocument(input: string): Promise<AnyBlock[]> {
 		this.reset();
 		const LLs = linify(input, false); // TODO!!
-        const blocks = this.processContent(LLs[0]);
+        const blocks = this.processContent(LLs[0], undefined);
         collectLists(blocks);
 		return this.processAfterBlockParsing().then(() => {
 			blocks.forEach(B => {
@@ -237,13 +248,12 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 
 	startBlock   = startBlock;
 	processLine  = processLine;
-	processLines = processLines;
 
-	processContent(LL: LogicalLine_with_cmt): AnyBlock[] {
+	processContent(LL: LogicalLine_with_cmt, tryOrderName: string | undefined): AnyBlock[] {
 		this.blocks = [];
 		let LL0: LogicalLine_with_cmt | null = LL;
 		while(LL0) {
-			const P = this.processLines(LL0, null, { container: this,  curParser: null,  generator: null });
+			const P: ParseState = processLines.call(this, LL0, null, { tryOrderName,  container: this,  curParser: null,  generator: null });
 			if(this.diagnostics)    console.log(`Coming out of parsing with open block`, P.curParser?.type, P.curParser?.getCheckpoint());
 			LL0 = (P.curParser?.finish()?.next || null);
 		}
@@ -286,21 +296,31 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 		return !!((traits && "isContainer" in traits && traits.isContainer) || false);
 	}
 
-	makeParser<K extends BlockType>(type: K, ctx: ParsingContext) {
+	makeParser<K extends BlockType>(type: K, PP: BlockParserProvider) {
 		const traits = this.MDPT.blockTraitsList[type] as BlockTraits<K> | undefined;
 		if(!traits)
 			throw new Error(`Missing block parser traits for block type "${type}"`)
 		if(traits.creator)
-			return traits.creator(ctx, type);
+			return traits.creator(PP, type);
 
 		// No individual parser creator function found -> use the default version
 		if(this.isContainerType(type))
-			return new BlockParser_Container<typeof type>(ctx, type, traits as BlockTraits_Container<typeof type>);
+			return new BlockParser_Container<typeof type>(PP, type, traits as BlockTraits_Container<typeof type>);
 		else
-			return new BlockParser_Standard<K>(ctx, type, traits);
+			return new BlockParser_Standard<K>(PP, type, traits);
 	}
 
-	blockParserProvider: BlockParserProvider;
+	private blockParserProvider: BlockParserProvider;
+	customBlockParserProviders: Record<string, BlockParserProvider> = {};
+	getBlockParserProvider(tryOrderName: string | undefined) {
+		if(!tryOrderName)
+			return this.blockParserProvider;
+		let PP = this.customBlockParserProviders[tryOrderName];
+		if(PP)
+			return PP;
+		return (this.customBlockParserProviders[tryOrderName] = new BlockParserProvider(this.MDPT, this, tryOrderName));
+	}
+
 	addContentBlock<K extends BlockType>(B: BlockBase<K>) { this.blocks.push(B as AnyBlock); }
 	blocks: AnyBlock[] = [];
 	blockContainerType = "MarkdownParser" as const;
@@ -321,7 +341,7 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 
 export function startBlock(this: MarkdownParser, ctx: ParseState, LL: LogicalLine_with_cmt, interrupting?: BlockType): ParseState {
 	if(!ctx.generator)
-		ctx.generator = this.blockParserProvider.mainBlocks(ctx.container);
+		ctx.generator = this.getBlockParserProvider(ctx.tryOrderName).mainBlocks(ctx.container);
 
 	let I: IteratorResult<BlockParser, any> | undefined;
 	while(!(I = ctx.generator.next()).done) {
@@ -344,14 +364,16 @@ export function startBlock(this: MarkdownParser, ctx: ParseState, LL: LogicalLin
 
 
 export function processLine(this: MarkdownParser, PP: ParseState, LL: LogicalLine_with_cmt): ParseState {
-	const { container, curParser, generator } = PP;
+	const { tryOrderName, container, curParser, generator } = PP;
 	PP.retry = undefined;
 	if(this.diagnostics)    console.log(`  processLine ${LLinfo(LL)} in ${container.blockContainerType} ${curParser ? `continuing <${curParser.type}>` : 'starting a new block'}`);
 
 	if(!curParser) { // start a new block
 		this.startBlock(PP, LL);
-		if(!PP.curParser)
-			throw new Error(`Line ${LL.lineIdx} doesn't belong to any block, that's not possible!`)
+		if(!PP.curParser) {
+			const s = lineContent(LL);
+			throw new Error(`Line ${LL.lineIdx} doesn't belong to any block, that's not possible!  Content "${s.length > 32 ? s.slice(0, 32) + ' ...' : s}"`);
+		}
 		return PP;
 	}
 
@@ -362,20 +384,21 @@ export function processLine(this: MarkdownParser, PP: ParseState, LL: LogicalLin
 	case "end": // current block cannot continue in this line, i.e. it ends on its own
 		{
 			const LLD_last = curParser.finish();
-			return { container,  retry: LLD_last.next! as LogicalLine,  curParser: null,  generator: null }; // will start a new block in the current line
+			return { tryOrderName,  container,  retry: LLD_last.next! as LogicalLine,  curParser: null,  generator: null }; // will start a new block in the current line
 		}
 	case "last":
 		curParser.acceptLine(LL, bct, 0);
 		curParser.finish();
-		return { container,  curParser: null,  generator: null }; // will start a new block in the next line
+		return { tryOrderName,  container,  curParser: null,  generator: null }; // will start a new block in the next line
 	case "reject":
 		if(curParser.isInterruption)
 			throw new Error('Problem! Rejecting a block that interrupted another block is a bit too much in terms of backtracking, so we don\'t allow that.');
 		// schedule backtracking:
-		return { container,  retry: curParser.getCheckpoint() || curParser.startLine!,  curParser: null,  generator };
+		return { tryOrderName,  container,  retry: curParser.getCheckpoint() || curParser.startLine!,  curParser: null,  generator };
 	case "soft": // it's a soft continuation, which means it's possible that the next block begins here, interrupting the current one
 		{
-			const P1 = this.startBlock({ container,  curParser: null,  generator: this.blockParserProvider.interrupters(curParser) }, LL, curParser.type).curParser;
+			const generator = this.getBlockParserProvider(tryOrderName).interrupters(curParser)
+			const P1 = this.startBlock({ tryOrderName,  container,  curParser: null,  generator }, LL, curParser.type).curParser;
 			if(P1) {
 				curParser.finish();
 				PP.curParser = P1;
@@ -396,7 +419,7 @@ export function processLine(this: MarkdownParser, PP: ParseState, LL: LogicalLin
 
 
 
-export function processLines(this: MarkdownParser, LL0: LogicalLine_with_cmt, LL1: LogicalLine_with_cmt | null, PP: ParseState) {
+function processLines(this: MarkdownParser, LL0: LogicalLine_with_cmt, LL1: LogicalLine_with_cmt | null, PP: ParseState) {
 	let curLL: LogicalLine_with_cmt | null = LL0;
 	while(curLL && curLL !== LL1) {
 		PP = this.processLine(PP, curLL);

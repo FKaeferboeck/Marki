@@ -33,7 +33,13 @@ export class InlineParserProvider {
             return traits.creator(ctx);
         else
             return new InlineParser_Standard(ctx, traits);
+    }
 
+    getDelimiterTraits(delim_name: string): DelimiterTraits {
+        const traits = this.delims[delim_name] || this.parent?.getDelimiterTraits(delim_name);
+        if(!traits)
+            throw new Error(`Failed to acquire traits for delimiter "${delim_name}"`);
+        return traits;
     }
     
     makeStartCharMap() {
@@ -72,7 +78,7 @@ export class InlineParsingContext {
     startCharMap:     Record<string, (InlineElementType | DelimiterTraits)[]>;
     delimFollowerMap: Record<string,  InlineElementType[]> = { };
     delimiterStack: Delimiter_nestable[] = [];
-    curDelimClosingStartChar: string | false = ''; // false signifies a delimiter ending at EOL
+    curDelimClosingStartChar: string | false = ''; // false signifies a delimiter ending at end-of-block
     ctx: ParsingContext
 
     constructor(provider: InlineParserProvider, ctx: ParsingContext) {
@@ -101,9 +107,7 @@ export class InlineParsingContext {
                 if(this.curDelimClosingStartChar && this.curDelimClosingStartChar === c) {
                     It.setCheckPoint(checkpoint1);
                     const curOpenDelimiter = this.delimiterStack[this.delimiterStack.length - 1];
-                    const curOpenDelimiterTraits = this.provider.delims[curOpenDelimiter.type];
-                    if(!curOpenDelimiterTraits)
-                        throw new Error(`Failed to acquire traits for currently open delimiter "${curOpenDelimiter.type}"`)
+                    const curOpenDelimiterTraits = this.provider.getDelimiterTraits(curOpenDelimiter.type);
                     found = inlineParse_try.call(this, curOpenDelimiterTraits, curOpenDelimiter, It, buf, checkpoint, checkpoint1);
                     if(found && this.delimFollowerMap[curOpenDelimiter.type]) { // open delimiter successfully closed, now we'll look if it has a delimiter follower
                         It.setCheckPoint(checkpoint1);
@@ -136,13 +140,11 @@ export class InlineParsingContext {
             It.pop();
         } // while
 
-        if(this.curDelimClosingStartChar === false) {
+        if(this.curDelimClosingStartChar === false || this.curDelimClosingStartChar === '\n') {
             It.setCheckPoint(checkpoint1);
             const curOpenDelimiter = this.delimiterStack[this.delimiterStack.length - 1];
-            const curOpenDelimiterTraits = this.provider.delims[curOpenDelimiter.type];
-            if(!curOpenDelimiterTraits)
-                throw new Error(`Failed to acquire traits for currently open delimiter "${curOpenDelimiter.type}"`);
-            // With a closing delimiter that is EOL there's not much to check, but there might be lookbehinds:
+            const curOpenDelimiterTraits = this.provider.getDelimiterTraits(curOpenDelimiter.type);
+            // With a closing delimiter that is end-of-block there's not much to check, but there might be lookbehinds:
             let found = inlineParse_try.call(this, curOpenDelimiterTraits, curOpenDelimiter, It, buf, checkpoint, checkpoint1);
             if(found && this.delimFollowerMap[curOpenDelimiter.type]) { // open delimiter successfully closed, now we'll look if it has a delimiter follower
                 It.setCheckPoint(checkpoint1);
