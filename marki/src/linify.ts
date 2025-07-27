@@ -66,11 +66,12 @@ export const isSpaceLine = (LL: LogicalLine_with_cmt): LL is LogicalLine_emptyis
 export const lineContent = (LL: LogicalLine_with_cmt) => (LL.type === "text" ? LL.content : '');
 
 
-export function linify(text: string, makeCommentLines: boolean): LogicalLine_with_cmt[] {
+export function linify(text: string, makeCommentLines: boolean, link_together = true): LogicalLine_with_cmt[] {
     const A = linify_(text, makeCommentLines, { line: 0,  character: 0 }, false);
-    for(let i = 1, iN = A.length;  i < iN;  ++i) {
-        A[i - 1].next = A[i];
-    }
+    if(link_together)
+        for(let i = 1, iN = A.length;  i < iN;  ++i) {
+            A[i - 1].next = A[i];
+        }
     return A;
 }
 

@@ -237,8 +237,6 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
         const blocks = this.processContent(LLs[0], undefined);
         collectLists(blocks);
 		return this.processAfterBlockParsing().then(() => {
-			const BBB: any[] = [];
-			blocks.filter(B => B.type === "ext_sds_pseudocodeSection").forEach(B => BBB.push(... (B as any).blocks))
 			blocks.forEach(B => {
 				this.processBlock(B, this);
 				if(B.inlineContent)

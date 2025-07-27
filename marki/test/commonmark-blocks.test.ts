@@ -158,7 +158,7 @@ describe('setext headings', () => {
     doTest(90, `Foo\\\n----`); // Nor does a backslash at the end
     doTest(91, `\`Foo\n----\n\`\n\n<a title="a lot\n---\nof dashes"/>`); // indicators of block structure take precedence over indicators of inline structure
     doTest(92, `> Foo\n---`); // The setext heading underline cannot be a lazy continuation line in a list item or block quote
-    doTest(93, `> foo\nbar\nQ===`);
+    doTest(93, `> foo\nbar\n===`);
     doTest(94, `- Foo\n---`);
     doTest(95, `Foo\nBar\n---`); // multiline heading content
     doTest(96, `---\nFoo\n---\nBar\n---\nBaz`); // a blank line is not required before or after setext headings

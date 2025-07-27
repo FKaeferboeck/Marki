@@ -163,11 +163,8 @@ export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits e
 		// We prepare the content part of the line for acceptance, even if we don't accept it right away due to checkpoint (and perhaps never will)
 		// This way when the next checkpoint arrives we have the pending content lines in the linked list.
 		// continuing lines inside block containers are already enqueued during continues().
-		if((this.blockContainerType !== "containerBlock" /*|| bct === "start"*/) && !(bct === "last" && !this.traits.lastIsContent)) {
-			if(this.traits.trimLeadingContentSpace)
-				prefix_length = Math.max(prefix_length, LL.indent);
+		if((this.blockContainerType !== "containerBlock") && !(bct === "last" && !this.traits.lastIsContent))
 			this.enqueueContentSlice(LL, prefix_length, bct);
-		}
 
 		if(this.checkpoint && LL.lineIdx > this.checkpoint.lineIdx)
 			return;
@@ -314,7 +311,7 @@ export class BlockParser_Container<K extends BlockType_Container = BlockType_Con
     addContentBlock<K extends BlockType>(B: BlockBase<K>) { this.B.blocks.push(B as AnyBlock); }
 
     acceptLine(LL: LogicalLine, bct: BlockContinuationType | "start") {
-		if(!this.traits.acceptLineHook?.call(this, LL, bct))
+		if(this.traits.acceptLineHook?.call(this, LL, bct) === false)
 			return;
 		// an accepted soft continuation of a container block means an unprefixed soft continuation of the same line as content (which is a paragraph)
 		// contents of hard continuations have already been accepted during continues()

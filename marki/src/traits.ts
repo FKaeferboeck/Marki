@@ -52,7 +52,6 @@ export interface BlockTraits<T extends BlockType = ExtensionBlockType, B extends
     inlineProcessing?: boolean | ((this: ParsingContext, block: AnyBlock) => void); // default true
     lastIsContent?: boolean; // if a line is continuation type "last" it will still be added to the block content - default false
     canSelfInterrupt?: boolean; // list items do that
-    trimLeadingContentSpace?: boolean;
     creator?: (PP: BlockParserProvider, type: T) => BlockParser<T>;
     defaultBlockInstance: B;
 }

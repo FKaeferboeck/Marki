@@ -1,11 +1,10 @@
-import { renderInline } from "src/renderer/inline-renderer.js";
-import { reassembleContent } from "../delimiter-processing.js";
+import { renderInline } from "../renderer/inline-renderer.js";
 import { makeInlineContext_minimal } from "../inline-parsing-context.js";
 import { isSpaceLine, sliceLine, standardBlockStart } from "../linify.js";
 import { AnyInline } from "../markdown-types.js";
 import { makeBlockTraits } from "../traits.js";
 import { makeBlockContentIterator } from "../util.js";
-import { getInlineRenderer_plain } from "src/renderer/utility-renderers.js";
+import { getInlineRenderer_plain } from "../renderer/utility-renderers.js";
 
 
 export interface FencedBlock {
