@@ -251,6 +251,8 @@ export class BlockParser_Container<K extends BlockType_Container = BlockType_Con
         const n0 = super.beginsHere(LL, interrupting);
 		if(n0 < 0)
 			return n0;
+		if(this.traits.acceptLineHook?.call(this, LL, "start") === false)
+			return n0;
 		const LLD_c = this.enqueueContentSlice(LL, n0);
         this.curContentParser = this.MDP.processLine({ tryOrderName: this.contentParserTryOrder,  container: this,  curParser: null,  generator: null }, LLD_c);
         if(!this.curContentParser.curParser)
@@ -345,6 +347,7 @@ export class BlockParser_EmptySpace extends BlockParser_Standard<"emptySpace"> {
             return -1;
         this.B.lineIdx  = LL.lineIdx;
         this.B.logical_line_extent = 1;
+		this.B.content = LL;
 		//this.MDP.blockParserProvider.release(this);
 		this.PP.release(this);
         return 0;

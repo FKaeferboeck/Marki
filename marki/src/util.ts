@@ -130,7 +130,7 @@ export interface BlockContentIterator {
     // It can also point to the beginning of a line, then that line's prefix is returned.
     getPrefixSpace(): string;
 
-    stateInfo(): void;
+    stateInfo(): string;
 }
 
 
@@ -443,9 +443,7 @@ export function makeBlockContentIterator(LL: LogicalLine, singleLine: boolean = 
             return (LL1.prefix || '');
         },
 
-        stateInfo() {
-            console.log(`[Line ${H.idx} "${H.type}" ${H.type === "comment" ? `(${H.cmt_subrow}) ` : ''}char ${char_idx}]`)
-        }
+        stateInfo() { return `[Line ${H.idx} "${H.type}" ${H.type === "comment" ? `(${H.cmt_subrow}) ` : ''}char ${char_idx}]`; }
     };
     return It;
 }

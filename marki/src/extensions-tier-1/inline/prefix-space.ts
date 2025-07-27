@@ -11,7 +11,6 @@ export const ext_tier1_prefix_space_traits: InlineElementTraits<typeof name_line
     startChars: [ '\n' ],
 
     parse(It, B) {
-        console.log('Parse prefix space')
         const pfx = It.getPrefixSpace();
         if(!pfx)
             return false;

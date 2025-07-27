@@ -109,15 +109,22 @@ export class InlineParsingContext {
                     const curOpenDelimiter = this.delimiterStack[this.delimiterStack.length - 1];
                     const curOpenDelimiterTraits = this.provider.getDelimiterTraits(curOpenDelimiter.type);
                     found = inlineParse_try.call(this, curOpenDelimiterTraits, curOpenDelimiter, It, buf, checkpoint, checkpoint1);
-                    if(found && this.delimFollowerMap[curOpenDelimiter.type]) { // open delimiter successfully closed, now we'll look if it has a delimiter follower
-                        It.setCheckPoint(checkpoint1);
-                        for(const t of this.delimFollowerMap[curOpenDelimiter.type]) {
-                            if(inlineParse_try.call(this, t, curOpenDelimiter, It, buf, checkpoint, checkpoint1)) {
-                                found = true;
-                                break;
+                    if(found) { // open delimiter successfully closed
+                        if(this.delimFollowerMap[curOpenDelimiter.type]) { // now we'll look if it has a delimiter follower
+                            It.setCheckPoint(checkpoint1);
+                            for(const t of this.delimFollowerMap[curOpenDelimiter.type]) {
+                                if(inlineParse_try.call(this, t, curOpenDelimiter, It, buf, checkpoint, checkpoint1)) {
+                                    found = true;
+                                    break;
+                                }
                             }
                         }
+                        /*if(c === '\n') { // EOL end delimiters do not consume the line break, it can be used by other delimiters/inline elements
+                            console.log(`Do again with \\n: [${It.peek()}]`)
+                            continue;
+                        }*/
                     }
+
                 }
                 if(!found && this.startCharMap[c]) {
                     It.setCheckPoint(checkpoint1);
@@ -173,7 +180,7 @@ function inlineParse_try(this: InlineParsingContext, t: InlineElementType | Deli
                          It: BlockContentIterator, buf: InlineContent, checkpoint: InlinePos, checkpoint1: InlinePos)
 {
     let elt: InlineElement<InlineElementType> | Delimiter | false = false;
-    if(typeof t === "string") {
+    if(typeof t === "string") { // == InlineElementType
         const P = this.provider.getInlineParser(t, this.ctx, openDelim);
         if(openDelim) {
             P.setBuf(buf);

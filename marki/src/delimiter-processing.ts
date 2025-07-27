@@ -52,9 +52,11 @@ export function parseDelimiter(context: InlineParsingContext, It: BlockContentIt
     let delim: false | Delimiter = false;
     if(toClose) {
         let endDelim: string | false = false;
-        if(!T.parseCloser)
-            endDelim = It.pop(); // skip the closing delimiter (it's assumed to be a single character when parseCloser() is not defined)
-        else if(!(endDelim = T.parseCloser(It, checkpoint1)))
+        if(!T.parseCloser) {
+            // skip the closing delimiter (it's assumed to be a single character when parseCloser() is not defined)
+            if(!(endDelim === false || endDelim === '\n')) // EOL delimiters don't get consumed as end delimiters unless we really want to via parseCloser()
+                endDelim = It.pop();
+        } else if(!(endDelim = T.parseCloser(It, checkpoint1)))
             return false;
         // opening and closing delimiter get double-linked
         delim = {
