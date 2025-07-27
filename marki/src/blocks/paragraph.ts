@@ -24,6 +24,6 @@ export const paragraph_traits = makeBlockTraits("paragraph", {
 
     allowSoftContinuations: true,
     allowCommentLines: true,
-    trimLeadingContentSpace: true,
+    trimLeadingContentSpace: false,
     defaultBlockInstance: { }
 });

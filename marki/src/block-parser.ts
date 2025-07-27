@@ -14,7 +14,7 @@ import { listItem_traits } from './blocks/listItem.js';
 import { BlockParserProvider, MarkdownParser, ParseState } from './markdown-parser.js';
 import { linkDef_traits } from './blocks/linkDef.js';
 import { htmlBlock_traits } from './blocks/html-block.js';
-import { isSpaceLine, LogicalLine, LogicalLine_with_cmt, sliceLine } from './linify.js';
+import { isSpaceLine, LogicalLine, LogicalLine_text, LogicalLine_with_cmt, sliceLine } from './linify.js';
 
 
 export const standardBlockTryOrder = [
@@ -314,6 +314,8 @@ export class BlockParser_Container<K extends BlockType_Container = BlockType_Con
     addContentBlock<K extends BlockType>(B: BlockBase<K>) { this.B.blocks.push(B as AnyBlock); }
 
     acceptLine(LL: LogicalLine, bct: BlockContinuationType | "start") {
+		if(!this.traits.acceptLineHook?.call(this, LL, bct))
+			return;
 		// an accepted soft continuation of a container block means an unprefixed soft continuation of the same line as content (which is a paragraph)
 		// contents of hard continuations have already been accepted during continues()
 		if(bct === "soft")

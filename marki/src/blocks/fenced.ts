@@ -1,9 +1,11 @@
+import { renderInline } from "src/renderer/inline-renderer.js";
 import { reassembleContent } from "../delimiter-processing.js";
 import { makeInlineContext_minimal } from "../inline-parsing-context.js";
 import { isSpaceLine, sliceLine, standardBlockStart } from "../linify.js";
 import { AnyInline } from "../markdown-types.js";
 import { makeBlockTraits } from "../traits.js";
 import { makeBlockContentIterator } from "../util.js";
+import { getInlineRenderer_plain } from "src/renderer/utility-renderers.js";
 
 
 export interface FencedBlock {
@@ -35,7 +37,8 @@ export const fenced_traits = makeBlockTraits("fenced", {
             const context = makeInlineContext_minimal(this);
             context.inlineParseLoop(It_info, B.info_string);
 
-            const info = reassembleContent(B.info_string, this);
+            //const info = reassembleContent(B.info_string, this);
+            const info = renderInline(B.info_string, getInlineRenderer_plain(this))
             B.language = /^\S+/.exec(info)?.[0] || undefined;
         }
 

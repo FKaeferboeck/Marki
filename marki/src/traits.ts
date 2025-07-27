@@ -3,7 +3,7 @@ import { InlineParser } from "./inline-parser.js";
 import { InlineParserProvider, InlineParsingContext } from "./inline-parsing-context.js";
 import { LogicalLine, LogicalLine_with_cmt } from "./linify.js";
 import { BlockParserProvider, MarkdownParserTraits } from "./markdown-parser.js";
-import { BlockType, ExtensionBlockType, BlockType_Container, Block, InlineElementType, ExtensionInlineElementType, InlineElement, InlinePos, BlockIndividualData, Delimiter, Delimiter_nestable, Block_Extension, AnyBlock, InlineElementBase } from "./markdown-types.js";
+import { BlockType, ExtensionBlockType, BlockType_Container, Block, InlineElementType, ExtensionInlineElementType, InlineElement, InlinePos, BlockIndividualData, Delimiter, Delimiter_nestable, Block_Extension, AnyBlock, InlineElementBase, Block_Container_Extension } from "./markdown-types.js";
 import { BlockContentIterator } from "./util.js";
 
 
@@ -81,7 +81,7 @@ export interface BlockTraits_Container<T extends BlockType_Container | Extension
 {
     isContainer: true;
     contentParserTryOrder?: string | undefined;
-    customChildParser?: (block: Block<T> & B, i: number, ctx: ParsingContext) => InlineParserProvider | undefined;
+    customChildParser?: (block: Block_Container_Extension<T> & B, i: number, ctx: ParsingContext) => InlineParserProvider | undefined;
     creator?: (PP: BlockParserProvider, type: T) => (T extends BlockType_Container ? BlockParser_Container<T> : never);
     defaultBlockInstance: B;
 }

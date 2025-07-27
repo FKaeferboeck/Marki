@@ -125,6 +125,11 @@ export interface BlockContentIterator {
     goToEnd(): void;
     getPosition(P: InlinePos, n?: number): boolean; // extract current position, optionally with an offset
 
+    // Ordinarily line indentation spaces are skipped during inline processing. However for special effects we may want to retrieve them and make inline elements from them.
+    // This method assumes that the iterator points to an EOL \n; if so it returns the indentation space (prefix) of the following line.
+    // It can also point to the beginning of a line, then that line's prefix is returned.
+    getPrefixSpace(): string;
+
     stateInfo(): void;
 }
 
@@ -422,6 +427,20 @@ export function makeBlockContentIterator(LL: LogicalLine, singleLine: boolean = 
             P.char_idx = shiftIntoView(H1, offset);
             P.LL = LLs[H.idx];
             return true;
+        },
+
+        getPrefixSpace() {
+            if(!(char_idx === 0 || (char_idx === curPartLength - 1 && curPart[char_idx])))    return '';
+            const H1: LineHandle = { ... H };
+            //console.log(JSON.stringify(H1), char_idx, LLs[H.idx].type)
+            if(H1.type === "EOL")
+                nextLine(LLs, H1, skip_cmt_lines);
+            const LL1 = LLs[H1.idx];
+            //console.log('->', JSON.stringify(H1), char_idx, LL1.type, (LL1 as LogicalLine_text).indent, `[${(LL1 as LogicalLine_text).content}]`)
+            //console.log(LL1)
+            if(LL1.type === "comment")
+                return '';
+            return (LL1.prefix || '');
         },
 
         stateInfo() {

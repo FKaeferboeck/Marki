@@ -73,8 +73,9 @@ export type BlockIndividualData<K extends BlockType = ExtensionBlockType>
 	   K extends BlockType_Leaf      ? BlockTypeMap_Leaf[K] : { });
 
 export type Block_Leaf     <K extends BlockType_Leaf>      = BlockBase<K> & BlockTypeMap_Leaf[K];
-export type Block_Container<K extends BlockType_Container> = BlockBase<K> & BlockTypeMap_Container[K] & BlockBase_Container_additions;
+export type Block_Container<K extends BlockType_Container> = BlockBase<K> & BlockBase_Container_additions & BlockTypeMap_Container[K];
 export type Block_Extension                                = BlockBase<ExtensionBlockType>;
+export type Block_Container_Extension<K extends BlockType_Container | ExtensionBlockType> = BlockBase<K> & BlockBase_Container_additions & (K extends BlockType_Container ? BlockTypeMap_Container[K] : {});
 
 export type Block<K extends BlockType> = (K extends BlockType_Container ? Block_Container<K> :
 	                                      K extends BlockType_Leaf      ? Block_Leaf<K> :

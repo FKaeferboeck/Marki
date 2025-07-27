@@ -12,5 +12,26 @@
 			],
 			"autoAttachChildProcesses": true
 		},
+		{
+			"type": "node",
+			"request": "launch",
+			"name": "Marki debug",
+			//"runtimeArgs": [ "-r", "${workspaceFolder}/marki/node_modules/ts-node/register" ],
+			"runtimeArgs": [ "--loader", "${workspaceFolder}/marki/node_modules/ts-node/esm" ],
+			"cwd": "${workspaceFolder}/marki",
+			"skipFiles": ["<node_internals>/**"],
+			"program": "${workspaceFolder}/marki/test/debug.ts"
+		},
+		{
+			"type": "node",
+			"request": "launch",
+			"name": "Marki debug 2",
+			"cwd": "${workspaceFolder}/marki",
+			"skipFiles": ["<node_internals>/**"],
+			"program": "${workspaceFolder}/marki/test/debug.ts",
+			"preLaunchTask": "tsc: build - tsconfig.json",
+			"outFiles": ["${workspaceFolder}/marki/dist/**/*.js"],
+			"runtimeArgs": ["-r", "${workspaceFolder}/marki/node_modules/ts-node/register"]
+		}
     ]
 }

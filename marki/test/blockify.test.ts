@@ -30,7 +30,7 @@ const ignored_props = { type: true,  logical_line_start: true,  logical_line_ext
 
 function blocks_check(blocks: AnyBlock[]) {
     return blocks.map(B => {
-        const X = { type: B.type,  range: [ B.logical_line_start, B.logical_line_extent ] };
+        const X = { type: B.type,  range: [ B.lineIdx, B.logical_line_extent ] };
         for(const k of Object.keys(B).filter(k => !ignored_props[k]))
             X[k] = B[k];
         if(isContainer(B) && B.blocks.length > 0)
@@ -47,7 +47,7 @@ function doTest(title: string, input: string, target_: { type: BlockType,  exten
         parser.diagnostics = verbose || false;
         const LLs     = linify(input, false);
         const target  = resultMaker(target_);
-        const blocks  = parser.processContent(LLs[0]);
+        const blocks  = parser.processContent(LLs[0], undefined);
         const blocks_ = blocks_check(blocks);
         if(verbose) {
             console.log(blocks)

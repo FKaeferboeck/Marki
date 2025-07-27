@@ -1,25 +1,25 @@
 import { describe, expect, test } from 'vitest'
-import { Renderer} from '../src/renderer/renderer';
 import * as commonmark from 'commonmark';
 import { collectLists, listItem_traits } from '../src/blocks/listItem';
 import { MarkdownParser } from '../src/markdown-parser';
 import { pairUpDelimiters } from '../src/delimiter-processing';
 import { linify } from '../src/linify';
+import { MarkdownRendererInstance } from '../src/renderer/renderer';
 
 // As of 2025-03-12 Vitest suddenly isn't able any more to import listItem on its own. Luckily we can repair it like this.
 //standardBlockParserTraits.listItem = listItem_traits;
 
 const parser = new MarkdownParser();
-const renderer = new Renderer();
+const renderer = new MarkdownRendererInstance(parser);
 
 var commonmark_reader = new commonmark.Parser();
 var commonmark_writer = new commonmark.HtmlRenderer();
 
-const clearify = (s: string) => s.replaceAll('\t', '[\\t]');
+const clearify = (s: string) => s.replace(/\t/g, '[\\t]');
 
 export function doTest(idx: number | string, input: string) {
-    test('' + idx, () => {
-        const blocks = parser.processDocument(input);
+    test('' + idx, async () => {
+        const blocks = await parser.processDocument(input);
         const my_result = clearify(renderer.referenceRender(blocks));
 
         const commonmark_parsed = commonmark_reader.parse(input);
@@ -158,7 +158,7 @@ describe('setext headings', () => {
     doTest(90, `Foo\\\n----`); // Nor does a backslash at the end
     doTest(91, `\`Foo\n----\n\`\n\n<a title="a lot\n---\nof dashes"/>`); // indicators of block structure take precedence over indicators of inline structure
     doTest(92, `> Foo\n---`); // The setext heading underline cannot be a lazy continuation line in a list item or block quote
-    doTest(93, `> foo\nbar\n===`);
+    doTest(93, `> foo\nbar\nQ===`);
     doTest(94, `- Foo\n---`);
     doTest(95, `Foo\nBar\n---`); // multiline heading content
     doTest(96, `---\nFoo\n---\nBar\n---\nBaz`); // a blank line is not required before or after setext headings

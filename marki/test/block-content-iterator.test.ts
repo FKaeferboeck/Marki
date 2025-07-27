@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { linify, LogicalLine, LogicalLine_comment, LogicalLine_with_cmt, sliceLine } from "../src/linify";
+import { linify, LogicalLine } from "../src/linify";
 import { makeBlockContentIterator } from "../src/util";
 
 const text0 = `Line 1
