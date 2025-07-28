@@ -119,10 +119,6 @@ export class InlineParsingContext {
                                 }
                             }
                         }
-                        /*if(c === '\n') { // EOL end delimiters do not consume the line break, it can be used by other delimiters/inline elements
-                            console.log(`Do again with \\n: [${It.peek()}]`)
-                            continue;
-                        }*/
                     }
 
                 }

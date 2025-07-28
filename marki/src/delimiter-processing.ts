@@ -51,7 +51,7 @@ function checkEmphDelimiterContext(D: Delimiter_emph, T: DelimiterTraits, It: Bl
 export function parseDelimiter(context: InlineParsingContext, It: BlockContentIterator, checkpoint1: InlinePos, T: DelimiterTraits, toClose: Delimiter_nestable | undefined,) {
     let delim: false | Delimiter = false;
     if(toClose) {
-        let endDelim: string | false = false;
+        let endDelim: string | false = toClose.endDelimStartChar || false;
         if(!T.parseCloser) {
             // skip the closing delimiter (it's assumed to be a single character when parseCloser() is not defined)
             if(!(endDelim === false || endDelim === '\n')) // EOL delimiters don't get consumed as end delimiters unless we really want to via parseCloser()
