@@ -1,7 +1,7 @@
 import { ParsingContext } from "../block-parser.js";
 import { lineContent, LogicalLine_with_cmt, shiftCol } from "../linify.js";
 import { AnyBlock, Block, BlockType } from "../markdown-types.js";
-import { InlineHandlerList, InlineRenderer as InlineRendererInstance } from "./inline-renderer.js";
+import { DelimRenderHandler, InlineHandlerList, InlineRenderer as InlineRendererInstance, InlineRenderHandler } from "./inline-renderer.js";
 import { markdownRendererTraits_standard } from "./renderer-standard.js";
 import { actualizeTab, escapeXML } from "./util.js";
 
@@ -26,9 +26,8 @@ export interface LanguageRenderer {
 }
 
 
-export interface MarkdownRendererTraits {
+export interface MarkdownRendererTraits extends InlineRenderHandler {
     blockHandler:  BlockHandlerList;
-    inlineHandler: InlineHandlerList;
     customLanguageRenderer: Record<string, LanguageRenderer>;
 }
 
@@ -37,16 +36,19 @@ export class MarkdownRendererInstance implements MarkdownRendererTraits {
     inlineRenderer: InlineRendererInstance;
     ctx: ParsingContext;
     blockHandler:  BlockHandlerList;
-    inlineHandler: InlineHandlerList;
+    elementHandlers: InlineHandlerList;
+    delimHandlers: Record<string, DelimRenderHandler>;
+
     customLanguageRenderer: Record<string, LanguageRenderer>;
 
     constructor(ctx: ParsingContext, traits?: MarkdownRendererTraits) {
         this.ctx = ctx;
         traits ||= markdownRendererTraits_standard;
         this.blockHandler           = traits.blockHandler;
-        this.inlineHandler          = traits.inlineHandler;
+        this.elementHandlers        = traits.elementHandlers;
+        this.delimHandlers          = traits.delimHandlers;
         this.customLanguageRenderer = traits.customLanguageRenderer;
-        this.inlineRenderer = new InlineRendererInstance(this.inlineHandler, ctx); // TODO!!
+        this.inlineRenderer = new InlineRendererInstance(this, ctx); // TODO!!
     }
 
     referenceRender(content: AnyBlock[], verbose?: boolean, appendSpace: boolean = true) {

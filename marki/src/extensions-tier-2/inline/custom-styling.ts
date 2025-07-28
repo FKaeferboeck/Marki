@@ -53,7 +53,7 @@ export function register(MDPT: MarkdownParserTraits, MDR?: MarkdownRendererTrait
     MDPT.inlineParser_standard.traits['ext_tier2_custom_styling'] = ext_tier2_custom_styling_traits;
 
     if(MDR)
-        MDR.inlineHandler["ext_tier2_custom_styling"] = function(elt, I: Inserter, data, i, closing?: boolean) {
+        MDR.elementHandlers["ext_tier2_custom_styling"] = function(elt, I: Inserter, data, i, closing?: boolean) {
             const X = elt as InlineElement<"ext_tier2_custom_styling"> & CustomStyling;
             if(closing)
                 I.add(`</span>`);

@@ -81,7 +81,7 @@ export function register_SpecialSymbol(MDPT: MarkdownParserTraits, MDR?: Markdow
     MDPT.inlineParser_standard.traits[name] = ext_tier2_special_symbol_traits;
 
     if(MDR)
-        MDR.inlineHandler[name] = function(elt, I) {
+        MDR.elementHandlers[name] = function(elt, I) {
             const X = elt as InlineElement<name_t> & SpecialSymbol;
             I.add(X.showAs);
         };

@@ -1,6 +1,6 @@
 import { Block } from "../markdown-types.js";
 import { renderInline } from "./inline-renderer.js";
-import { MarkdownRendererTraits } from "./renderer.js";
+import { Inserter, MarkdownRendererTraits } from "./renderer.js";
 import { escapeXML, escapeXML_all, urlEncode, renderHTML_entity } from "./util.js";
 import { getInlineRenderer_plain } from "./utility-renderers.js";
 
@@ -11,6 +11,12 @@ function posInList(B: Block<"listItem">) {
     const C = B.parentList.contents;
     return { isFirst: B === C[0],
              isLast:  B === C[C.length - 1] };
+}
+
+
+const emph_renderer = (I: Inserter, direction: "open" | "close", _type: string, weight: number) => {
+    const tags = ['?', 'em', 'strong'];
+    I.add(`<${direction === "close" ? '/' : ''}${tags[weight]}>`);
 }
 
 
@@ -65,7 +71,7 @@ export const markdownRendererTraits_standard: MarkdownRendererTraits = {
         "htmlBlock":  function (B, I) { this.renderBlockContent(B, I, "literal"); }
     },
 
-    inlineHandler: {
+    elementHandlers: {
         "escaped":    (elt, I) => I.add(escapeXML(elt.character)),
         "codeSpan":   (elt, I) => I.add(`<code>${escapeXML(elt.content)}</code>`),
         "link":       function(elt, I) {
@@ -101,6 +107,11 @@ export const markdownRendererTraits_standard: MarkdownRendererTraits = {
             }
         },
         "rawHTML": (elt, I) => I.add(elt.tag)
+    },
+
+    delimHandlers: {
+        emph_asterisk:   emph_renderer,
+        emph_underscore: emph_renderer
     },
 
     customLanguageRenderer: { }

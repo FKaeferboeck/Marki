@@ -8,13 +8,22 @@ export type InlineHandlerList = Partial<{
     [K in InlineElementType]: (this: InlineRenderer, B: InlineElement<K>, ins: Inserter, data: InlineContent, i: number, closing?: boolean) => void | number;
 }>;
 
+export type DelimRenderHandler =  (I: Inserter, direction: "open" | "close", type: string, weight: number) => void;
 
-export class InlineRenderer {
-    inlineHandler: InlineHandlerList;
+export interface InlineRenderHandler {
+    elementHandlers: InlineHandlerList;
+    delimHandlers: Record<string, DelimRenderHandler>;
+}
+
+
+export class InlineRenderer implements InlineRenderHandler {
+    elementHandlers: InlineHandlerList;
+    delimHandlers: Record<string, DelimRenderHandler>
     ctx: ParsingContext;
 
-    constructor(inlineHandler: InlineHandlerList, ctx: ParsingContext) {
-        this.inlineHandler = inlineHandler;
+    constructor(IRH: InlineRenderHandler, ctx: ParsingContext) {
+        this.elementHandlers = IRH.elementHandlers;
+        this.delimHandlers   = IRH.delimHandlers;
         this.ctx = ctx;
     }
 
@@ -36,7 +45,7 @@ export class InlineRenderer {
                 this.renderDelimiter(I, delim, data, i);
                 break;
             case "anyI":
-                const H = this.inlineHandler[(elt as InlineElement<InlineElementType>).type];
+                const H = this.elementHandlers[(elt as InlineElement<InlineElementType>).type];
                 if(!H)
                     break;
                 (H as any).call(this, elt, I, data, i);
@@ -49,25 +58,20 @@ export class InlineRenderer {
     renderDelimiter(I: Inserter, delim: Delimiter, data: InlineContent, i: number) {
         if(isNestableDelimiter(delim)) {
             if(!delim.isOpener && delim.partnerDelim?.follower) { // closing delimiter of a follower-handled delimited section
-                const H = this.inlineHandler[delim.partnerDelim.follower.type];
+                const H = this.elementHandlers[delim.partnerDelim.follower.type];
                 (H as any).call(this, delim.partnerDelim.follower, I, data, i, true);
                 return;
             }
             I.add(delim.delim);
-            
             return; // TODO!!
         }
-        if(delim.closing?.actualized)
-            delim.closing.actualized.forEach(x => this.insertDelimiterTag(I, delim.type, x, true));
+        const H = this.delimHandlers[delim.type] || this.delimHandlers['*'] as DelimRenderHandler | undefined;
+        if(H && delim.closing?.actualized)
+            delim.closing.actualized.forEach(x => H(I, "close", delim.type, x));
         if(delim.remaining > 0)
             I.add(delim.delim.slice(0, delim.remaining));
-        if(delim.opening?.actualized)
-            delim.opening.actualized.forEach(x => this.insertDelimiterTag(I, delim.type, x, false));
-    }
-
-    insertDelimiterTag(I: Inserter, type: string, weight: number, closing: boolean) {
-        const tags = ['?', 'em', 'strong'];
-        I.add(`<${closing ? '/' : ''}${tags[weight]}>`);
+        if(H && delim.opening?.actualized)
+            delim.opening.actualized.forEach(x => H(I, "open", delim.type, x));
     }
 } // class InlineRenderer
 

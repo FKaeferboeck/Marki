@@ -26,4 +26,6 @@ describe('Tabular', () => {
     doTest(1, '|Head 1|Head 2|\n|-|><|-><-|-|\n|C1|C2|\nafterwards',
     '<table>\n<thead>\n  <tr><th>Head 1</th><th>Head 2</th></tr>\n</thead>\n<tbody>\n  <tr><td>C1</td><td class="c">C2</td></tr>\n</tbody>\n</table>\n<p>afterwards</p>\n');
 
+    doTest(2, 'One ~~~two~~three~~~ four',
+        '<p>One <s>~two~~three</s>~ four</p>\n');
 });
