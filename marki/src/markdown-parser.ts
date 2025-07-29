@@ -15,7 +15,7 @@ import { rawHTML_traits } from "./inline/raw-html.js";
 import { lineContent, linify, LogicalLine, LogicalLine_with_cmt } from "./linify.js";
 import { AnyBlock, Block, BlockBase, BlockType, BlockType_Container, InlineElement, InlineElementType, isContainer, MarkdownParserContext } from "./markdown-types.js";
 import { AnyBlockTraits, BlockTraits, BlockTraits_Container, DelimiterTraits, InlineParserTraitsList } from "./traits.js";
-import { LLinfo } from "./util.js";
+import { blockIterator, LLinfo } from "./util.js";
 
 interface BlockParserProviderItem {
 	parent: MarkdownParser;
@@ -139,7 +139,10 @@ export class MarkdownParserTraits {
 	inlineParser_minimal:  InlineParserProvider;
 	customInlineParserProviders: Record<string, InlineParserProvider> = { };
 	customTryOrders: Record<string, BlockType[]> = { };
-	afterBlockParsingSteps: BlockType[] = [];
+	afterBlockParsingSteps: {
+		unparallel: BlockType[];
+		parallel:   BlockType[];
+	} = { unparallel: [],  parallel: [] };
 	afterInlineSteps: InlineElementType[] = [];
 	globalCtx: MarkdownParserContext; // for caching of data which isn't restricted to a particular document
 
@@ -150,9 +153,12 @@ export class MarkdownParserTraits {
 		if((position === "first" || position === "last" || position === "silent") != !before_after)
 			throw new Error('Wrong input for addExtensionBlocks');
 
-		if(traits.processingStep && !this.afterBlockParsingSteps.some(t => t === type))
-			this.afterBlockParsingSteps.push(type);
-
+		if(traits.processingStep) {
+			if(traits.processingStepParallelable === false && !this.afterBlockParsingSteps.unparallel.some(t => t === type))
+				this.afterBlockParsingSteps.unparallel.push(type);
+			if(traits.processingStepParallelable !== false && !this.afterBlockParsingSteps.parallel.some(t => t === type))
+				this.afterBlockParsingSteps.parallel.push(type);
+		}
 		if(this.blockTraitsList[type]) {
 			// just replace existing block type, don't change position
 			this.blockTraitsList[type] = traits;
@@ -230,20 +236,39 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 		this.localCtx.linkDefs = { };
 	}
 
-	/* Full parsing of a complete document (contents as string) */
-	processDocument(input: string): Promise<AnyBlock[]> {
-		this.reset();
+	blockSteps(input: string) {
 		const LLs = linify(input, false); // TODO!!
         const blocks = this.processContent(LLs[0], undefined);
-        collectLists(blocks);
-		return this.processAfterBlockParsing().then(() => {
+        //collectLists(blocks);
+		/*return this.processAfterBlockParsing().then(() => {
 			blocks.forEach(B => {
 				this.processBlock(B, this);
 				if(B.inlineContent)
 					pairUpDelimiters(B.inlineContent);
 			});
 		}).then(() => this.processAfterInlineStep()).then(() => blocks)
-		.catch(exc => { console.log('Error in processDocument', exc); return blocks; });
+		.catch(exc => { console.log('Error in processDocument', exc); return blocks; });*/
+		return blocks;
+	}
+
+	/* Full parsing of a complete document (contents as string) */
+	processDocument(input: string): Promise<AnyBlock[]> {
+		this.reset();
+		const LLs = linify(input, false); // TODO!!
+        const blocks = this.processContent(LLs[0], undefined);
+        collectLists(blocks);
+		return this.processAfterBlockParsing()
+		.then(() => {
+			for(const B of blockIterator(blocks)) {
+				this.processBlock(B, this);
+				if(B.inlineContent)
+					pairUpDelimiters(B.inlineContent);
+			}
+		}).then(() => this.processAfterInlineStep()).then(() => blocks)
+		.catch(exc => {
+			console.log('Error in processDocument', exc);
+			return blocks;
+		});
 	}
 
 	startBlock   = startBlock;
@@ -276,12 +301,14 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
     processInline = processInline;
 
 	processAfterBlockParsing() {
-		return Promise.all(this.MDPT.afterBlockParsingSteps.map(k => {
-			const fct = this.MDPT.blockTraitsList[k]?.processingStep;
-			if(!fct)
-				throw new Error(`Block traits "${k}" is listed in afterBlockParsingSteps but has no processingStep function`);
-			return fct.call(this);
-		})).then(() => {});
+		let prom = Promise.resolve();
+		for(const k of this.MDPT.afterBlockParsingSteps.unparallel) {
+			const step = this.MDPT.blockTraitsList[k]?.processingStep;
+			if(step)
+				prom = prom.then(() => step.call(this));
+		}
+		return prom.then(() => Promise.all(this.MDPT.afterBlockParsingSteps.parallel
+			.map(k => (this.MDPT.blockTraitsList[k]?.processingStep)?.call(this))).then(() => { }));
 	}
 
 	processAfterInlineStep() {
@@ -293,7 +320,7 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 
 	isContainerType(type: BlockType): type is BlockType_Container {
 		const traits = this.MDPT.blockTraitsList[type];
-		return !!((traits && "isContainer" in traits && traits.isContainer) || false);
+		return !!((traits && "containerMode" in traits && traits.containerMode === "Container") || false);
 	}
 
 	makeParser<K extends BlockType>(type: K, PP: BlockParserProvider) {

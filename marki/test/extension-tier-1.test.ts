@@ -3,11 +3,19 @@ import { global_MDPT, MarkdownParser } from '../src/markdown-parser';
 import { MarkdownRendererInstance } from '../src/renderer/renderer';
 import { extendTier1 } from "../src/extensions-tier-1/traits";
 import { markdownRendererTraits_standard } from '../src/renderer/renderer-standard';
+import { sourceInclude_traits } from '../src/extensions-tier-1/blocks/source-include';
 
 extendTier1(global_MDPT, markdownRendererTraits_standard);
 
 const parser = new MarkdownParser();
 const renderer = new MarkdownRendererInstance(parser);
+
+// Very simplistic include path resolver for testing only
+sourceInclude_traits.sourceIncludeResolve = (filepath, called_from) => {
+    const fp = `./test/${filepath}`;
+    //console.log(`Resolve to [${fp}]`)
+    return fp;
+}
 
 
 const clearify = (s: string) => s.replace(/\t/g, '[\\t]');
@@ -20,6 +28,24 @@ export function doTest(idx: number | string, input: string, expectation: string)
         expect(my_result).toEqual(expectation);
     });
 }
+
+
+describe('#include', () => {
+    /* A fairly complex (but realistic) scenario: An include which contains another include, which contains a link def that is referenced in the the main document;
+     * It demonstrates: * Recursive includes
+     *                  * That includes are performed before any inline processing
+     */
+    doTest(1, `# Main file
+Main text
+
+#include <testinclude.sdsmd>
+Afterwards, [foo]`, `<h1>Main file</h1>
+<p>Main text</p>
+<h1>File included</h1>
+<p>Second degree</p>
+<p>Hi there!</p>
+<p>Afterwards, <a href="/url" title="This works!">foo</a></p>\n`);
+});
 
 
 describe('Tabular', () => {

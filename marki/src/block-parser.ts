@@ -241,8 +241,8 @@ export class BlockParser_Container<K extends BlockType_Container = BlockType_Con
 {
     constructor(PP: BlockParserProvider, type: K, traits: BlockTraits_Container<K>, useSoftContinuations: boolean = true) {
         super(PP, type, traits, useSoftContinuations);
-		this.B.isContainer = true;
-		this.B.blocks      = [];
+		this.B.containerMode = "Container";
+		this.B.blocks        = [];
 		this.contentParserTryOrder = traits.contentParserTryOrder;
         this.curContentParser = { tryOrderName: this.contentParserTryOrder,  container: this,  curParser: null,  generator: null };
     }

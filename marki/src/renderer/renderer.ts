@@ -1,3 +1,4 @@
+import { blockIterator } from "../util.js";
 import { ParsingContext } from "../block-parser.js";
 import { lineContent, LogicalLine_with_cmt, shiftCol } from "../linify.js";
 import { AnyBlock, Block, BlockType } from "../markdown-types.js";
@@ -53,7 +54,7 @@ export class MarkdownRendererInstance implements MarkdownRendererTraits {
 
     referenceRender(content: AnyBlock[], verbose?: boolean, appendSpace: boolean = true) {
         const I = new EasyInserter();
-        for(const B of content)
+        for(const B of blockIterator(content))
             this.renderBlock(B, I);
         if(verbose)
             console.log('rendered blocks:', I);

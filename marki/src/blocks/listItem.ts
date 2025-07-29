@@ -22,7 +22,7 @@ export interface List {
 
 
 export const listItem_traits = makeBlockContainerTraits("listItem", {
-    isContainer: true,
+    containerMode: "Container",
     startsHere(LL, B, interrupting?) {
         if(!standardBlockStart(LL))
             return -1;

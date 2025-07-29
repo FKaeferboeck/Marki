@@ -15,6 +15,10 @@ export type ExtensionNamespace = string;
 
 export type ExtensionBlockType = `ext_${ExtensionNamespace}_${string}`;
 
+export type ContainerMode = "Leaf" // what most blocks are
+                          | "Container" // a block that contains other blocks, but also is a block itself, e.g. a blockquote element
+						  | "Wrapper"; // a block that doesn't render elements by itself, it just serves as an array of child blocks
+
 // context/state data for custom use by Markdown extensions (primarily for data queries between parsing and rendering)
 export type MarkdownParserContext = Record<string, any>;
 
@@ -64,9 +68,17 @@ export type BlockBase<K extends BlockType> = {
 };
 
 export interface BlockBase_Container_additions {
-	isContainer: true;
-	blocks:      AnyBlock[];
+	containerMode: Exclude<ContainerMode, "Leaf">;
+	blocks:        AnyBlock[];
 }
+
+export interface Marki_SevereError {
+	exc_msg: string;
+}
+export interface Block_SevereErrorHolder {
+	severeError?: Marki_SevereError;
+}
+export const hasSevereError = (B: AnyBlock) => ("severeError" in B ? (B as Block_SevereErrorHolder).severeError : undefined);
 
 export type BlockIndividualData<K extends BlockType = ExtensionBlockType>
 	= (K extends BlockType_Container ? BlockTypeMap_Container[K] :
@@ -87,7 +99,8 @@ export type AnyBlock = BlockType extends infer U ? (U extends BlockType_Leaf    
 
 export type AnyContainerBlock = BlockType_Container extends infer U ? (U extends BlockType_Container ? Block_Container<U> : never) : never;
 
-export const isContainer = (B: AnyBlock): B is AnyContainerBlock => ("isContainer" in B && B.isContainer);
+export const isContainer    = (B: AnyBlock): B is AnyContainerBlock => ("containerMode" in B && B.containerMode === "Container");
+export const isBlockWrapper = (B: AnyBlock): B is AnyContainerBlock => ("containerMode" in B && B.containerMode === "Wrapper");
 
 
 

@@ -7,7 +7,7 @@ export interface BlockQuote {
 
 
 export const blockQuote_traits = makeBlockContainerTraits("blockQuote", {
-    isContainer: true,
+    containerMode: "Container",
 
     startsHere(LL) {
         if(!(standardBlockStart(LL) && LL.content.startsWith('>')))

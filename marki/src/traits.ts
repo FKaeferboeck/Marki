@@ -39,6 +39,7 @@ export interface BlockTraits<T extends BlockType = ExtensionBlockType, B extends
     // It's called a single time and should hande all instances of this block type together.
     // CommonMark doesn't use this feature, it's for extensions.
     processingStep?(this: ParsingContext): Promise<void>;
+    processingStepParallelable?: boolean; // can the processing step be performed simultaneously with other processing steps? If not it will be performed separately before the parallelable steps. Default true.
 
     continuationPrefix?: RegExp| ((LL: LogicalLine, B: Block<T>) => number);
     
@@ -78,7 +79,7 @@ export interface BlockTraits_Container<T extends BlockType_Container | Extension
                                        B     extends BlockIndividualData<T> = BlockIndividualData<T>,
                                        Extra extends {} = {}> extends BlockTraits<T, B, Extra>
 {
-    isContainer: true;
+    containerMode: "Container";
     contentParserTryOrder?: string | undefined;
     customChildParser?: (block: Block_Container_Extension<T> & B, i: number, ctx: ParsingContext) => InlineParserProvider | undefined;
     creator?: (PP: BlockParserProvider, type: T) => (T extends BlockType_Container ? BlockParser_Container<T> : never);
