@@ -3,6 +3,7 @@ import { global_MDPT, MarkdownParser } from '../src/markdown-parser';
 import { MarkdownRendererInstance } from '../src/renderer/renderer';
 import { extendTier2 } from '../src/extensions-tier-2/traits';
 import { markdownRendererTraits_standard } from '../src/renderer/renderer-standard';
+import { MarkiDocument } from '../src/markdown-types';
 
 extendTier2(global_MDPT, markdownRendererTraits_standard);
 
@@ -11,10 +12,17 @@ const renderer = new MarkdownRendererInstance(parser);
 
 const clearify = (s: string) => s.replace(/\t/g, '[\\t]');
 
-export function doTest(idx: number | string, input: string, expectation: string) {
+function doTest(idx: number | string, input: string, expectation: string) {
     test('' + idx, async () => {
-        const blocks = await parser.processDocument(input);
-        const my_result = clearify(renderer.referenceRender(blocks));
+        const doc: MarkiDocument = {
+            URL: `Marki-UnitTest-${idx}.sdsmd`,
+            title: undefined,
+            input,
+            blocks: [],
+            localCtx: { }
+        }
+        await parser.processDocument(doc);
+        const my_result = clearify(renderer.referenceRender(doc.blocks));
 
         expect(my_result).toEqual(expectation);
     });

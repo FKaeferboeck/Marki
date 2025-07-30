@@ -5,6 +5,7 @@ import { MarkdownParser } from '../src/markdown-parser';
 import { pairUpDelimiters } from '../src/delimiter-processing';
 import { linify } from '../src/linify';
 import { MarkdownRendererInstance } from '../src/renderer/renderer';
+import { MarkiDocument } from '../src/markdown-types';
 
 // As of 2025-03-12 Vitest suddenly isn't able any more to import listItem on its own. Luckily we can repair it like this.
 //standardBlockParserTraits.listItem = listItem_traits;
@@ -19,8 +20,16 @@ const clearify = (s: string) => s.replace(/\t/g, '[\\t]');
 
 export function doTest(idx: number | string, input: string) {
     test('' + idx, async () => {
-        const blocks = await parser.processDocument(input);
-        const my_result = clearify(renderer.referenceRender(blocks));
+        const doc: MarkiDocument = {
+            URL: `Marki-UnitTest-${idx}.sdsmd`,
+            title: undefined,
+            input,
+            blocks: [],
+            localCtx: { }
+        }
+
+        const blocks = await parser.processDocument(doc);
+        const my_result = clearify(renderer.referenceRender(doc.blocks));
 
         const commonmark_parsed = commonmark_reader.parse(input);
         const commonmark_result = clearify(commonmark_writer.render(commonmark_parsed) as string);
@@ -263,7 +272,7 @@ describe('HTML blocks', () => {
     doTest(176, '<style>p{color:red;}</style>\n*foo*'); // The end tag can occur on the same line as the start tag
     doTest(177, '<!-- foo -->*bar*\n*baz*');
     doTest(178, '<script>\nfoo\n</script>1. *bar*'); // Note that anything on the last line after the end tag will be included in the HTML block
-    /* Type 2 */
+    /* Type 2  */
     doTest(179, '<!-- Foo\n\nbar\n   baz -->\nokay');
     /* Type 3 — processing instruction */
     doTest(180, '<?php\n\n  echo \'>\';\n\n?>\nokay');

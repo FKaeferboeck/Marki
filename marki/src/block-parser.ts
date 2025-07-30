@@ -6,7 +6,7 @@ import { indentedCodeBlock_traits } from './blocks/indentedCodeBlock.js';
 import { paragraph_traits } from './blocks/paragraph.js';
 import { sectionHeader_traits } from './blocks/sectionHeader.js';
 import { sectionHeader_setext_traits } from './blocks/sectionHeader_setext.js';
-import { AnyBlock, Block, BlockBase, BlockType, BlockType_Container, BlockType_Leaf, MarkdownParserContext } from './markdown-types.js';
+import { AnyBlock, Block, Block_Leaf, BlockBase, BlockType, BlockType_Container, BlockType_Leaf, MarkdownParserContext } from './markdown-types.js';
 import { LogicalLineType } from './parser.js';
 import { BlockContinuationType, BlockTraits, BlockTraits_Container } from './traits.js';
 import { LLinfo } from './util.js';
@@ -37,11 +37,16 @@ export interface BlockContainer {
 	blockContainerType: "containerBlock" | "MarkdownParser";
 }
 
+export type MarkdownLocalContext = MarkdownParserContext & {
+	URL:      string | undefined;
+	linkDefs: Record<string, Block_Leaf<"linkDef">>;
+}
+
 
 export interface ParsingContext {
 	MDP:       MarkdownParser;
 	globalCtx: MarkdownParserContext; // for caching not restricted to a particular document
-	localCtx:  MarkdownParserContext; // for data local to a single document
+	localCtx:  MarkdownLocalContext; // for data local to a single document
 }
 
 
@@ -202,7 +207,7 @@ export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits e
 	PP: BlockParserProvider;
 	MDP: MarkdownParser;
 	globalCtx: MarkdownParserContext;
-	localCtx:  MarkdownParserContext;
+	localCtx:  MarkdownLocalContext;
 	parent: BlockContainer | undefined;
 	traits: Traits;
 	B: Block<K>; //Traits["defaultBlockInstance"];

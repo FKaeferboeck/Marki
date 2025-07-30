@@ -1,2 +1,4 @@
 [foo]: /url "This works!"
 Second degree
+
+#include "testinclude.sdsmd"

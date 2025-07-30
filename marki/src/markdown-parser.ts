@@ -1,4 +1,4 @@
-import { BlockContainer, BlockParser, BlockParserBase, BlockParser_Container, BlockParser_Standard, ParsingContext, standardBlockTryOrder } from "./block-parser.js";
+import { BlockContainer, BlockParser, BlockParserBase, BlockParser_Container, BlockParser_Standard, MarkdownLocalContext, ParsingContext, standardBlockTryOrder } from "./block-parser.js";
 import { collectLists } from "./blocks/listItem.js";
 import { pairUpDelimiters } from "./delimiter-processing.js";
 import { Tier2_ctx } from "./extensions-tier-2/traits.js";
@@ -13,7 +13,7 @@ import { bang_bracket_traits, image_traits } from "./inline/image.js";
 import { bracket_traits, link_traits } from "./inline/link.js";
 import { rawHTML_traits } from "./inline/raw-html.js";
 import { lineContent, linify, LogicalLine, LogicalLine_with_cmt } from "./linify.js";
-import { AnyBlock, Block, BlockBase, BlockType, BlockType_Container, InlineElement, InlineElementType, isContainer, MarkdownParserContext } from "./markdown-types.js";
+import { AnyBlock, Block, BlockBase, BlockType, BlockType_Container, InlineElement, InlineElementType, isContainer, MarkdownParserContext, MarkiDocument } from "./markdown-types.js";
 import { AnyBlockTraits, BlockTraits, BlockTraits_Container, DelimiterTraits, InlineParserTraitsList } from "./traits.js";
 import { blockIterator, LLinfo } from "./util.js";
 
@@ -204,7 +204,7 @@ export const global_MDPT = new MarkdownParserTraits();
 export class MarkdownParser implements BlockContainer, ParsingContext {
 	MDPT: MarkdownParserTraits;
 	globalCtx: MarkdownParserContext;
-	localCtx: MarkdownParserContext & { linkDefs: Record<string, Block<"linkDef">>; };
+	localCtx:  MarkdownLocalContext;
 	MDP: MarkdownParser;
 
 	constructor(MDPT?: MarkdownParserTraits) {
@@ -212,6 +212,7 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 		this.MDPT      = MDPT || global_MDPT;
 		this.globalCtx = this.MDPT.globalCtx;
 		this.localCtx  = {
+			URL: undefined,
 			linkDefs: { }
 		}; // TODO!!
 		this.blockParserProvider = new BlockParserProvider(this.MDPT, this);
@@ -252,22 +253,27 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 	}
 
 	/* Full parsing of a complete document (contents as string) */
-	processDocument(input: string): Promise<AnyBlock[]> {
+	processDocument(doc: MarkiDocument): Promise<MarkiDocument> {
+		if(doc.input === undefined)
+			throw new Error(`MarkdownParser.processDocument: document has no input content, please load it first!`);
 		this.reset();
-		const LLs = linify(input, false); // TODO!!
-        const blocks = this.processContent(LLs[0], undefined);
-        collectLists(blocks);
+		this.localCtx.URL = doc.URL;
+		doc.localCtx = this.localCtx;
+
+		const LLs = linify(doc.input, false); // TODO!!
+        doc.blocks = this.processContent(LLs[0], undefined);
+        collectLists(doc.blocks);
 		return this.processAfterBlockParsing()
 		.then(() => {
-			for(const B of blockIterator(blocks)) {
+			for(const B of blockIterator(doc.blocks)) {
 				this.processBlock(B, this);
 				if(B.inlineContent)
 					pairUpDelimiters(B.inlineContent);
 			}
-		}).then(() => this.processAfterInlineStep()).then(() => blocks)
+		}).then(() => this.processAfterInlineStep()).then(() => doc)
 		.catch(exc => {
 			console.log('Error in processDocument', exc);
-			return blocks;
+			return doc;
 		});
 	}
 
