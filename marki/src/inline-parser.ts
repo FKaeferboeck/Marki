@@ -1,4 +1,4 @@
-import { ParsingContext } from "./block-parser.js";
+import { MarkdownLocalContext, ParsingContext } from "./block-parser.js";
 import { backslashEscapeds } from "./inline/backslash-escape.js";
 import { parseHTML_entities } from "./inline/html-entity.js";
 import { MarkdownParser } from "./markdown-parser.js";
@@ -83,7 +83,7 @@ export class InlineParser_Standard<K extends InlineElementType = ExtensionInline
 
     MDP: MarkdownParser;
     globalCtx: MarkdownParserContext;
-    localCtx:  MarkdownParserContext;
+    localCtx:  MarkdownLocalContext;
     B: Elt;
     traits: InlineElementTraits<K, Elt> | DelimFollowerTraits<K, Elt>;
 }

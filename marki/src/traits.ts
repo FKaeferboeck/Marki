@@ -67,11 +67,9 @@ export type ExtensionBlockTraits<B extends BlockIndividualData = BlockIndividual
     = BlockTraitsExtended<ExtensionBlockType, B, Extra>;
 
 export function castExtensionBlock<B extends BlockIndividualData>
-    (block: /*Block_Extension*/AnyBlock, traits: ExtensionBlockTraits<B>): block is Block_Extension & B
+    (block: AnyBlock, traits: ExtensionBlockTraits<B>): block is Block_Extension & B
 {
-    if(block.type !== traits.blockType)
-        throw new Error(`castBlock: expected block of type "${traits.blockType}", but encountered "${block.type}"`);
-    return true;
+    return (block.type === traits.blockType)
 }
 
 

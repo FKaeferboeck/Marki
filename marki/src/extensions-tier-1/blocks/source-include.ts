@@ -1,26 +1,27 @@
 import { MarkdownParser } from "../../markdown-parser.js";
-import { ParsingContext } from "../../block-parser.js";
+import { MarkdownLocalContext, ParsingContext } from "../../block-parser.js";
 import { LogicalLine, standardBlockStart } from "../../linify.js";
 import { AnyBlock, Block_Extension, Block_SevereErrorHolder, BlockBase_Container_additions, Marki_SevereError } from "../../markdown-types.js";
-import { ExtensionBlockTraits } from "../../traits.js";
+import { castExtensionBlock, ExtensionBlockTraits } from "../../traits.js";
 import { access, readFile, constants } from 'fs';
-import { Inserter, MarkdownRendererInstance } from "src/renderer/renderer.js";
+import { Inserter, MarkdownRendererInstance } from "../../renderer/renderer.js";
 
 const name_sourceInclude = "ext_tier1_sourceInclude";
 
 export type SourceIncludeResolver = (include_file: string, called_from: string) => string | Marki_SevereError;
 
 export interface SourceInclude extends BlockBase_Container_additions, Block_SevereErrorHolder {
-    target:   string;
-    resolved: string;
-    promise: Promise<AnyBlock[] | Marki_SevereError> | undefined;
+    target:       string; // as given in the include call
+    resolved:     string; // absolute file-path of the included document
+    includedFrom: "main" | SourceInclude; // where did this include take place? For catching infinite include loops
+    promise:      Promise<AnyBlock[] | Marki_SevereError> | undefined;
 }
 
 export interface SourceInclude_ctx {
     allSourceIncludes: SourceInclude[];
 }
 export function getSourceInclude_ctx(ctx: ParsingContext) {
-    const SIctx = ctx.localCtx as SourceInclude_ctx;
+    const SIctx = ctx.localCtx as MarkdownLocalContext & SourceInclude_ctx;
     SIctx.allSourceIncludes ||= [];
     return SIctx;
 }
@@ -31,15 +32,31 @@ export interface SourceIncludeTraits_extra {
 }
 
 
-function load_SDSMD_file_blocks(this: MarkdownParser, filePath: string): Promise<AnyBlock[] | Marki_SevereError> {
-    return new Promise<void>((resolve, reject) => access(filePath, constants.F_OK, (err) => {
-        if(err)    reject({ exc_msg: err.toString() });
+function perform_SDSMD_sourceInclude(this: MarkdownParser, B_caller: Block_Extension & SourceInclude): Promise<AnyBlock[] | Marki_SevereError> {
+    const filepath = B_caller.resolved;
+    return new Promise<void>((resolve, reject) => access(filepath, constants.F_OK, (err) => {
+        if(err)    return reject({ exc_msg: err.toString() });
+        const ctx = getSourceInclude_ctx(this);
+        let B0: SourceInclude = B_caller;
+        while(B0.includedFrom !== "main") {
+            if(filepath === B0.includedFrom.resolved)
+                return reject({ exc_msg: `Circular include of "${B_caller.target}": skipping it` });
+            B0 = B0.includedFrom;
+        }
+        if(filepath === ctx.URL)
+            return reject({ exc_msg: `Circular include of "${B_caller.target}": skipping it` });
+
         return resolve();
     }))
     .then(() => new Promise<AnyBlock[]>((resolve, reject) => {
-        readFile(filePath, "utf-8", async (err_, data) => {
+        readFile(filepath, "utf-8", async (err_, data) => {
             if(err_)    return reject({ exc_msg: err_.toString() });
-            resolve(this.blockSteps(data));
+            const Bs = this.blockSteps(data);
+            // This links includes of includes to their respective parent; includes of main have includeFrom === "main" set by default:
+            for(const B of Bs)
+                if(castExtensionBlock(B, sourceInclude_traits))
+                    B.includedFrom = B_caller;
+            resolve(Bs);
         });
     }))
     .catch((err: Marki_SevereError) => Promise.resolve(err));
@@ -89,7 +106,7 @@ export const sourceInclude_traits: ExtensionBlockTraits<SourceInclude, SourceInc
             B.severeError = resol;
         else {
             B.resolved = resol;
-            B.promise  = load_SDSMD_file_blocks.call(this.MDP, B.resolved);
+            B.promise  = perform_SDSMD_sourceInclude.call(this.MDP, B);
         }
         getSourceInclude_ctx(this).allSourceIncludes.push(B);
         return LL.content.length;
@@ -101,7 +118,7 @@ export const sourceInclude_traits: ExtensionBlockTraits<SourceInclude, SourceInc
 
     allowSoftContinuations: false,
     allowCommentLines: false,
-    defaultBlockInstance: { containerMode: "Wrapper",  target: '',  resolved: '',  promise: undefined,  blocks: [] },
+    defaultBlockInstance: { containerMode: "Wrapper",  target: '',  resolved: '',  includedFrom: "main",  promise: undefined,  blocks: [] },
     inlineProcessing: false,
 
     command: /^#include\b/i,

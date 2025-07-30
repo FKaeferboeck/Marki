@@ -103,6 +103,15 @@ export const isContainer    = (B: AnyBlock): B is AnyContainerBlock => ("contain
 export const isBlockWrapper = (B: AnyBlock): B is AnyContainerBlock => ("containerMode" in B && B.containerMode === "Wrapper");
 
 
+export interface MarkiDocument {
+	URL:      string | undefined;
+	title:    string | undefined;
+	input?:   string;
+	blocks:   AnyBlock[];
+	localCtx: MarkdownParserContext;
+}
+
+
 
 /**********************************************************************************************************************/
 
