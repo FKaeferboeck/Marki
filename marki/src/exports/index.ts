@@ -9,5 +9,5 @@ export { ContainerMode, BlockType_Leaf, BlockType_Container, BlockType, BlockBas
          Marki_SevereError, Block_SevereErrorHolder, hasSevereError,
          Delimiter, isDelimiter, isNestableDelimiter,
          MarkdownParserContext } from "../markdown-types.js";
-export { ParsingContext } from "../block-parser.js";
+export { MarkdownLocalContext, ParsingContext } from "../block-parser.js";
 export { getInlineRenderer_plain } from "../renderer/utility-renderers.js";

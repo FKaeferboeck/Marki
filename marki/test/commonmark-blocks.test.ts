@@ -1,9 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import * as commonmark from 'commonmark';
-import { collectLists, listItem_traits } from '../src/blocks/listItem';
 import { MarkdownParser } from '../src/markdown-parser';
-import { pairUpDelimiters } from '../src/delimiter-processing';
-import { linify } from '../src/linify';
 import { MarkdownRendererInstance } from '../src/renderer/renderer';
 import { MarkiDocument } from '../src/markdown-types';
 

@@ -2,7 +2,7 @@ import { BlockParser_Container } from "../block-parser.js";
 import { isSpaceLine, measureColOffset, standardBlockStart } from "../linify.js";
 import { Block_Container, AnyBlock, isContainer, Block } from "../markdown-types.js";
 import { makeBlockContainerTraits } from "../traits.js";
-import { LLinfo } from "../util.js";
+import { blockIterator, LLinfo } from "../util.js";
 
 
 export interface ListItem {
@@ -77,6 +77,11 @@ export const listItem_traits = makeBlockContainerTraits("listItem", {
         this.B.isLooseItem = isLooseItem(this.B as Block_Container<"listItem">);
     },
 
+    processingStep(doc) {
+        collectLists(doc.blocks);
+        return Promise.resolve();
+    },
+
     allowSoftContinuations: true,
     allowCommentLines: true,
     isInterrupter: true,
@@ -107,11 +112,11 @@ function isLooseItem(B: Block_Container<"listItem">) {
 
 
 
-export function collectLists(Bs: AnyBlock[], diagnostics = false) {
-    if(diagnostics)    console.log('Collect lists!');
+function collectLists(Bs: AnyBlock[], diagnostics = false) {
+    if(diagnostics)    console.log(`collectLists of ${Bs.length} blocks`)
     let spaced = false;
     let L: List | undefined;
-    for(const B of Bs) {
+    for(const B of blockIterator(Bs)) {
         if(B.type === "listItem") {
             if(L && L.contents[0].marker !== B.marker) {
                 if(diagnostics)    console.log(`L) Marker difference "${L.contents[0].marker}" -> "${B.marker}"`);

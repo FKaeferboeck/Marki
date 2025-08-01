@@ -36,6 +36,7 @@ export function extendTier2(MDPT: MarkdownParserTraits, renderer? : MarkdownRend
     MDPT.addExtensionBlocks(major_section_ext_traits, "last");
     MDPT.addExtensionBlocks(markdown_table_of_contents_traits, "last");
     MDPT.blockTraitsList[sectionHeader_ext_traits.blockType] = sectionHeader_ext_traits;
+    MDPT.afterBlockParsingSteps.parallel.push(sectionHeader_ext_traits.blockType); // assign numbers to the collected headings after block parsing
 
     if(renderer) {
         renderer.blockHandler[markdown_doc_title_type] = ext_tier2_title_render;

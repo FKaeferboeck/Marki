@@ -1,5 +1,4 @@
 import { BlockContainer, BlockParser, BlockParserBase, BlockParser_Container, BlockParser_Standard, MarkdownLocalContext, ParsingContext, standardBlockTryOrder } from "./block-parser.js";
-import { collectLists } from "./blocks/listItem.js";
 import { pairUpDelimiters } from "./delimiter-processing.js";
 import { Tier2_ctx } from "./extensions-tier-2/traits.js";
 import { InlineParserProvider, processInline } from "./inline-parsing-context.js";
@@ -142,7 +141,7 @@ export class MarkdownParserTraits {
 	afterBlockParsingSteps: {
 		unparallel: BlockType[];
 		parallel:   BlockType[];
-	} = { unparallel: [],  parallel: [] };
+	} = { unparallel: [],  parallel: [ "listItem" ] };
 	afterInlineSteps: InlineElementType[] = [];
 	globalCtx: MarkdownParserContext; // for caching of data which isn't restricted to a particular document
 
@@ -240,15 +239,6 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 	blockSteps(input: string) {
 		const LLs = linify(input, false); // TODO!!
         const blocks = this.processContent(LLs[0], undefined);
-        //collectLists(blocks);
-		/*return this.processAfterBlockParsing().then(() => {
-			blocks.forEach(B => {
-				this.processBlock(B, this);
-				if(B.inlineContent)
-					pairUpDelimiters(B.inlineContent);
-			});
-		}).then(() => this.processAfterInlineStep()).then(() => blocks)
-		.catch(exc => { console.log('Error in processDocument', exc); return blocks; });*/
 		return blocks;
 	}
 
@@ -262,8 +252,7 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 
 		const LLs = linify(doc.input, false); // TODO!!
         doc.blocks = this.processContent(LLs[0], undefined);
-        collectLists(doc.blocks);
-		return this.processAfterBlockParsing()
+		return this.processAfterBlockParsing(doc)
 		.then(() => {
 			for(const B of blockIterator(doc.blocks)) {
 				this.processBlock(B, this);
@@ -306,15 +295,15 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 
     processInline = processInline;
 
-	processAfterBlockParsing() {
+	processAfterBlockParsing(doc: MarkiDocument) {
 		let prom = Promise.resolve();
 		for(const k of this.MDPT.afterBlockParsingSteps.unparallel) {
 			const step = this.MDPT.blockTraitsList[k]?.processingStep;
 			if(step)
-				prom = prom.then(() => step.call(this));
+				prom = prom.then(() => step.call(this, doc));
 		}
 		return prom.then(() => Promise.all(this.MDPT.afterBlockParsingSteps.parallel
-			.map(k => (this.MDPT.blockTraitsList[k]?.processingStep)?.call(this))).then(() => { }));
+				.map(k => (this.MDPT.blockTraitsList[k]?.processingStep)?.call(this, doc))).then(() => { }));
 	}
 
 	processAfterInlineStep() {

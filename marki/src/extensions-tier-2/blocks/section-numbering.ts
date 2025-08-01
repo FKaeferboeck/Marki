@@ -1,7 +1,7 @@
 import { sectionHeader_trimEndMarker } from "../../blocks/sectionHeader.js";
 import { lineContent, measureColOffset, standardBlockStart } from "../../linify.js";
 import { BlockTraitsExtended, castExtensionBlock, ExtensionBlockTraits } from "../../traits.js";
-import { makeBlockContentIterator, sliceLL_to } from "../../util.js";
+import { blockIterator, makeBlockContentIterator, sliceLL_to } from "../../util.js";
 import { MarkdownRendererInstance, Inserter } from "../../renderer/renderer.js";
 import { AnyBlock, Block_Extension, Block_Leaf } from "../../markdown-types.js";
 import { ParsingContext } from "src/block-parser.js";
@@ -74,6 +74,11 @@ export const sectionHeader_ext_traits: BlockTraitsExtended<"sectionHeader", Sect
         return (P ? sliceLL_to(LL, P) : LL);
     },
 
+    processingStep(doc) {
+        doSectionNumbering(this, doc.blocks);
+        return Promise.resolve();
+    },
+
     allowSoftContinuations: false,
     allowCommentLines: false,
     isInterrupter: true,
@@ -95,7 +100,7 @@ export function doSectionNumbering(ctx: ParsingContext, Bs: AnyBlock[]) {
     let anonLevel = 100, nMajorSections = 0;
     toc_ctx.section_headers = []; // reset
 
-    for(const B_ of Bs) {
+    for(const B_ of blockIterator(Bs)) {
         if(!(B_.type in header_types))
             continue;
         const B = B_ as Block_Leaf<"sectionHeader"> & SectionHeader_ext;

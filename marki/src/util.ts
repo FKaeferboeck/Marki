@@ -486,3 +486,10 @@ export function* blockIterator(Bs: AnyBlock[]): Generator<AnyBlock> {
             yield B;
     }
 }
+
+
+export function startSnippet(str: string, length_cap = 32) {
+    if(str.length <= length_cap)
+        return str;
+    str.slice(0, Math.max(length_cap - 4, 1)) + ' ...';
+}

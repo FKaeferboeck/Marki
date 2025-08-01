@@ -12,6 +12,7 @@ export const emptySpace_traits = makeBlockTraits("emptySpace", {
     allowSoftContinuations: true,
     allowCommentLines: true,
     hasContent: false,
+    inlineProcessing: false,
     
     creator(this: BlockTraits<"emptySpace">, PP, type) { return new BlockParser_EmptySpace(PP, type, this); },
     defaultBlockInstance: { }

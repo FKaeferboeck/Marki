@@ -63,7 +63,7 @@ export const standardBlockStart = (LL: LogicalLine): LL is LogicalLine_text => (
 export const isSpaceLineType: Record<LogicalLineType, boolean> = { empty: true,  emptyish: true,  text: false,  comment: false };
 export const isSpaceLine = (LL: LogicalLine_with_cmt): LL is LogicalLine_emptyish => isSpaceLineType[LL.type];
 
-export const lineContent = (LL: LogicalLine_with_cmt) => (LL.type === "text" ? LL.content : '');
+export const lineContent = (LL: LogicalLine_with_cmt | undefined) => (LL?.type === "text" ? LL.content : '');
 
 
 export function linify(text: string, makeCommentLines: boolean, link_together = true): LogicalLine_with_cmt[] {

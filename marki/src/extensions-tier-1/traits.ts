@@ -16,5 +16,6 @@ export function extendTier1(MDPT: MarkdownParserTraits, MDRT? : MarkdownRenderer
     if(MDRT) {
         MDRT.blockHandler[sourceInclude_traits.blockType] = sourceInclude_render;
         MDRT.blockHandler[tabular_type] = ext_tier1_tabular_render;
+
     }
 }

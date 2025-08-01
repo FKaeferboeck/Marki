@@ -1,8 +1,7 @@
-import { MarkdownParser } from "../../markdown-parser.js";
-import { MarkdownLocalContext, ParsingContext } from "../../block-parser.js";
+import { BlockParser, MarkdownLocalContext, ParsingContext } from "../../block-parser.js";
 import { LogicalLine, standardBlockStart } from "../../linify.js";
-import { AnyBlock, Block_Extension, Block_SevereErrorHolder, BlockBase_Container_additions, Marki_SevereError } from "../../markdown-types.js";
-import { castExtensionBlock, ExtensionBlockTraits } from "../../traits.js";
+import { AnyBlock, Block_Extension, Block_SevereErrorHolder, BlockBase_Container_additions, ExtensionBlockType, Marki_SevereError } from "../../markdown-types.js";
+import { BlockTraitsExtended, castExtensionBlock, ExtensionBlockTraits } from "../../traits.js";
 import { access, readFile, constants } from 'fs';
 import { Inserter, MarkdownRendererInstance } from "../../renderer/renderer.js";
 
@@ -18,40 +17,59 @@ export interface SourceInclude extends BlockBase_Container_additions, Block_Seve
 }
 
 export interface SourceInclude_ctx {
+    URL: string;
     allSourceIncludes: SourceInclude[];
 }
 export function getSourceInclude_ctx(ctx: ParsingContext) {
     const SIctx = ctx.localCtx as MarkdownLocalContext & SourceInclude_ctx;
     SIctx.allSourceIncludes ||= [];
+    SIctx.URL || '';
     return SIctx;
 }
 
 export interface SourceIncludeTraits_extra {
     command: RegExp; // the include command; default is #include (as in C++)
-    sourceIncludeResolve: SourceIncludeResolver;
+    sourceIncludeResolve: SourceIncludeResolver | undefined;
+    sourceIncludeResolve_II: (ctx_: ParsingContext, B_caller: SourceInclude) => Promise<boolean>; // reject with Marki_SevereError in case of problems
+}
+
+type SourceIncludeBlockParser = BlockParser<ExtensionBlockType, BlockTraitsExtended<ExtensionBlockType, SourceInclude, SourceIncludeTraits_extra>>;
+
+
+export function circularIncludeGuard(ctx_: ParsingContext, B_caller: SourceInclude) {
+    const ctx = getSourceInclude_ctx(ctx_);
+    let B0 = B_caller;
+    const filepath = B_caller.resolved;
+    while(B0.includedFrom !== "main") {
+        if(filepath === B0.includedFrom.resolved)
+            return false;
+        B0 = B0.includedFrom;
+    }
+    return (filepath !== ctx.URL);
 }
 
 
-function perform_SDSMD_sourceInclude(this: MarkdownParser, B_caller: Block_Extension & SourceInclude): Promise<AnyBlock[] | Marki_SevereError> {
-    const filepath = B_caller.resolved;
-    return new Promise<void>((resolve, reject) => access(filepath, constants.F_OK, (err) => {
+export function sourceIncludeResolve_II(ctx_: ParsingContext, B_caller: SourceInclude) {
+    return new Promise<true>((resolve, reject) => access(B_caller.resolved, constants.F_OK, (err) => {
         if(err)    return reject({ exc_msg: err.toString() });
-        const ctx = getSourceInclude_ctx(this);
-        let B0: SourceInclude = B_caller;
-        while(B0.includedFrom !== "main") {
-            if(filepath === B0.includedFrom.resolved)
-                return reject({ exc_msg: `Circular include of "${B_caller.target}": skipping it` });
-            B0 = B0.includedFrom;
-        }
-        if(filepath === ctx.URL)
-            return reject({ exc_msg: `Circular include of "${B_caller.target}": skipping it` });
+        if(!circularIncludeGuard(ctx_, B_caller))
+                return reject({ exc_msg: `Circular include of "${B_caller.target}": skipping it` } as Marki_SevereError);
+        return resolve(true);
+    })).catch((exc: Marki_SevereError) => {
+        B_caller.severeError = exc;
+        return false;
+    });
+}
 
-        return resolve();
-    }))
-    .then(() => new Promise<AnyBlock[]>((resolve, reject) => {
-        readFile(filepath, "utf-8", async (err_, data) => {
-            if(err_)    return reject({ exc_msg: err_.toString() });
-            const Bs = this.blockSteps(data);
+
+function perform_Marki_sourceInclude(this: SourceIncludeBlockParser, B_caller: Block_Extension & SourceInclude): Promise<AnyBlock[] | Marki_SevereError> {
+    return this.traits.sourceIncludeResolve_II(this.MDP, B_caller)
+    .then(ok => new Promise<AnyBlock[] | Marki_SevereError>((resolve, reject) => {
+        if(!ok)
+            return resolve(B_caller.severeError!);
+        readFile(B_caller.resolved, "utf-8", async (err_, data) => {
+            if(err_)    return reject(B_caller.severeError = { exc_msg: err_.toString() });
+            const Bs = this.MDP.blockSteps(data);
             // This links includes of includes to their respective parent; includes of main have includeFrom === "main" set by default:
             for(const B of Bs)
                 if(castExtensionBlock(B, sourceInclude_traits))
@@ -65,12 +83,12 @@ function perform_SDSMD_sourceInclude(this: MarkdownParser, B_caller: Block_Exten
 
 function processingStep(this: ParsingContext): Promise<void> {
     const all = getSourceInclude_ctx(this).allSourceIncludes;
-    const Bs = all.filter(B => B.promise);
+    const Bs = all.filter(B => B.promise); // only those with open promises are relevant
     if(Bs.length === 0)
         return Promise.resolve();
     return Promise.all(Bs.map(B => B.promise!)).then(Xs => {
         Xs.forEach((X, i) => {
-            const B = Bs[0];
+            const B = Bs[i];
             if("exc_msg" in X) {
                 B.severeError = X;
                 B.blocks      = [];
@@ -88,6 +106,8 @@ export const sourceInclude_traits: ExtensionBlockTraits<SourceInclude, SourceInc
     blockType: name_sourceInclude,
 
     startsHere(LL: LogicalLine, B) {
+        if(!this.traits.sourceIncludeResolve) // the extension is inactive unless a filepath resolver function is provided
+            return -1;
         if(!standardBlockStart(LL))
             return -1;
         let rexres = this.traits.command.exec(LL.content);
@@ -97,18 +117,19 @@ export const sourceInclude_traits: ExtensionBlockTraits<SourceInclude, SourceInc
         rexres = /^(?:<[^>]+>|"[^"]+"|[^<"]+)$/.exec(str);
         if(!rexres)
             return -1;
+        const ctx = getSourceInclude_ctx(this);
         str = rexres[0];
         if(str.startsWith('<') || str.startsWith('"'))
             str = str.slice(1, -1).trim();
         B.target = str;
-        const resol = this.traits.sourceIncludeResolve(str, '');
+        const resol = this.traits.sourceIncludeResolve(str, ctx.URL);
         if(typeof resol !== "string")
             B.severeError = resol;
         else {
             B.resolved = resol;
-            B.promise  = perform_SDSMD_sourceInclude.call(this.MDP, B);
+            B.promise  = perform_Marki_sourceInclude.call(this as SourceIncludeBlockParser, B);
         }
-        getSourceInclude_ctx(this).allSourceIncludes.push(B);
+       ctx.allSourceIncludes.push(B);
         return LL.content.length;
     },
     continuesHere() { return "end"; }, // single-line
@@ -122,7 +143,8 @@ export const sourceInclude_traits: ExtensionBlockTraits<SourceInclude, SourceInc
     inlineProcessing: false,
 
     command: /^#include\b/i,
-    sourceIncludeResolve: () => ({ exc_msg: 'Method sourceIncludeResolve is not implemented, feature not available!'})
+    sourceIncludeResolve: undefined,
+    sourceIncludeResolve_II
 };
 
 

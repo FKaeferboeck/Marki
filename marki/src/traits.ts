@@ -3,7 +3,7 @@ import { InlineParser } from "./inline-parser.js";
 import { InlineParserProvider, InlineParsingContext } from "./inline-parsing-context.js";
 import { LogicalLine, LogicalLine_with_cmt } from "./linify.js";
 import { BlockParserProvider, MarkdownParserTraits } from "./markdown-parser.js";
-import { BlockType, ExtensionBlockType, BlockType_Container, Block, InlineElementType, ExtensionInlineElementType, InlineElement, InlinePos, BlockIndividualData, Delimiter, Delimiter_nestable, Block_Extension, AnyBlock, InlineElementBase, Block_Container_Extension } from "./markdown-types.js";
+import { BlockType, ExtensionBlockType, BlockType_Container, Block, InlineElementType, ExtensionInlineElementType, InlineElement, InlinePos, BlockIndividualData, Delimiter, Delimiter_nestable, Block_Extension, AnyBlock, InlineElementBase, Block_Container_Extension, MarkiDocument } from "./markdown-types.js";
 import { BlockContentIterator } from "./util.js";
 
 
@@ -38,7 +38,7 @@ export interface BlockTraits<T extends BlockType = ExtensionBlockType, B extends
     // It is meant for running DB queries and similar for data stored into the ParsingContext object during parsing.
     // It's called a single time and should hande all instances of this block type together.
     // CommonMark doesn't use this feature, it's for extensions.
-    processingStep?(this: ParsingContext): Promise<void>;
+    processingStep?(this: ParsingContext, doc: MarkiDocument): Promise<void>;
     processingStepParallelable?: boolean; // can the processing step be performed simultaneously with other processing steps? If not it will be performed separately before the parallelable steps. Default true.
 
     continuationPrefix?: RegExp| ((LL: LogicalLine, B: Block<T>) => number);

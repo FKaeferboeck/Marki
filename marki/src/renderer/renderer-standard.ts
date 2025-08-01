@@ -1,13 +1,15 @@
+import { lineContent } from "../linify.js";
 import { Block } from "../markdown-types.js";
 import { renderInline } from "./inline-renderer.js";
 import { Inserter, MarkdownRendererTraits } from "./renderer.js";
 import { escapeXML, escapeXML_all, urlEncode, renderHTML_entity } from "./util.js";
 import { getInlineRenderer_plain } from "./utility-renderers.js";
+import { startSnippet } from "../util.js";
 
 
 function posInList(B: Block<"listItem">) {
     if(!B.parentList || B.parentList.contents.length === 0)
-        throw new Error('Missing list');
+        throw new Error(`List item in line ${B.lineIdx} ("${startSnippet(lineContent(B.content))}"): not assigned to a parent list`);
     const C = B.parentList.contents;
     return { isFirst: B === C[0],
              isLast:  B === C[C.length - 1] };

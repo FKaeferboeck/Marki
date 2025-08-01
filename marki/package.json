@@ -90,11 +90,13 @@
   },
   "homepage": "https://github.com/FKaeferboeck/Marki#readme",
   "dependencies": {
+    "@types/Node": "npm:@types/node@^24.1.0",
     "commonmark": "^0.31.2",
     "vitest": "^3.0.5",
     "vscode-languageserver": "^9.0.1"
   },
   "devDependencies": {
+    "@types/node": "^24.1.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
   }
