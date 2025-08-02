@@ -48,6 +48,7 @@ export interface BlockTraits<T extends BlockType = ExtensionBlockType, B extends
     allowCommentLines: boolean;
     isInterrupter?: boolean; // Can this block interrupt soft continuations? default false
     customContentParser?: InlineParserProvider; // some block types may want to do their own thing
+    isSingleton?: "first" | "last" | false; // default false
 
     hasContent?: boolean; // default true; false means that this element stores all data it has in its individual block data and doesn't use the "content" property
     inlineProcessing?: boolean | ((this: ParsingContext, block: AnyBlock) => void); // default true

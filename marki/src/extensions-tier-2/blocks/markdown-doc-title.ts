@@ -30,11 +30,20 @@ export const markdown_doc_title_traits: ExtensionBlockTraits<MarkdownDocTitle> =
 
     continuesHere: () => "end",
 
-    finalizeBlockHook() {
+    /*finalizeBlockHook() {
         const ctx = this.localCtx as MarkdownDocTitle_ctx;
         ctx.doc_title = this.B.title;
+    },*/
+
+    processingStep(doc) {
+        const B = this.localCtx.singletons[markdown_doc_title_traits.blockType];
+        const ctx = this.localCtx as MarkdownDocTitle_ctx;
+        if(B && castExtensionBlock(B, markdown_doc_title_traits))
+            doc.title = ctx.doc_title = B.title;
+        return Promise.resolve();
     },
 
+    isSingleton: "first",
     allowSoftContinuations: false,
     allowCommentLines: false,
     defaultBlockInstance: { title: '' }
@@ -46,5 +55,6 @@ export const markdown_doc_title_traits: ExtensionBlockTraits<MarkdownDocTitle> =
 
 export function ext_tier2_title_render(this: MarkdownRendererInstance, B: Block_Extension, I: Inserter) {
     if(!castExtensionBlock(B, markdown_doc_title_traits))    return;
-    I.add(`<div class="document-title">${this.renderBlockContent(B, null, "trimmed")}</div>`);
+    if(this.isTheSingleton(B))
+        I.add(`<div class="document-title">${this.renderBlockContent(B, null, "trimmed")}</div>`);
 };

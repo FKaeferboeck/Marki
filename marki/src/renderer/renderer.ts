@@ -127,4 +127,7 @@ export class MarkdownRendererInstance implements MarkdownRendererTraits {
         I?.add(s);
         return s1;
     }
+
+    // a helper function
+    isTheSingleton(B: AnyBlock) { return (B === this.ctx.localCtx.singletons[B.type]); }
 } // class MarkdownRendererInstance

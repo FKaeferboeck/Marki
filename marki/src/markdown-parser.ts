@@ -142,6 +142,7 @@ export class MarkdownParserTraits {
 		unparallel: BlockType[];
 		parallel:   BlockType[];
 	} = { unparallel: [],  parallel: [ "listItem" ] };
+	singletons: Partial<Record<BlockType, "first" | "last">> = { };
 	afterInlineSteps: InlineElementType[] = [];
 	globalCtx: MarkdownParserContext; // for caching of data which isn't restricted to a particular document
 
@@ -158,6 +159,8 @@ export class MarkdownParserTraits {
 			if(traits.processingStepParallelable !== false && !this.afterBlockParsingSteps.parallel.some(t => t === type))
 				this.afterBlockParsingSteps.parallel.push(type);
 		}
+		if(traits.isSingleton)
+			this.singletons[type] = traits.isSingleton;
 		if(this.blockTraitsList[type]) {
 			// just replace existing block type, don't change position
 			this.blockTraitsList[type] = traits;
@@ -212,6 +215,7 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 		this.globalCtx = this.MDPT.globalCtx;
 		this.localCtx  = {
 			URL: undefined,
+			singletons: { },
 			linkDefs: { }
 		}; // TODO!!
 		this.blockParserProvider = new BlockParserProvider(this.MDPT, this);
@@ -234,6 +238,7 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 		for (const key in this.localCtx)
 			delete this.localCtx[key];
 		this.localCtx.linkDefs = { };
+		this.localCtx.singletons = { };
 	}
 
 	blockSteps(input: string) {
@@ -302,8 +307,21 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 			if(step)
 				prom = prom.then(() => step.call(this, doc));
 		}
-		return prom.then(() => Promise.all(this.MDPT.afterBlockParsingSteps.parallel
+		return prom.then(() => {
+			if(Object.keys(this.MDPT.singletons).length > 0)
+				this.locateSingletons(doc);
+		}).then(() => Promise.all(this.MDPT.afterBlockParsingSteps.parallel
 				.map(k => (this.MDPT.blockTraitsList[k]?.processingStep)?.call(this, doc))).then(() => { }));
+	}
+
+	locateSingletons(doc: MarkiDocument) {
+		const singletonMode = this.MDPT.singletons;
+		const singletonValue = this.localCtx.singletons;
+		for(const B of blockIterator(doc.blocks)) {
+			const mode = singletonMode[B.type];
+			if(mode && (mode === "last" || !singletonValue[B.type]))
+				singletonValue[B.type] = B;
+		}
 	}
 
 	processAfterInlineStep() {

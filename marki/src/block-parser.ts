@@ -38,8 +38,9 @@ export interface BlockContainer {
 }
 
 export type MarkdownLocalContext = MarkdownParserContext & {
-	URL:      string | undefined;
-	linkDefs: Record<string, Block_Leaf<"linkDef">>;
+	URL:        string | undefined;
+	singletons: Partial<Record<BlockType, AnyBlock | undefined>>;
+	linkDefs:   Record<string, Block_Leaf<"linkDef">>;
 }
 
 
@@ -71,6 +72,7 @@ export interface BlockParser<K      extends BlockType = BlockType,
 	setCheckpoint(LL: LogicalLine): void;
 	getCheckpoint(): LogicalLine | null;
 	resetBlock(): Block<K>;
+	singleton(): Block<K> | undefined;
 	parent: BlockContainer | undefined;
 	traits: Traits;//BlockTraits<K>;
 	B: Block<K> & Traits["defaultBlockInstance"];
@@ -200,6 +202,10 @@ export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits e
 		//container.addContentBlock(this.B);
 		if(this.MDP.diagnostics)    console.log(`  Finish [${this.type}], to continue in line ${(this.lastLine?.lineIdx || 0) + 1}`)
 		return this.lastLine!;
+	}
+
+	singleton(): Block<K> | undefined {
+		return this.localCtx.singletons[this.traits.blockType] as Block<K>;
 	}
 
 	setCheckpoint(LL: LogicalLine) { this.checkpoint = LL; }
