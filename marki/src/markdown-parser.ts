@@ -14,7 +14,7 @@ import { rawHTML_traits } from "./inline/raw-html.js";
 import { lineContent, linify, LogicalLine, LogicalLine_with_cmt } from "./linify.js";
 import { AnyBlock, Block, BlockBase, BlockType, BlockType_Container, InlineElement, InlineElementType, isContainer, MarkdownParserContext, MarkiDocument } from "./markdown-types.js";
 import { AnyBlockTraits, BlockTraits, BlockTraits_Container, DelimiterTraits, InlineParserTraitsList } from "./traits.js";
-import { blockIterator, LLinfo } from "./util.js";
+import { blockIterator, LLinfo, startSnippet } from "./util.js";
 
 interface BlockParserProviderItem {
 	parent: MarkdownParser;
@@ -139,9 +139,10 @@ export class MarkdownParserTraits {
 	customInlineParserProviders: Record<string, InlineParserProvider> = { };
 	customTryOrders: Record<string, BlockType[]> = { };
 	afterBlockParsingSteps: {
-		unparallel: BlockType[];
+		structural: BlockType[];
+		separate:   BlockType[];
 		parallel:   BlockType[];
-	} = { unparallel: [],  parallel: [ "listItem" ] };
+	} = { structural: [],  separate: [],  parallel: [ "listItem" ] };
 	singletons: Partial<Record<BlockType, "first" | "last">> = { };
 	afterInlineSteps: InlineElementType[] = [];
 	globalCtx: MarkdownParserContext; // for caching of data which isn't restricted to a particular document
@@ -154,10 +155,9 @@ export class MarkdownParserTraits {
 			throw new Error('Wrong input for addExtensionBlocks');
 
 		if(traits.processingStep) {
-			if(traits.processingStepParallelable === false && !this.afterBlockParsingSteps.unparallel.some(t => t === type))
-				this.afterBlockParsingSteps.unparallel.push(type);
-			if(traits.processingStepParallelable !== false && !this.afterBlockParsingSteps.parallel.some(t => t === type))
-				this.afterBlockParsingSteps.parallel.push(type);
+			const mode = traits.processingStepMode || "parallel";
+			if(!this.afterBlockParsingSteps[mode].some(t => t === type))
+				this.afterBlockParsingSteps[mode].push(type);
 		}
 		if(traits.isSingleton)
 			this.singletons[type] = traits.isSingleton;
@@ -302,16 +302,26 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 
 	processAfterBlockParsing(doc: MarkiDocument) {
 		let prom = Promise.resolve();
-		for(const k of this.MDPT.afterBlockParsingSteps.unparallel) {
+		// (I) structural processing steps
+		for(const k of this.MDPT.afterBlockParsingSteps.structural) {
 			const step = this.MDPT.blockTraitsList[k]?.processingStep;
 			if(step)
 				prom = prom.then(() => step.call(this, doc));
 		}
-		return prom.then(() => {
+		// (II) collecting singletons
+		prom =  prom.then(() => {
 			if(Object.keys(this.MDPT.singletons).length > 0)
 				this.locateSingletons(doc);
-		}).then(() => Promise.all(this.MDPT.afterBlockParsingSteps.parallel
-				.map(k => (this.MDPT.blockTraitsList[k]?.processingStep)?.call(this, doc))).then(() => { }));
+		});
+		// (III) separate processing steps
+		for(const k of this.MDPT.afterBlockParsingSteps.separate) {
+			const step = this.MDPT.blockTraitsList[k]?.processingStep;
+			if(step)
+				prom = prom.then(() => step.call(this, doc));
+		}
+		// (IV) parallel processing steps
+		return prom.then(() => Promise.all(this.MDPT.afterBlockParsingSteps.parallel
+			.map(k => (this.MDPT.blockTraitsList[k]?.processingStep)?.call(this, doc))).then(() => { }));
 	}
 
 	locateSingletons(doc: MarkiDocument) {
@@ -412,6 +422,7 @@ export function processLine(this: MarkdownParser, PP: ParseState, LL: LogicalLin
 		this.startBlock(PP, LL);
 		if(!PP.curParser) {
 			const s = lineContent(LL);
+			console.log(`Line ${LL.lineIdx} doesn't belong to any block, that's not possible!  Content "${startSnippet(s, 32)}"`);
 			throw new Error(`Line ${LL.lineIdx} doesn't belong to any block, that's not possible!  Content "${s.length > 32 ? s.slice(0, 32) + ' ...' : s}"`);
 		}
 		return PP;

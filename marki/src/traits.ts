@@ -39,7 +39,9 @@ export interface BlockTraits<T extends BlockType = ExtensionBlockType, B extends
     // It's called a single time and should hande all instances of this block type together.
     // CommonMark doesn't use this feature, it's for extensions.
     processingStep?(this: ParsingContext, doc: MarkiDocument): Promise<void>;
-    processingStepParallelable?: boolean; // can the processing step be performed simultaneously with other processing steps? If not it will be performed separately before the parallelable steps. Default true.
+    processingStepMode?: "structural" // step adds material to the document and must therefore be performed before singleton gathering
+                       | "separate" // step makes changes / produces data that other steps depend on -> must be performed before them
+                       | "parallel" // the processing step can be performed simultaneously with other processing steps == DEFAULT
 
     continuationPrefix?: RegExp| ((LL: LogicalLine, B: Block<T>) => number);
     

@@ -135,7 +135,7 @@ export const sourceInclude_traits: ExtensionBlockTraits<SourceInclude, SourceInc
     continuesHere() { return "end"; }, // single-line
 
     processingStep,
-    processingStepParallelable: false, // important! imports must be finished before other processing steps so imported blocks can be included in those steps
+    processingStepMode: "structural", // important! imports must be finished before other processing steps so imported blocks can be included in those steps
 
     allowSoftContinuations: false,
     allowCommentLines: false,

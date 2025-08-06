@@ -30,11 +30,6 @@ export const markdown_doc_title_traits: ExtensionBlockTraits<MarkdownDocTitle> =
 
     continuesHere: () => "end",
 
-    /*finalizeBlockHook() {
-        const ctx = this.localCtx as MarkdownDocTitle_ctx;
-        ctx.doc_title = this.B.title;
-    },*/
-
     processingStep(doc) {
         const B = this.localCtx.singletons[markdown_doc_title_traits.blockType];
         const ctx = this.localCtx as MarkdownDocTitle_ctx;
