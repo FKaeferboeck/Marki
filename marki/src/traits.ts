@@ -75,7 +75,6 @@ export function castExtensionBlock<B extends BlockIndividualData>
     return (block.type === traits.blockType)
 }
 
-
 export interface BlockTraits_Container<T extends BlockType_Container | ExtensionBlockType,
                                        B     extends BlockIndividualData<T> = BlockIndividualData<T>,
                                        Extra extends {} = {}> extends BlockTraits<T, B, Extra>
@@ -107,13 +106,10 @@ export type BlockContainerTraitsExtended<T     extends BlockType_Container | Ext
 export type ExtensionBlockContainerTraits<B extends BlockIndividualData = BlockIndividualData, Extra extends {} = {}>
     = BlockContainerTraitsExtended<ExtensionBlockType, B, Extra>;
 
-/*export function castExtensionBlock<B extends BlockIndividualData>
-    (block: AnyBlock, traits: ExtensionBlockTraits<B>): block is Block_Extension & B
-{
-    if(block.type !== traits.blockType)
-        throw new Error(`castBlock: expected block of type "${traits.blockType}", but encountered "${block.type}"`);
-    return true;
-}*/
+export function castExtensionBlockContainer<B extends BlockIndividualData>
+    (block: AnyBlock, traits: ExtensionBlockContainerTraits<B>): block is Block_Container_Extension<ExtensionBlockType> & B
+{ return (block.type === traits.blockType); }
+
 
 
 export type AnyBlockTraits = BlockType extends infer K ? K extends BlockType ? BlockTraits<K> : never : never;
