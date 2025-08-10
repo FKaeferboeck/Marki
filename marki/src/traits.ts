@@ -70,16 +70,16 @@ export type ExtensionBlockTraits<B extends BlockIndividualData = BlockIndividual
     = BlockTraitsExtended<ExtensionBlockType, B, Extra>;
 
 export function castExtensionBlock<B extends BlockIndividualData>
-    (block: AnyBlock, traits: ExtensionBlockTraits<B>): block is Block_Extension & B
+    (block: AnyBlock | undefined, traits: ExtensionBlockTraits<B>): block is Block_Extension & B
 {
-    return (block.type === traits.blockType)
+    return (block?.type === traits.blockType)
 }
 
 export interface BlockTraits_Container<T extends BlockType_Container | ExtensionBlockType,
                                        B     extends BlockIndividualData<T> = BlockIndividualData<T>,
                                        Extra extends {} = {}> extends BlockTraits<T, B, Extra>
 {
-    containerMode: "Container";
+    containerMode: "Container" | "Wrapper";
     contentParserTryOrder?: string | undefined;
     customChildParser?: (block: Block_Container_Extension<T> & B, i: number, ctx: ParsingContext) => InlineParserProvider | undefined;
     creator?: (PP: BlockParserProvider, type: T) => (T extends BlockType_Container ? BlockParser_Container<T> : never);

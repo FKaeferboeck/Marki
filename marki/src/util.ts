@@ -478,11 +478,13 @@ export function spreadLines(LL: LogicalLine_with_cmt | undefined) {
 }
 
 
-export function* blockIterator(Bs: AnyBlock[]): Generator<AnyBlock> {
+export function* blockIterator(Bs: AnyBlock[], mode: "normal" | "include-Wrapper" = "normal"): Generator<AnyBlock> {
     for(const B of Bs) {
-        if(isBlockWrapper(B) && !hasSevereError(B))
+        if(isBlockWrapper(B) && !hasSevereError(B)) {
+            if(mode === "include-Wrapper")
+                yield B;
             yield* blockIterator(B.blocks);
-        else
+        } else
             yield B;
     }
 }

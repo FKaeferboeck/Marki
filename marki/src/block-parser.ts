@@ -200,6 +200,12 @@ export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits e
 		if(this.parent)
 			this.parent.addContentBlock(this.B);
 		//container.addContentBlock(this.B);
+		const singletonMode = this.traits.isSingleton;
+		if(singletonMode) {
+			const singletonValue = this.localCtx.singletons;
+			if(singletonMode === "last" || !singletonValue[this.type])
+				singletonValue[this.type] = this.B;
+		}		
 		if(this.MDP.diagnostics)    console.log(`  Finish [${this.type}], to continue in line ${(this.lastLine?.lineIdx || 0) + 1}`)
 		return this.lastLine!;
 	}
@@ -252,11 +258,16 @@ export class BlockParser_Container<K extends BlockType_Container = BlockType_Con
 {
     constructor(PP: BlockParserProvider, type: K, traits: BlockTraits_Container<K>, useSoftContinuations: boolean = true) {
         super(PP, type, traits, useSoftContinuations);
-		this.B.containerMode = "Container";
-		this.B.blocks        = [];
 		this.contentParserTryOrder = traits.contentParserTryOrder;
         this.curContentParser = { tryOrderName: this.contentParserTryOrder,  container: this,  curParser: null,  generator: null };
     }
+
+	resetBlock() {
+		super.resetBlock();
+		this.B.containerMode = this.traits.containerMode || "Container";
+		this.B.blocks        = [];
+		return this.B;
+	}
 
     beginsHere(LL: LogicalLine, interrupting?: BlockType | undefined): number {
         const n0 = super.beginsHere(LL, interrupting);

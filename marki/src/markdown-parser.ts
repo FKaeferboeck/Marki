@@ -327,7 +327,11 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 	locateSingletons(doc: MarkiDocument) {
 		const singletonMode = this.MDPT.singletons;
 		const singletonValue = this.localCtx.singletons;
-		for(const B of blockIterator(doc.blocks)) {
+		// reset singletons
+		for(const k in singletonValue)
+			singletonValue[k as BlockType] = undefined;
+		// re-locate them
+		for(const B of blockIterator(doc.blocks, "include-Wrapper")) {
 			const mode = singletonMode[B.type];
 			if(mode && (mode === "last" || !singletonValue[B.type]))
 				singletonValue[B.type] = B;
@@ -343,7 +347,7 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 
 	isContainerType(type: BlockType): type is BlockType_Container {
 		const traits = this.MDPT.blockTraitsList[type];
-		return !!((traits && "containerMode" in traits && traits.containerMode === "Container") || false);
+		return !!((traits && "containerMode" in traits && (traits.containerMode === "Container" || traits.containerMode === "Wrapper")) || false);
 	}
 
 	makeParser<K extends BlockType>(type: K, PP: BlockParserProvider) {
