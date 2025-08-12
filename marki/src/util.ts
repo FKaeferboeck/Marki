@@ -111,9 +111,11 @@ export interface BlockContentIterator {
     unpop(): BlockContentChar; // basically *--It
 
     skip(chars: Record<string, boolean>) : number;
+    skipN(n_chars: number): void;
     skipNobrSpace(): number;
     skipXMLspace(): boolean; // returns if anything was skipped
 
+    peekSnippet(): string;
     startsWith(str: string, advance_if_match?: boolean): boolean;
     regexInLine(rexes: RegExp): false | RegExpMatchArray;
     regexInLine(...rexes: (RegExp | boolean)[]): false | (RegExpMatchArray | boolean)[];
@@ -303,6 +305,14 @@ export function makeBlockContentIterator(LL: LogicalLine, singleLine: boolean = 
             return skipped;
         },
 
+        skipN: (n_chars: number) => {
+            //const s = curPart[char_idx];
+            while((char_idx += n_chars) >= curPartLength) {
+                n_chars  = char_idx - curPartLength;
+                nextPart();
+            }
+        },
+
         skipXMLspace: () => {
             let found = false;
             while(spaces[curPart[char_idx] || '']) {
@@ -322,6 +332,8 @@ export function makeBlockContentIterator(LL: LogicalLine, singleLine: boolean = 
                 nextPart();
             return d;
         },
+
+        peekSnippet: () => (typeof curPart === "string" ? curPart.slice(char_idx) : ''),
 
         startsWith: (str: string, advance_if_match?: boolean) => {
             if(typeof curPart !== "string")

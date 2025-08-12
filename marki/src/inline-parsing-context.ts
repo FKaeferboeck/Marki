@@ -225,8 +225,8 @@ function inlineParse_try(this: InlineParsingContext, t: InlineElementType | Deli
 
 
 
-export function processInline(this: MarkdownParser, LL: LogicalLine, customContentParser?: InlineParserProvider) {
-	let It = makeBlockContentIterator(LL);
+export function processInline(this: MarkdownParser, LL: LogicalLine, customContentParser?: InlineParserProvider, singleLine?: boolean) {
+	let It = makeBlockContentIterator(LL, singleLine);
 	const buf: InlineContent = [];
 	const context = new InlineParsingContext(customContentParser || this.MDPT.inlineParser_standard, this);
 	context.inlineParseLoop(It, buf);
