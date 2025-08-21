@@ -4,3 +4,4 @@ export { InlineElementType, ExtensionInlineElementType, InlineElementBase, Inlin
 export { InlineElementTraits, DelimiterTraits, DelimFollowerTraits, isDelimFollowerTraits } from "../traits.js"
 export { pairUpDelimiters } from "../delimiter-processing.js"
 export * from "../renderer/inline-renderer.js"
+export { backslashEscapeds } from "../inline/backslash-escape.js"
