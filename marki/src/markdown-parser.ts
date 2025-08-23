@@ -265,10 +265,6 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 					pairUpDelimiters(B.inlineContent);
 			}
 		}).then(() => this.processAfterInlineStep()).then(() => doc)
-		.catch(exc => {
-			console.log('Error in processDocument', exc);
-			return doc;
-		});
 	}
 
 	startBlock   = startBlock;
