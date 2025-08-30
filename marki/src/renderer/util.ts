@@ -1,4 +1,4 @@
-import path from "path";
+import { isAbsolute, posix } from "path";
 import { AnyInline, IncludeFileContext, InlineElement } from "../markdown-types.js";
 
 export function renderHTML_entity(elt: InlineElement<"htmlEntity">) {
@@ -68,8 +68,8 @@ export function actualizeTab(pfx: string, preIndent: number) {
 
 
 export function actualizeLinkURL(url: string,  elt: { includeFileContext?: IncludeFileContext; }) {
-    if(elt.includeFileContext?.prefix && !path.isAbsolute(url))
-        url = path.posix.join(elt.includeFileContext.prefix, url);
+    if(elt.includeFileContext?.prefix && !isAbsolute(url))
+        url = posix.join(elt.includeFileContext.prefix, url);
     if(url === '.')
         url = '';
     return url;

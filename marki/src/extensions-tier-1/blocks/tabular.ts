@@ -1,4 +1,4 @@
-import { ParsingContext } from "src/block-parser.js";
+import { ParsingContext } from "../../block-parser.js";
 import { InlineParser_Standard } from "../../inline-parser.js";
 import { InlineParserProvider, InlineParsingContext } from "../../inline-parsing-context.js";
 import { LogicalLine, LogicalLine_text, standardBlockStart } from "../../linify.js";
@@ -181,7 +181,7 @@ export function ext_tier1_tabular_render(this: MarkdownRendererInstance, B: Bloc
     if(B.tableHead.length > 0) {
         I.add('<thead>');
         for(const R of B.tableHead)
-            printTableRow(this, R, null, I, true);
+            printTableRow(this, R, B.format, I, true);
         I.add('</thead>');
     }
     if(B.tableBody.length > 0) {

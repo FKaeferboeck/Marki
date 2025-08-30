@@ -1,4 +1,4 @@
-import { MarkdownParserTraits } from "src/markdown-parser.js";
+import { MarkdownParserTraits } from "../../markdown-parser.js";
 import { makeDelimiter } from "../../delimiter-processing.js";
 import { DelimiterTraits } from "../../traits.js";
 import { BlockContentIterator } from "../../util.js";

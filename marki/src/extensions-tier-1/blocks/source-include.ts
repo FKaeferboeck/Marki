@@ -4,7 +4,7 @@ import { AnyBlock, Block_Extension, Block_SevereErrorHolder, BlockBase_Container
 import { BlockTraitsExtended, castExtensionBlock, ExtensionBlockTraits } from "../../traits.js";
 import { access, readFile, constants } from 'fs';
 import { Inserter, MarkdownRendererInstance } from "../../renderer/renderer.js";
-import { blockSteps } from "src/markdown-parser.js";
+import { blockSteps } from "../../markdown-parser.js";
 
 const name_sourceInclude = "ext_tier1_sourceInclude";
 

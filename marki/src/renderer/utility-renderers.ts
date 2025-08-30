@@ -1,4 +1,4 @@
-import { ParsingContext } from "src/block-parser.js";
+import { ParsingContext } from "../block-parser.js";
 import { parseBackslashEscapes } from "../inline-parser.js";
 import { AnyInline, Delimiter } from "../markdown-types.js";
 import { InlineRenderer, InlineRenderHandler } from "./inline-renderer.js";

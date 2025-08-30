@@ -7,9 +7,9 @@ import { InlineElementTraits } from "../traits.js";
 //const { default: entityList } = await import("../htmlEntities.json", { with: { type: "json" }, assert: { type: "json" } });
 import * as fs from 'fs';
 // @ts-ignore
-import { resolveDataFilepath } from "../url-resolve.js";
-const jsonFile = resolveDataFilepath('htmlEntities.json');
-const entityList = JSON.parse(fs.readFileSync(jsonFile, 'utf8')) as Record<string, number | number[]>;
+///import { resolveDataFilepath } from "../url-resolve.js";
+//const jsonFile = resolveDataFilepath('htmlEntities.json');
+const entityList = JSON.parse(fs.readFileSync('data/htmlEntities.json', 'utf8')) as Record<string, number | number[]>;
 
 
 const rex = /^&(?:#\d{1,7};|#[xX][\dA-Fa-f]{1,6};|[A-Za-z][A-Za-z\d]{0,32};)/; // 32 is the length of the longest existing HTML entity

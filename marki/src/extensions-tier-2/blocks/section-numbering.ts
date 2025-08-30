@@ -1,11 +1,12 @@
 import { sectionHeader_trimEndMarker } from "../../blocks/sectionHeader.js";
-import { lineContent, measureColOffset, standardBlockStart } from "../../linify.js";
+import { measureColOffset, standardBlockStart } from "../../linify.js";
 import { BlockTraitsExtended, castExtensionBlock, ExtensionBlockTraits } from "../../traits.js";
 import { blockIterator, makeBlockContentIterator, sliceLL_to } from "../../util.js";
 import { MarkdownRendererInstance, Inserter } from "../../renderer/renderer.js";
 import { AnyBlock, Block_Extension, Block_Leaf } from "../../markdown-types.js";
-import { ParsingContext } from "src/block-parser.js";
+import { ParsingContext } from "../../block-parser.js";
 import { tier2_command_block_start } from "../traits.js";
+import { MarkdownParserTraits } from "src/markdown-parser.js";
 
 
 export interface SectionHeaderNumberingElement { label?: string;  num: number; };
@@ -24,7 +25,7 @@ interface TableOfContents_ctx {
     section_headers: (Block_Leaf<"sectionHeader"> & SectionHeader_ext)[];
 }
 
-export function getTableOfContents_ctx(ctx: ParsingContext) {
+export function getTableOfContents_ctx(ctx: ParsingContext | MarkdownParserTraits) {
     const t_o_c = (ctx.globalCtx as TableOfContents_ctx);
     t_o_c.table_of_contents_title ||= 'Table of Contents';
     t_o_c.section_headers ||= [];

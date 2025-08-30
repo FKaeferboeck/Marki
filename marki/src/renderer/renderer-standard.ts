@@ -5,7 +5,6 @@ import { Inserter, MarkdownRendererTraits } from "./renderer.js";
 import { escapeXML, escapeXML_all, urlEncode, renderHTML_entity, actualizeLinkURL } from "./util.js";
 import { getInlineRenderer_plain } from "./utility-renderers.js";
 import { startSnippet } from "../util.js";
-import path from "path";
 
 
 function posInList(B: Block<"listItem">) {
