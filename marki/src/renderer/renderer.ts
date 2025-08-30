@@ -66,7 +66,6 @@ export class MarkdownRendererInstance implements MarkdownRendererTraits {
         const H = this.blockHandler[B.type];
         if(!H)
             return I.add('<??>');
-        
         (H as any).call(this, B, I);
     }
 

@@ -32,7 +32,12 @@ export function getSourceInclude_ctx(ctx: ParsingContext) {
 export interface SourceIncludeTraits_extra {
     command: RegExp; // the include command; default is #include (as in C++)
     sourceIncludeResolve: SourceIncludeResolver | undefined;
-    sourceIncludeResolve_II: (ctx_: ParsingContext, B_caller: SourceInclude) => Promise<boolean>; // reject with Marki_SevereError in case of problems
+
+    // This function should either:
+    //   - return false and set an error message in B_caller.severeError
+    //   - return true and set the resolved filepath in B_caller.resolved
+    //   - handle the file loading by itself (e.g. if the file is acquired in some other way) and return the file content as string
+    sourceIncludeResolve_II: (ctx_: ParsingContext, B_caller: SourceInclude) => Promise<boolean|string>;
 }
 
 type SourceIncludeBlockParser = BlockParser<ExtensionBlockType, BlockTraitsExtended<ExtensionBlockType, SourceInclude, SourceIncludeTraits_extra>>;
@@ -66,21 +71,26 @@ export function sourceIncludeResolve_II(ctx_: ParsingContext, B_caller: SourceIn
 
 function perform_Marki_sourceInclude(this: SourceIncludeBlockParser, B_caller: Block_Extension & SourceInclude): Promise<AnyBlock[] | Marki_SevereError> {
     return this.traits.sourceIncludeResolve_II(this, B_caller)
-    .then(ok => new Promise<AnyBlock[] | Marki_SevereError>((resolve, reject) => {
+    .then((ok): Promise<string> => {
         if(!ok)
-            return resolve(B_caller.severeError!);
-        readFile(B_caller.resolved, "utf-8", async (err_, data) => {
-            if(err_)    return reject(B_caller.severeError = { exc_msg: err_.toString() });
-            // make modified parsing context for the content of the included file:
-            const ctx: ParsingContext = { MDP: this.MDP,  globalCtx: this.globalCtx,  localCtx: this.localCtx,  includeFileCtx: B_caller.includeFileCtx };
-            const Bs = blockSteps.call(ctx, data);
-            // This links includes of includes to their respective parent; includes of main have includeFrom === "main" set by default:
-            for(const B of Bs)
-                if(castExtensionBlock(B, sourceInclude_traits))
-                    B.includedFrom = B_caller;
-            resolve(Bs);
-        });
-    }))
+            return Promise.reject(B_caller.severeError!);
+        if(typeof ok === "string")
+            return Promise.resolve(ok);
+        return new Promise((resolve, reject) => readFile(B_caller.resolved, "utf-8", async (err_, data) => {
+                if(err_)    return reject(B_caller.severeError = { exc_msg: err_.toString() });
+                return resolve(data);
+            }));
+        })
+    .then(data => {
+        // make modified parsing context for the content of the included file:
+        const ctx: ParsingContext = { MDP: this.MDP,  globalCtx: this.globalCtx,  localCtx: this.localCtx,  includeFileCtx: B_caller.includeFileCtx };
+        const Bs = blockSteps.call(ctx, data);
+        // This links includes of includes to their respective parent; includes of main have includeFrom === "main" set by default:
+        for(const B of Bs)
+            if(castExtensionBlock(B, sourceInclude_traits))
+                B.includedFrom = B_caller;
+        return Bs;
+    })
     .catch((err: Marki_SevereError) => Promise.resolve(err));
 }
 
@@ -160,7 +170,7 @@ export const sourceInclude_traits: ExtensionBlockTraits<SourceInclude, SourceInc
 // Only gets used when there is a severe error and the included file couldn't be read, because otherwise the included content is rendered instead.
 export function sourceInclude_render(this: MarkdownRendererInstance, B_: Block_Extension, I: Inserter) {
     const B = B_ as Block_Extension & SourceInclude;
-    let msg = B.severeError?.exc_msg.trim() || '';
+    let msg = B.severeError?.exc_msg?.trim() || '';
     msg = msg.replace(/^Error:\s*/, '');
     I.add(`<div>Could not include file: ${msg || 'unknown reason'}</div>`);
 };
