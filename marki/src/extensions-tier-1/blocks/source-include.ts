@@ -1,19 +1,21 @@
 import { BlockParser, MarkdownLocalContext, ParsingContext } from "../../block-parser.js";
 import { LogicalLine, standardBlockStart } from "../../linify.js";
-import { AnyBlock, Block_Extension, Block_SevereErrorHolder, BlockBase_Container_additions, ExtensionBlockType, Marki_SevereError } from "../../markdown-types.js";
+import { AnyBlock, Block_Extension, Block_SevereErrorHolder, BlockBase_Container_additions, ExtensionBlockType, IncludeFileContext, Marki_SevereError } from "../../markdown-types.js";
 import { BlockTraitsExtended, castExtensionBlock, ExtensionBlockTraits } from "../../traits.js";
 import { access, readFile, constants } from 'fs';
 import { Inserter, MarkdownRendererInstance } from "../../renderer/renderer.js";
+import { blockSteps } from "src/markdown-parser.js";
 
 const name_sourceInclude = "ext_tier1_sourceInclude";
 
-export type SourceIncludeResolver = (include_file: string, called_from: string) => string | Marki_SevereError;
+export type SourceIncludeResolver = (include_file: string, called_from: string, includeFileContext: IncludeFileContext) => string | Marki_SevereError;
 
 export interface SourceInclude extends BlockBase_Container_additions, Block_SevereErrorHolder {
-    target:       string; // as given in the include call
-    resolved:     string; // absolute file-path of the included document
-    includedFrom: "main" | SourceInclude; // where did this include take place? For catching infinite include loops
-    promise:      Promise<AnyBlock[] | Marki_SevereError> | undefined;
+    target:         string; // as given in the include call
+    resolved:       string; // absolute file-path of the included document
+    includedFrom:   "main" | SourceInclude; // where did this include take place? For catching infinite include loops
+    promise:        Promise<AnyBlock[] | Marki_SevereError> | undefined;
+    includeFileCtx: IncludeFileContext;
 }
 
 export interface SourceInclude_ctx {
@@ -63,13 +65,15 @@ export function sourceIncludeResolve_II(ctx_: ParsingContext, B_caller: SourceIn
 
 
 function perform_Marki_sourceInclude(this: SourceIncludeBlockParser, B_caller: Block_Extension & SourceInclude): Promise<AnyBlock[] | Marki_SevereError> {
-    return this.traits.sourceIncludeResolve_II(this.MDP, B_caller)
+    return this.traits.sourceIncludeResolve_II(this, B_caller)
     .then(ok => new Promise<AnyBlock[] | Marki_SevereError>((resolve, reject) => {
         if(!ok)
             return resolve(B_caller.severeError!);
         readFile(B_caller.resolved, "utf-8", async (err_, data) => {
             if(err_)    return reject(B_caller.severeError = { exc_msg: err_.toString() });
-            const Bs = this.MDP.blockSteps(data);
+            // make modified parsing context for the content of the included file:
+            const ctx: ParsingContext = { MDP: this.MDP,  globalCtx: this.globalCtx,  localCtx: this.localCtx,  includeFileCtx: B_caller.includeFileCtx };
+            const Bs = blockSteps.call(ctx, data);
             // This links includes of includes to their respective parent; includes of main have includeFrom === "main" set by default:
             for(const B of Bs)
                 if(castExtensionBlock(B, sourceInclude_traits))
@@ -122,7 +126,8 @@ export const sourceInclude_traits: ExtensionBlockTraits<SourceInclude, SourceInc
         if(str.startsWith('<') || str.startsWith('"'))
             str = str.slice(1, -1).trim();
         B.target = str;
-        const resol = this.traits.sourceIncludeResolve(str, ctx.URL);
+        B.includeFileCtx = { ... this.includeFileCtx };
+        const resol = this.traits.sourceIncludeResolve(str, ctx.URL, B.includeFileCtx);
         if(typeof resol !== "string")
             B.severeError = resol;
         else {
@@ -139,7 +144,10 @@ export const sourceInclude_traits: ExtensionBlockTraits<SourceInclude, SourceInc
 
     allowSoftContinuations: false,
     allowCommentLines: false,
-    defaultBlockInstance: { containerMode: "Wrapper",  target: '',  resolved: '',  includedFrom: "main",  promise: undefined,  blocks: [] },
+    defaultBlockInstance: {
+        containerMode: "Wrapper",  target: '',  resolved: '',  includedFrom: "main",  promise: undefined,  blocks: [],
+        includeFileCtx: { prefix: '',  mode: "relative" }
+    },
     inlineProcessing: false,
 
     command: /^#include\b/i,

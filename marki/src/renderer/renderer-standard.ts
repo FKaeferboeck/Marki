@@ -2,9 +2,10 @@ import { lineContent } from "../linify.js";
 import { Block } from "../markdown-types.js";
 import { renderInline } from "./inline-renderer.js";
 import { Inserter, MarkdownRendererTraits } from "./renderer.js";
-import { escapeXML, escapeXML_all, urlEncode, renderHTML_entity } from "./util.js";
+import { escapeXML, escapeXML_all, urlEncode, renderHTML_entity, actualizeLinkURL } from "./util.js";
 import { getInlineRenderer_plain } from "./utility-renderers.js";
 import { startSnippet } from "../util.js";
+import path from "path";
 
 
 function posInList(B: Block<"listItem">) {
@@ -77,10 +78,11 @@ export const markdownRendererTraits_standard: MarkdownRendererTraits = {
         "escaped":    (elt, I) => I.add(escapeXML(elt.character)),
         "codeSpan":   (elt, I) => I.add(`<code>${escapeXML(elt.content)}</code>`),
         "link":       function(elt, I) {
-            const dest  = elt.reference?.destination || elt.destination;
-            const title = elt.reference?.linkTitle   || elt.linkTitle;
+            const elt1 = (elt.reference || elt);
+            const title = elt1.linkTitle;
             const title_s = (title && title.length > 0 ? escapeXML_all(title) : undefined);
-            I.add(`<a href="${urlEncode(dest)}"${title_s ? ` title="${title_s}"` : ''}>`);
+            const url = actualizeLinkURL(urlEncode(elt1.destination), elt1);
+            I.add(`<a href="${url}"${title_s ? ` title="${title_s}"` : ''}>`);
             /*const buf2: AnyInline[] = [];
             parseBackslashEscapes(elt.linkLabel, buf2);
             I.add(... buf2.map(s => (typeof s === "string" ? s : s.type === "escaped" ? s.character : '??')));*/
@@ -91,9 +93,10 @@ export const markdownRendererTraits_standard: MarkdownRendererTraits = {
         "hardBreak":  (elt, I) => I.add(elt.nSpaces === 1 ? '\n' : '<br />\n'),
         "htmlEntity": (elt, I) => I.add(escapeXML(renderHTML_entity(elt))),
         "image":      function(elt, I) {
+            const elt1 = (elt.reference || elt);
             const dest  = elt.reference?.destination || elt.destination;
             const title = elt.reference?.linkTitle   || elt.linkTitle;
-            I.add(`<img src="${dest.join('+')}"`);
+            I.add(`<img src="${actualizeLinkURL(dest.join('+'), elt1)}"`);
             const inlineRenderer_plain = getInlineRenderer_plain(this.ctx);
             I.add(` alt="${renderInline(elt.linkLabelContents, inlineRenderer_plain)}"`);
             if(title?.length)

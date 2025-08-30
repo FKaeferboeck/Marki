@@ -1,4 +1,4 @@
-[foo]: /url "This works!"
+[foodoo]: urloo "This works!"
 Second degree
 
 #include "testinclude.sdsmd"

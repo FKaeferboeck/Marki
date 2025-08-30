@@ -68,8 +68,9 @@ export type BlockBase<K extends BlockType> = {
 };
 
 export interface BlockBase_Container_additions {
-	containerMode: Exclude<ContainerMode, "Leaf">;
-	blocks:        AnyBlock[];
+	containerMode:       Exclude<ContainerMode, "Leaf">;
+	blocks:              AnyBlock[];
+	includeFileCtx?: IncludeFileContext;
 }
 
 export interface Marki_SevereError {
@@ -109,6 +110,11 @@ export interface MarkiDocument {
 	input?:   string;
 	blocks:   AnyBlock[];
 	localCtx: MarkdownParserContext;
+}
+
+export interface IncludeFileContext {
+	prefix: string;
+	mode: "relative" | "absolute";
 }
 
 
@@ -152,22 +158,24 @@ export interface InlineElementMap {
 	htmlEntity: { code: string;  codePoint: number | number[] | undefined; /* undefined describes an illegal entity code */
                   valid: boolean; };
 	codeSpan:   { content: string; };
-	link:       { linkType:          "inline" | "reference" | "collapsed" | "shortcut";
-		          linkLabelContents: InlineContent;
-	              linkLabel:         string;
-	              destination:       AnyInline[];
-	              linkTitle?:        AnyInline[];
-				  reference?:        Block<"linkDef">; };
+	link:       { linkType:           "inline" | "reference" | "collapsed" | "shortcut";
+		          linkLabelContents:  InlineContent;
+	              linkLabel:          string;
+	              destination:        AnyInline[];
+	              linkTitle?:         AnyInline[];
+				  includeFileContext: IncludeFileContext;
+				  reference?:         Block<"linkDef">; };
 	hardBreak:  { nSpaces: number | false; }; // nSpaces === false means backslash
 	emphasis:   { delimiter: "*" | "_";
 				  delimiterSize: number;
                   strong: boolean; };
-	image:      { linkType:          "inline" | "reference" | "collapsed" | "shortcut";
-		          linkLabelContents: InlineContent;
-	              linkLabel:         string;
-	              destination:       AnyInline[];
-	              linkTitle?:        AnyInline[];
-				  reference?:        Block<"linkDef">; };
+	image:      { linkType:           "inline" | "reference" | "collapsed" | "shortcut";
+		          linkLabelContents:  InlineContent;
+	              linkLabel:          string;
+	              destination:        AnyInline[];
+	              linkTitle?:         AnyInline[];
+				  includeFileContext: IncludeFileContext;
+				  reference?:         Block<"linkDef">; };
 	autolink:   { scheme: string;  URI: string;  email?: string; };
 	rawHTML:    { XML_type: "tag" | "tag_selfclosed" | "tag_close" | "processingInstruction" | "declaration" | "CDATA" | "XML_comment";
 		          tag: string; };

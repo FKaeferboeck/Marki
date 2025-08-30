@@ -5,7 +5,7 @@ import { extendTier1 } from "../src/extensions-tier-1/traits";
 import { markdownRendererTraits_standard } from '../src/renderer/renderer-standard';
 import { sourceInclude_traits } from '../src/extensions-tier-1/blocks/source-include';
 import { MarkiDocument } from '../src/markdown-types';
-import { resolve } from 'path';
+import { resolve, basename, posix } from 'path';
 
 extendTier1(global_MDPT, markdownRendererTraits_standard);
 
@@ -13,10 +13,20 @@ const parser = new MarkdownParser();
 const renderer = new MarkdownRendererInstance(parser);
 
 // Very simplistic include path resolver for testing only
-sourceInclude_traits.sourceIncludeResolve = (filepath, called_from) => {
-    let fp = `./test/${filepath}`;
+// We don't use physical sub-directories here, they get simulated
+sourceInclude_traits.sourceIncludeResolve = (filepath, _called_from, ifctx) => {
+    filepath = posix.normalize(filepath);
+    const pathOnly = posix.dirname(filepath);
+    const fileOnly = basename(filepath);
+    let fp = `./test/data/${fileOnly}`;
     fp = resolve(fp);
-    //console.log(`Resolve to [${fp}]`)
+
+    if(posix.isAbsolute(filepath)) {
+        ifctx.mode   = "absolute";
+        ifctx.prefix = pathOnly;
+    }
+    else
+        ifctx.prefix = posix.join(ifctx.prefix, pathOnly);
     return fp;
 }
 
@@ -26,7 +36,7 @@ const clearify = (s: string) => s.replace(/\t/g, '[\\t]');
 function doTest(idx: number | string, input: string, expectation: string) {
     test('' + idx, async () => {
         const doc: MarkiDocument = {
-            URL: sourceInclude_traits.sourceIncludeResolve(`Marki-UnitTest-Tier1-${idx}.sdsmd`, '') as string,
+            URL: sourceInclude_traits.sourceIncludeResolve!(`Marki-UnitTest-Tier1-${idx}.sdsmd`, '', { mode: "relative",  prefix: '' }) as string,
             title: undefined,
             input,
             blocks: [],
@@ -50,15 +60,23 @@ describe('#include', () => {
 Main text
 
 #include <testinclude.sdsmd>
-Afterwards, [foo]`, `<h1>Main file</h1>
+Afterwards, [foodoo]`, `<h1>Main file</h1>
 <p>Main text</p>
 <h1>File included</h1>
 <p>Second degree</p>
 <div>Could not include file: Circular include of "testinclude.sdsmd": skipping it</div>
 <p>Hi there!</p>
-<p>Afterwards, <a href="/url" title="This works!">foo</a></p>\n`);
+<p>Afterwards, <a href="urloo" title="This works!">foodoo</a></p>\n`);
 
-        doTest(2, `Hi!\n\n#include Marki-UnitTest-Tier1-2.sdsmd`, '<p>Hi!</p>\n<div>Could not include file: Circular include of "Marki-UnitTest-Tier1-2.sdsmd": skipping it</div>\n');
+    doTest(2, `Hi!\n\n#include Marki-UnitTest-Tier1-2.sdsmd`, '<p>Hi!</p>\n<div>Could not include file: Circular include of "Marki-UnitTest-Tier1-2.sdsmd": skipping it</div>\n');
+
+    /* If a Markdown file is included by a relative path that results in a different directory, we need to make sure that hyperlinks/image URLs in that included file
+     * point to the correct location in the rendered HTML. Therefore the relative path resulting from the include must be prepended to all URLs.
+     * This affects link definition blocks, inline links, and images.
+     */
+    doTest(3, `[foo]\n\n#include dir-1/dir-2-1/testinclude3.sdsmd`,
+              `<p><a href="dir-1/dir-2-2/dir-3-2/index.html" title="This works!">foo</a></p>\n<p><a href="dir-1/dir-2-2/dir-3-3/index.html">direct link</a>
+<img src="dir-1/dir-2-2/dir-3-3/img.gif" alt="direct img" /></p>\n`);
 });
 
 

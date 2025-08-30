@@ -139,7 +139,7 @@ export const link_traits: DelimFollowerTraits<"link"> = {
     startDelims: [ bracket_traits.name ],
     contentOwner: true,
 
-    parse(B, openingDelim: Delimiter_nestable, It: BlockContentIterator, startPos: InlinePos) {
+    parse(B, openingDelim: Delimiter_nestable, It: BlockContentIterator) {
         const ret = (B: InlineElement<"link"> | false) => {
             if(B === false)
                 return false;
@@ -151,6 +151,7 @@ export const link_traits: DelimFollowerTraits<"link"> = {
         if(containsElement(B.linkLabelContents, "link"))
             return false;
         B.linkLabel = reassembleContent(B.linkLabelContents, this);
+        B.includeFileContext = this.includeFileCtx;
         const cpt = It.newPos();
 
         if(It.peek() === '(') { // inline link
@@ -185,7 +186,8 @@ export const link_traits: DelimFollowerTraits<"link"> = {
         linkType:          "inline",
         linkLabelContents: [],
         linkLabel:         '',
-        destination:       []
+        destination:       [],
+        includeFileContext: { mode: "relative",  prefix: '' }
     }
 };
 

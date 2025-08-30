@@ -1,4 +1,5 @@
-import { AnyInline, InlineElement } from "../markdown-types.js";
+import path from "path";
+import { AnyInline, IncludeFileContext, InlineElement } from "../markdown-types.js";
 
 export function renderHTML_entity(elt: InlineElement<"htmlEntity">) {
     if(elt.codePoint === undefined)
@@ -63,4 +64,13 @@ export function actualizeTab(pfx: string, preIndent: number) {
     if((preIndent % 4) !== 0 && pfx[0] === '\t')
         return ' '.repeat(4 - (preIndent % 4)) + pfx.slice(1);
     return pfx;
+}
+
+
+export function actualizeLinkURL(url: string,  elt: { includeFileContext?: IncludeFileContext; }) {
+    if(elt.includeFileContext?.prefix && !path.isAbsolute(url))
+        url = path.posix.join(elt.includeFileContext.prefix, url);
+    if(url === '.')
+        url = '';
+    return url;
 }

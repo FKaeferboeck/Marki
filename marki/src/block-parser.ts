@@ -6,7 +6,7 @@ import { indentedCodeBlock_traits } from './blocks/indentedCodeBlock.js';
 import { paragraph_traits } from './blocks/paragraph.js';
 import { sectionHeader_traits } from './blocks/sectionHeader.js';
 import { sectionHeader_setext_traits } from './blocks/sectionHeader_setext.js';
-import { AnyBlock, Block, Block_Leaf, BlockBase, BlockType, BlockType_Container, BlockType_Leaf, MarkdownParserContext } from './markdown-types.js';
+import { AnyBlock, Block, Block_Leaf, BlockBase, BlockType, BlockType_Container, BlockType_Leaf, IncludeFileContext, MarkdownParserContext } from './markdown-types.js';
 import { LogicalLineType } from './parser.js';
 import { BlockContinuationType, BlockTraits, BlockTraits_Container } from './traits.js';
 import { LLinfo } from './util.js';
@@ -45,9 +45,10 @@ export type MarkdownLocalContext = MarkdownParserContext & {
 
 
 export interface ParsingContext {
-	MDP:       MarkdownParser;
-	globalCtx: MarkdownParserContext; // for caching not restricted to a particular document
-	localCtx:  MarkdownLocalContext; // for data local to a single document
+	MDP:            MarkdownParser;
+	globalCtx:      MarkdownParserContext; // for caching not restricted to a particular document
+	localCtx:       MarkdownLocalContext;  // for data local to a single document
+	includeFileCtx: IncludeFileContext;    // for correctly resolving relative links – for extension tier 1, not used in vanilla CommonMark
 }
 
 
@@ -74,7 +75,7 @@ export interface BlockParser<K      extends BlockType = BlockType,
 	resetBlock(): Block<K>;
 	singleton(): Block<K> | undefined;
 	parent: BlockContainer | undefined;
-	traits: Traits;//BlockTraits<K>;
+	traits: Traits;
 	B: Block<K> & Traits["defaultBlockInstance"];
 	isInterruption: boolean;
 	startLine: LogicalLine | undefined;
@@ -85,14 +86,15 @@ export interface BlockParser<K      extends BlockType = BlockType,
 export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits extends BlockTraits<K> = BlockTraits<K>> implements BlockParser<K, Traits> {
 	type: K;
 
-	constructor(/*ctx: ParsingContext*/PP: BlockParserProvider, type: K, traits: Traits, useSoftContinuations: boolean = true) {
+	constructor(PP: BlockParserProvider, type: K, traits: Traits, useSoftContinuations: boolean = true) {
 		this.PP = PP;
 		const ctx = PP.ctx;
-		this.MDP       = ctx.MDP;
-		this.globalCtx = ctx.globalCtx;
-		this.localCtx  = ctx.localCtx;
-		this.type      = type;
-		this.traits    = traits;
+		this.MDP            = ctx.MDP;
+		this.globalCtx      = ctx.globalCtx;
+		this.localCtx       = ctx.localCtx;
+		this.type           = type;
+		this.traits         = traits;
+		this.includeFileCtx = ctx.includeFileCtx;
 		if(ctx.MDP.diagnostics)
 			console.log(`Making new parser [${type}]`)
 		this.B         = this.resetBlock();
@@ -217,19 +219,20 @@ export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits e
 	setCheckpoint(LL: LogicalLine) { this.checkpoint = LL; }
 	getCheckpoint(): LogicalLine | null { return this.checkpoint || null; }
 	PP: BlockParserProvider;
-	MDP: MarkdownParser;
-	globalCtx: MarkdownParserContext;
-	localCtx:  MarkdownLocalContext;
+	MDP:            MarkdownParser;
+	globalCtx:      MarkdownParserContext;
+	localCtx:       MarkdownLocalContext;
+	includeFileCtx: IncludeFileContext;
 	parent: BlockContainer | undefined;
 	traits: Traits;
 	B: Block<K>; //Traits["defaultBlockInstance"];
-	isInterruption: boolean = false;
+	isInterruption:      boolean = false;
 	startLine:           LogicalLine | undefined;
 	lastLine:            LogicalLine | undefined; // the line most recently added to the block through acceptLine()
 	lastAddedContent:    LogicalLine_with_cmt | undefined; // tail of the linked list in this.B.content
 	checkpoint:          LogicalLine | undefined;
 	lastEnqueuedContent: LogicalLine | undefined;
-	blockContainerType: BlockContainer["blockContainerType"] | "none" = "none";
+	blockContainerType:  BlockContainer["blockContainerType"] | "none" = "none";
 	readonly useSoftContinuations: boolean;
 
 	protected enqueueContentSlice(LL: LogicalLine, slice_col: number, bct?: BlockContinuationType | "start") {
@@ -259,7 +262,7 @@ export class BlockParser_Container<K extends BlockType_Container = BlockType_Con
     constructor(PP: BlockParserProvider, type: K, traits: BlockTraits_Container<K>, useSoftContinuations: boolean = true) {
         super(PP, type, traits, useSoftContinuations);
 		this.contentParserTryOrder = traits.contentParserTryOrder;
-        this.curContentParser = { tryOrderName: this.contentParserTryOrder,  container: this,  curParser: null,  generator: null };
+        this.curContentParser = { tryOrderName: this.contentParserTryOrder,  container: this,  curParser: null,  generator: null,  includeFileContext: this.includeFileCtx };
     }
 
 	resetBlock() {
@@ -276,7 +279,7 @@ export class BlockParser_Container<K extends BlockType_Container = BlockType_Con
 		if(this.traits.acceptLineHook?.call(this, LL, "start") === false)
 			return n0;
 		const LLD_c = this.enqueueContentSlice(LL, n0);
-        this.curContentParser = this.MDP.processLine({ tryOrderName: this.contentParserTryOrder,  container: this,  curParser: null,  generator: null }, LLD_c);
+        this.curContentParser = this.MDP.processLine({ tryOrderName: this.contentParserTryOrder,  container: this,  curParser: null,  generator: null,  includeFileContext: this.includeFileCtx }, LLD_c);
         if(!this.curContentParser.curParser)
             throw new Error(`Content of container ${this.type} not recognized as any block type!`);
 		return n0;

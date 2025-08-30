@@ -2,15 +2,16 @@ import { BlockParser } from "../block-parser.js";
 import { makeInlineContext_minimal } from "../inline-parsing-context.js";
 import { takeLinkDestination } from "../inline/link.js";
 import { isSpaceLine, LogicalLine, standardBlockStart } from "../linify.js";
-import { AnyInline } from "../markdown-types.js";
+import { AnyInline, IncludeFileContext } from "../markdown-types.js";
 import { BlockContinuationType, makeBlockTraits } from "../traits.js";
 import { BCI_TakeDelimited_IO, BlockContentIterator, makeBlockContentIterator } from "../util.js";
 
 
 export interface LinkDef {
-    linkLabel:   string;
-    destination: AnyInline[];
-    linkTitle:   AnyInline[];
+    linkLabel:           string;
+    destination:         AnyInline[];
+    linkTitle:           AnyInline[];
+    includeFileContext?: IncludeFileContext;
 }
 
 export type LinkDefParser = BlockParser<"linkDef"> & {
@@ -108,7 +109,7 @@ export const linkDef_traits = makeBlockTraits("linkDef", {
         if(!LL.content.startsWith('['))
             return -1;
         if(this.MDP.diagnostics)
-            console.log('Link def block', this.B)
+            console.log('Link def block', B)
         const It = makeBlockContentIterator(LL, true);
         const res = linkDefStep.call(this, It);
         if(res === "reject") {
@@ -117,6 +118,7 @@ export const linkDef_traits = makeBlockTraits("linkDef", {
         }
         if(this.stage === 4)
             this.setCheckpoint(LL);
+        B.includeFileContext = this.includeFileCtx;
         return 0; // Even when we know the link def finishes in one line we'll still end it in the next line, because that's how the parser works.
     },
 

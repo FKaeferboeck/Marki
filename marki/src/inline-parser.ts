@@ -2,7 +2,7 @@ import { MarkdownLocalContext, ParsingContext } from "./block-parser.js";
 import { backslashEscapeds } from "./inline/backslash-escape.js";
 import { parseHTML_entities } from "./inline/html-entity.js";
 import { MarkdownParser } from "./markdown-parser.js";
-import { AnyInline, Delimiter_nestable, ExtensionInlineElementType, InlineContent, InlineElement, InlineElementType, InlinePos, MarkdownParserContext } from "./markdown-types.js";
+import { AnyInline, Delimiter_nestable, ExtensionInlineElementType, IncludeFileContext, InlineContent, InlineElement, InlineElementType, InlinePos, MarkdownParserContext } from "./markdown-types.js";
 import { PositionOps } from "./position-ops.js";
 import { DelimFollowerTraits, InlineElementTraits } from "./traits.js";
 import { BlockContentIterator } from "./util.js";
@@ -33,13 +33,15 @@ export class InlineParser_Standard<K extends InlineElementType = ExtensionInline
 
     constructor(ctx: ParsingContext, traits: InlineElementTraits<K, Elt> | DelimFollowerTraits<K, Elt>) {
         this.type      = traits.defaultElementInstance.type as K;
-        this.MDP       = ctx.MDP;
-		this.globalCtx = ctx.globalCtx;
-		this.localCtx  = ctx.localCtx;
+        this.MDP            = ctx.MDP;
+		this.globalCtx      = ctx.globalCtx;
+		this.localCtx       = ctx.localCtx;
+        this.includeFileCtx = ctx.includeFileCtx;
         this.traits    = traits;
         this.B         = structuredClone(traits.defaultElementInstance) as Elt;
         this.B.endPos  = { line: 0,  character: 0 };
     }
+        
 
     parse(It: BlockContentIterator, startCheckpoint: InlinePos): false | Elt {
         if(!("startChars" in this.traits)) // this function doesn't handle DelimFollowerTraits
@@ -86,6 +88,7 @@ export class InlineParser_Standard<K extends InlineElementType = ExtensionInline
     localCtx:  MarkdownLocalContext;
     B: Elt;
     traits: InlineElementTraits<K, Elt> | DelimFollowerTraits<K, Elt>;
+    includeFileCtx: IncludeFileContext;
 }
 
 

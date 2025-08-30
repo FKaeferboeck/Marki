@@ -32,8 +32,9 @@ export const image_traits: DelimFollowerTraits<"image"> = {
             return true;
         };
 
-        B.linkLabelContents = this.getDelimitedContent(openingDelim);
-        B.linkLabel = reassembleContent(B.linkLabelContents, this);
+        B.linkLabelContents  = this.getDelimitedContent(openingDelim);
+        B.linkLabel          = reassembleContent(B.linkLabelContents, this);
+        B.includeFileContext = this.includeFileCtx;
         const cpt = It.newPos();
 
         if(It.peek() === '(') { // inline link
@@ -68,6 +69,7 @@ export const image_traits: DelimFollowerTraits<"image"> = {
         linkType:          "inline",
         linkLabelContents: [],
         linkLabel:         '',
-        destination:       []
+        destination:       [],
+        includeFileContext: { mode: "relative",  prefix: '' }
     }
 };

@@ -495,7 +495,7 @@ export function* blockIterator(Bs: AnyBlock[], mode: "normal" | "include-Wrapper
         if(isBlockWrapper(B) && !hasSevereError(B)) {
             if(mode === "include-Wrapper")
                 yield B;
-            yield* blockIterator(B.blocks);
+            yield* blockIterator(B.blocks, mode);
         } else
             yield B;
     }

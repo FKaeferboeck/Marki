@@ -12,7 +12,7 @@ import { bang_bracket_traits, image_traits } from "./inline/image.js";
 import { bracket_traits, link_traits } from "./inline/link.js";
 import { rawHTML_traits } from "./inline/raw-html.js";
 import { lineContent, linify, LogicalLine, LogicalLine_with_cmt } from "./linify.js";
-import { AnyBlock, Block, BlockBase, BlockType, BlockType_Container, InlineElement, InlineElementType, isContainer, MarkdownParserContext, MarkiDocument } from "./markdown-types.js";
+import { AnyBlock, Block, BlockBase, BlockType, BlockType_Container, IncludeFileContext, InlineElement, InlineElementType, isBlockWrapper, isContainer, MarkdownParserContext, MarkiDocument } from "./markdown-types.js";
 import { AnyBlockTraits, BlockTraits, BlockTraits_Container, DelimiterTraits, InlineParserTraitsList } from "./traits.js";
 import { blockIterator, LLinfo, startSnippet } from "./util.js";
 
@@ -25,11 +25,12 @@ type BlockParserProviderCache = {
 };
 
 export interface ParseState {
-	tryOrderName: string | undefined;
-	container:    BlockContainer;
-	curParser:    BlockParser | null;
-	generator:    Generator<BlockParser> | null;
-	retry?:       LogicalLine;
+	tryOrderName:       string | undefined;
+	container:          BlockContainer;
+	curParser:          BlockParser | null;
+	generator:          Generator<BlockParser> | null;
+	retry?:             LogicalLine;
+	includeFileContext: IncludeFileContext; // for correctly resolving relative links – for extension tier 1, not used in vanilla CommonMark
 }
 
 
@@ -205,9 +206,10 @@ export const global_MDPT = new MarkdownParserTraits();
 
 export class MarkdownParser implements BlockContainer, ParsingContext {
 	MDPT: MarkdownParserTraits;
-	globalCtx: MarkdownParserContext;
-	localCtx:  MarkdownLocalContext;
-	MDP: MarkdownParser;
+	MDP:            MarkdownParser;
+	globalCtx:      MarkdownParserContext;
+	localCtx:       MarkdownLocalContext;
+	includeFileCtx: IncludeFileContext;
 
 	constructor(MDPT?: MarkdownParserTraits) {
 		this.MDP       = this;
@@ -218,6 +220,10 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 			singletons: { },
 			linkDefs: { }
 		}; // TODO!!
+		this.includeFileCtx = {
+			prefix: '',
+			mode: "relative"
+		}
 		this.blockParserProvider = new BlockParserProvider(this.MDPT, this);
 
 		this.MDPT.updateStartCharMaps();
@@ -241,12 +247,6 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 		this.localCtx.singletons = { };
 	}
 
-	blockSteps(input: string) {
-		const LLs = linify(input, false); // TODO!!
-        const blocks = this.processContent(LLs[0], undefined);
-		return blocks;
-	}
-
 	/* Full parsing of a complete document (contents as string) */
 	processDocument(doc: MarkiDocument): Promise<MarkiDocument> {
 		if(doc.input === undefined)
@@ -256,11 +256,16 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 		doc.localCtx = this.localCtx;
 
 		const LLs = linify(doc.input, false); // TODO!!
-        doc.blocks = this.processContent(LLs[0], undefined);
+        doc.blocks = processContent.call(this, LLs[0], undefined);
 		return this.processAfterBlockParsing(doc)
 		.then(() => {
-			for(const B of blockIterator(doc.blocks)) {
-				this.processBlock(B, this);
+			const ctx: ParsingContext = { MDP: this,  globalCtx: this.globalCtx,  localCtx: this.localCtx,  includeFileCtx: this.includeFileCtx };
+			for(const B of blockIterator(doc.blocks, "include-Wrapper")) {
+				if((isBlockWrapper(B) || isContainer(B)) && B.includeFileCtx)
+					ctx.includeFileCtx = B.includeFileCtx;
+				if(isBlockWrapper(B))
+					continue;
+				this.processBlock(B, ctx);
 				if(B.inlineContent)
 					pairUpDelimiters(B.inlineContent);
 			}
@@ -270,16 +275,7 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 	startBlock   = startBlock;
 	processLine  = processLine;
 
-	processContent(LL: LogicalLine_with_cmt, tryOrderName: string | undefined): AnyBlock[] {
-		this.blocks = [];
-		let LL0: LogicalLine_with_cmt | null = LL;
-		while(LL0) {
-			const P: ParseState = processLines.call(this, LL0, null, { tryOrderName,  container: this,  curParser: null,  generator: null });
-			if(this.diagnostics)    console.log(`Coming out of parsing with open block`, P.curParser?.type, P.curParser?.getCheckpoint());
-			LL0 = (P.curParser?.finish()?.next || null);
-		}
-		return this.blocks;
-	}
+
 
 	processBlock(B: AnyBlock, ctx: ParsingContext, PP?: InlineParserProvider) {
 		const T = this.MDPT.blockTraitsList[B.type];
@@ -289,7 +285,7 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 			B.blocks.forEach((B1, i) => this.processBlock(B1, ctx, T1.customChildParser?.(B, i, ctx)));
 		}
 		else if((T.inlineProcessing === undefined || T.inlineProcessing === true) && B.content)
-			B.inlineContent = this.processInline(B.content, PP || T.customContentParser);
+			B.inlineContent = this.processInline.call(ctx, B.content, PP || T.customContentParser);
 		else if(typeof T.inlineProcessing === "function")
 			T.inlineProcessing.call(ctx, B);
 	}
@@ -389,32 +385,33 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 
 /**********************************************************************************************************************/
 
-export function startBlock(this: MarkdownParser, ctx: ParseState, LL: LogicalLine_with_cmt, interrupting?: BlockType): ParseState {
-	if(!ctx.generator)
-		ctx.generator = this.getBlockParserProvider(ctx.tryOrderName).mainBlocks(ctx.container);
+export function startBlock(this: MarkdownParser, ps: ParseState, LL: LogicalLine_with_cmt, interrupting?: BlockType): ParseState {
+	if(!ps.generator)
+		ps.generator = this.getBlockParserProvider(ps.tryOrderName).mainBlocks(ps.container);
 
 	let I: IteratorResult<BlockParser, any> | undefined;
-	while(!(I = ctx.generator.next()).done) {
+	while(!(I = ps.generator.next()).done) {
 		const PA = I.value;
+		PA.includeFileCtx = ps.includeFileContext;
 		
 		const n = PA.beginsHere(LL, interrupting);
 		//if(this.diagnostics)    console.log(`Trying "${PA.type}" for line ${LLD.logl_idx} -> ${n}`);
 		if(n >= 0) {
 			if(this.diagnostics)    console.log(`  Processing line ${LLinfo(LL)} -> start <${PA.type}>`);
 			PA.acceptLine(LL, "start", n);
-			ctx.curParser = PA;
-			return ctx;
+			ps.curParser = PA;
+			return ps;
 		}
 	}
 	if(this.diagnostics)    console.log(`  Processing line ${LLinfo(LL)} -> no interruption of <${interrupting}>`);
-	ctx.generator = null;
-	ctx.curParser = null;
-	return ctx;
+	ps.generator = null;
+	ps.curParser = null;
+	return ps;
 }
 
 
 export function processLine(this: MarkdownParser, PP: ParseState, LL: LogicalLine_with_cmt): ParseState {
-	const { tryOrderName, container, curParser, generator } = PP;
+	const { tryOrderName, container, curParser, generator, includeFileContext } = PP;
 	PP.retry = undefined;
 	if(this.diagnostics)    console.log(`  processLine ${LLinfo(LL)} in ${container.blockContainerType} ${curParser ? `continuing <${curParser.type}>` : 'starting a new block'}`);
 
@@ -435,21 +432,21 @@ export function processLine(this: MarkdownParser, PP: ParseState, LL: LogicalLin
 	case "end": // current block cannot continue in this line, i.e. it ends on its own
 		{
 			const LLD_last = curParser.finish();
-			return { tryOrderName,  container,  retry: LLD_last.next! as LogicalLine,  curParser: null,  generator: null }; // will start a new block in the current line
+			return { tryOrderName,  container,  retry: LLD_last.next! as LogicalLine,  curParser: null,  generator: null,  includeFileContext }; // will start a new block in the current line
 		}
 	case "last":
 		curParser.acceptLine(LL, bct, 0);
 		curParser.finish();
-		return { tryOrderName,  container,  curParser: null,  generator: null }; // will start a new block in the next line
+		return { tryOrderName,  container,  curParser: null,  generator: null,  includeFileContext }; // will start a new block in the next line
 	case "reject":
 		if(curParser.isInterruption)
 			throw new Error('Problem! Rejecting a block that interrupted another block is a bit too much in terms of backtracking, so we don\'t allow that.');
 		// schedule backtracking:
-		return { tryOrderName,  container,  retry: curParser.getCheckpoint() || curParser.startLine!,  curParser: null,  generator };
+		return { tryOrderName,  container,  retry: curParser.getCheckpoint() || curParser.startLine!,  curParser: null,  generator,  includeFileContext };
 	case "soft": // it's a soft continuation, which means it's possible that the next block begins here, interrupting the current one
 		{
 			const generator = this.getBlockParserProvider(tryOrderName).interrupters(curParser)
-			const P1 = this.startBlock({ tryOrderName,  container,  curParser: null,  generator }, LL, curParser.type).curParser;
+			const P1 = this.startBlock({ tryOrderName,  container,  curParser: null,  generator,  includeFileContext }, LL, curParser.type).curParser;
 			if(P1) {
 				curParser.finish();
 				PP.curParser = P1;
@@ -484,4 +481,24 @@ function processLines(this: MarkdownParser, LL0: LogicalLine_with_cmt, LL1: Logi
 	}
 	if(this.diagnostics)    console.log(`Out!`)
 	return PP;
+}
+
+
+export function blockSteps(this: ParsingContext, input: string) {
+	const LLs = linify(input, false); // TODO!!
+	const blocks = processContent.call(this, LLs[0], undefined);
+	return blocks;
+}
+
+export function processContent(this: ParsingContext, LL: LogicalLine_with_cmt, tryOrderName: string | undefined): AnyBlock[] {
+	const MDP = this.MDP;
+	MDP.blocks = [];
+	let LL0: LogicalLine_with_cmt | null = LL;
+	while(LL0) {
+		const PS: ParseState = { tryOrderName,  container: MDP,  curParser: null,  generator: null,  includeFileContext: this.includeFileCtx };
+		const P: ParseState = processLines.call(MDP, LL0, null, PS);
+		if(MDP.diagnostics)    console.log(`Coming out of parsing with open block`, P.curParser?.type, P.curParser?.getCheckpoint());
+		LL0 = (P.curParser?.finish()?.next || null);
+	}
+	return MDP.blocks;
 }

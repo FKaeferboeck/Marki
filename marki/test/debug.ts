@@ -19,7 +19,7 @@ const parser = new MarkdownParser();
 const input = `Hi!\n\n#include Marki-UnitTest-Tier1-2.sdsmd`;
 
 const doc: MarkiDocument = {
-  URL: sourceInclude_traits.sourceIncludeResolve('Marki-UnitTest-Tier1-2.sdsmd', '') as string,
+  URL: sourceInclude_traits.sourceIncludeResolve('Marki-UnitTest-Tier1-2.sdsmd', '', { mode: "relative",  prefix: '' }) as string,
   title: undefined,
   input,
   blocks: [],
