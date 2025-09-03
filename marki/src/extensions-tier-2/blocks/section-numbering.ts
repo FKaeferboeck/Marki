@@ -101,7 +101,7 @@ export function doSectionNumbering(ctx: ParsingContext, Bs: AnyBlock[]) {
     let anonLevel = 100, nMajorSections = 0;
     toc_ctx.section_headers = []; // reset
 
-    for(const B_ of blockIterator(Bs)) {
+    for(const B_ of blockIterator(Bs, "full")) {
         if(!(B_.type in header_types))
             continue;
         const B = B_ as Block_Leaf<"sectionHeader"> & SectionHeader_ext;
@@ -248,13 +248,18 @@ export function makeSectionHeader_handle(B: SectionHeader_ext) : SectionHeader_h
 }
 
 
-export function sectionHeader_ext_render(this: MarkdownRendererInstance, B_: Block_Leaf<"sectionHeader"> | Block_Extension, I: Inserter) {
+export function sectionHeader_ext_render(this: MarkdownRendererInstance, B_: Block_Leaf<"sectionHeader"> | Block_Extension, I: Inserter, extra_classes?: string) {
     const B = B_ as Block_Leaf<"sectionHeader"> & SectionHeader_ext;
     if(typeof B.anon !== "boolean")
         throw new Error('Wrong rendering function for section header block extension');
     
     const H = makeSectionHeader_handle(B);
-    const buf = [ B.level === 0 ? `<h1 id="${H.anchor}" class="major-section-header">` : `<h${B.level} id="${H.anchor}">` ];
+    const buf = [];
+    if(B.level === 0)
+        buf.push(`<h1 id="${H.anchor}" class="major-section-header${extra_classes ? ' ' + extra_classes : ''}">`);
+    else
+        buf.push(`<h${B.level} id="${H.anchor}"${extra_classes ? ' class="' + extra_classes + '"' : ''}>`);
+
     if(H.label)
         buf.push(`<span class="sec-tag">${H.label}</span>`);
     buf.push(this.renderBlockContent(B_, null));
@@ -269,6 +274,8 @@ export function ext_tier2_table_of_contents_render(this: MarkdownRendererInstanc
     I.add('<fieldset class="table-of-content">');
     I.add(`<legend>${B.inlineContent?.length ? this.renderBlockContent(B, null, "trimmed") : ctx.table_of_contents_title}</legend>`);
     for(const B1 of ctx.section_headers) {
+        if(B1.level > 2)
+            continue;
         const H = makeSectionHeader_handle(B1);
         I.add(`<div class="level-${B1.level}"><div>${H.label || ''}</div><div><a href="#${H.anchor}">${this.renderBlockContent(B1, null)}</a></div></div>`);
     }

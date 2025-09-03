@@ -1,5 +1,5 @@
 import { lineContent, LogicalLine, LogicalLine_comment, LogicalLine_text, LogicalLine_with_cmt, LogicalLineType, shiftCol, Slice, sliceLine_to } from "./linify.js";
-import { AnyBlock, AnyInline, hasSevereError, InlinePos, isBlockWrapper, Pos } from "./markdown-types.js";
+import { AnyBlock, AnyInline, hasSevereError, InlinePos, isBlockWrapper, isContainer, Pos } from "./markdown-types.js";
 import { PositionOps } from "./position-ops.js";
 
 const spaces: Record<string, boolean> = { ' ': true,  '\t': true,  '\n': true };
@@ -490,14 +490,17 @@ export function spreadLines(LL: LogicalLine_with_cmt | undefined) {
 }
 
 
-export function* blockIterator(Bs: AnyBlock[], mode: "normal" | "include-Wrapper" = "normal"): Generator<AnyBlock> {
+export function* blockIterator(Bs: AnyBlock[], mode: "normal" | "include-Wrapper" | "full" = "normal"): Generator<AnyBlock> {
     for(const B of Bs) {
         if(isBlockWrapper(B) && !hasSevereError(B)) {
             if(mode === "include-Wrapper")
                 yield B;
             yield* blockIterator(B.blocks, mode);
-        } else
+        } else {
             yield B;
+            if(isContainer(B) && mode === "full")
+                yield* blockIterator(B.blocks, mode);
+        }
     }
 }
 
