@@ -125,15 +125,10 @@ web_modules/
 .pnp.*
 workdata/
 
-# Exclude marki/out except for a few specific files marki/out/cjs/package.json
-/marki/out/cjs/*
-!/marki/out/cjs/package.json
-!/marki/out/cjs/url-resolve.js
+# Exclude marki/dist-* except for a few specific files
+/marki/dist-*/*
 
-/marki/out/esm/*
-!/marki/out/esm/url-resolve.js
-
-/marki/out/types/*
-!/marki/out/types/url-resolve.d.ts
+!/marki/dist-*/*.json
+!/marki/dist-*/path.*
 
 /marki-lsp/out

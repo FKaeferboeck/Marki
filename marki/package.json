@@ -3,76 +3,82 @@
   "version": "1.0.0",
   "type": "module",
   "description": "extensible Markdown parser with support for incremental changes",
-  "main": "./out/esm/exports/index.js",
-  "types": "./out/types/exports/index.d.ts",
+  "main": "./dist-esm/exports/index.js",
+  "types": "./dist-types/exports/index.d.ts",
   "directories": {
     "test": "test"
   },
   "exports": {
     ".": {
-      "require": "./out/cjs/exports/index.js",
+      "require": "./dist-cjs/exports/index.js",
       "import": {
-        "types": "./out/types/exports/index.d.ts",
-        "default": "./out/esm/exports/index.js"
+        "types": "./dist-types/exports/index.d.ts",
+        "default": "./dist-esm/exports/index.js"
       }
     },
+    "./path": {
+      "require": "./dist-cjs/path.cjs.js",
+      "import":{
+        "types": "./dist-types/path.d.ts",
+        "default": "./dist-esm/path.esm.js"
+    } },
     "./util": {
-      "require": "./out/cjs/exports/index-util.js",
+      "require": "./dist-cjs/exports/index-util.js",
       "import": {
-        "types": "./out/types/exports/index-util.d.ts",
-        "default": "./out/esm/exports/index-util.js"
+        "types": "./dist-types/exports/index-util.d.ts",
+        "default": "./dist-esm/exports/index-util.js"
       }
     },
     "./blocks": {
-      "require": "./out/cjs/exports/index-blocks.js",
+      "require": "./dist-cjs/exports/index-blocks.js",
       "import": {
-        "types": "./out/types/exports/index-blocks.d.ts",
-        "default": "./out/esm/exports/index-blocks.js"
+        "types": "./dist-types/exports/index-blocks.d.ts",
+        "default": "./dist-esm/exports/index-blocks.js"
       }
     },
     "./inline": {
-      "require": "./out/cjs/exports/index-inline.js",
+      "require": "./dist-cjs/exports/index-inline.js",
       "import": {
-        "types": "./out/types/exports/index-inline.d.ts",
-        "default": "./out/esm/exports/index-inline.js"
+        "types": "./dist-types/exports/index-inline.d.ts",
+        "default": "./dist-esm/exports/index-inline.js"
       }
     },
     "./extensions": {
-      "require": "./out/cjs/exports/index-extensions.js",
+      "require": "./dist-cjs/exports/index-extensions.js",
       "import": {
-        "types": "./out/types/exports/index-extensions.d.ts",
-        "default": "./out/esm/exports/index-extensions.js"
+        "types": "./dist-types/exports/index-extensions.d.ts",
+        "default": "./dist-esm/exports/index-extensions.js"
       }
     },
     "./url-resolve.js": {
-      "import": "./out/esm/url-resolve.js",
-      "require": "./out/cjs/url-resolve.js"
+      "import": "./dist-esm/url-resolve.js",
+      "require": "./dist-cjs/url-resolve.js"
     }
   },
   "typesVersions": {
     "*": {
       ".": [
-        "./out/types/exports/index.d.ts"
+        "./dist-types/exports/index.d.ts"
       ],
       "util": [
-        "./out/types/exports/index-util.d.ts"
+        "./dist-types/exports/index-util.d.ts"
       ],
       "blocks": [
-        "./out/types/exports/index-blocks.d.ts"
+        "./dist-types/exports/index-blocks.d.ts"
       ],
       "inline": [
-        "./out/types/exports/index-inline.d.ts"
+        "./dist-types/exports/index-inline.d.ts"
       ],
       "extensions": [
-        "./out/types/exports/index-extensions.d.ts"
+        "./dist-types/exports/index-extensions.d.ts"
       ]
     }
   },
   "scripts": {
     "test": "vitest --reporter=dot",
     "test2": "vitest --config ./test/vitest.config.ts",
-    "cjs": "tsc --module commonjs --moduleResolution node10 --outDir ./out/cjs",
-    "esm": "tsc",
+    "cjs": "tsc -p tsconfig.cjs.json",
+    "esm": "tsc -p tsconfig.esm.json",
     "compile": "npm run esm && npm run cjs",
     "dbg": "node --loader=ts-node/esm ./test/debug.ts"
   },

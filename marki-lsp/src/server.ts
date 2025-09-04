@@ -7,7 +7,7 @@ import { createConnection, TextDocuments, ProposedFeatures, InitializeParams,
 } from 'vscode-languageserver/node.js';
 
 import { DocumentUri, TextDocument } from 'vscode-languageserver-textdocument';
-import { LineStructure, IncrementalChange, linify } from "marki";
+import { LineStructure, IncrementalChange, linify, MarkiDocument } from "marki";
 
 import EventEmitter = require('events');
 import { getMarkiInstance, Marki_LSP_plugin, MarkiParse } from './marki-processing.js';
@@ -27,7 +27,7 @@ interface MyTextDocument {
 	uri:           DocumentUri;
 	doc:           TextDocument;
 	lineStructure: LineStructure;
-	pending:       Promise<AnyBlock[]> | undefined;
+	pending:       Promise<MarkiDocument> | undefined;
 	blocks:        AnyBlock[];
 	changeBuffer:  IncrementalChange[];
 	builder:       SemanticTokensBuilder;
@@ -36,9 +36,9 @@ interface MyTextDocument {
 const MyTextDocument: TextDocumentsConfiguration<MyTextDocument> = {
 	create: function(uri: DocumentUri, languageId: string, version: number, content: string): MyTextDocument {
 		//console.log(`Create document [${uri}]`);
-		const pending = MarkiParse(content).then(blocks => {
-			console.log(blockDistributionInfo(blocks));
-			return blocks;
+		const pending = MarkiParse(content).then(doc => {
+			console.log(blockDistributionInfo(doc.blocks));
+			return doc;
 		});
 
 		const D: MyTextDocument = {
@@ -226,7 +226,7 @@ export function startMarkiLSP(pluginModuleFiles: string[]): _Connection<_, _, _,
 	
 		if(doc.pending)
 			await doc.pending.then(Bs => {
-				doc.blocks = Bs;
+				doc.blocks = Bs.blocks;
 				doc.pending = undefined;
 			});
 		const B = findBlock(doc.blocks, params.position.line);

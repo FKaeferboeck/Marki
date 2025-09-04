@@ -2,14 +2,10 @@ import { PositionOps } from "../position-ops.js";
 import { AnyInline, InlineElement } from "../markdown-types.js";
 import { InlineElementTraits } from "../traits.js";
 
-/* There seem to be infinite problems with JSON import, and with dual-mode compiles it's totally impossible. So we unfortunately must fall back to unchecked oldschool file import. */
-//import entityList from "../htmlEntities.json" assert { type: "json" };
-//const { default: entityList } = await import("../htmlEntities.json", { with: { type: "json" }, assert: { type: "json" } });
+import { resolveSourcePath } from "../path.js"
 import * as fs from 'fs';
-// @ts-ignore
-///import { resolveDataFilepath } from "../url-resolve.js";
-//const jsonFile = resolveDataFilepath('htmlEntities.json');
-const entityList = JSON.parse(fs.readFileSync('data/htmlEntities.json', 'utf8')) as Record<string, number | number[]>;
+
+const entityList = JSON.parse(fs.readFileSync(resolveSourcePath('htmlEntities.json'), 'utf8')) as Record<string, number | number[]>;
 
 
 const rex = /^&(?:#\d{1,7};|#[xX][\dA-Fa-f]{1,6};|[A-Za-z][A-Za-z\d]{0,32};)/; // 32 is the length of the longest existing HTML entity

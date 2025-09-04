@@ -1,4 +1,4 @@
-import { BlockType, global_MDPT, MarkdownParser, MarkdownParserTraits, MarkdownRendererTraits, markdownRendererTraits_standard } from "marki";
+import { BlockType, global_MDPT, MarkdownParser, MarkdownParserTraits, MarkdownRendererTraits, markdownRendererTraits_standard, MarkiDocument } from "marki";
 import { doSectionNumbering, extendTier1, extendTier2 } from "marki/extensions";
 import { TooltipProvider, tooltipProviderInline, TooltipProviderInline, tooltipProviders } from "./provide-tooltip";
 import { InlineElementType } from "marki/inline";
@@ -44,9 +44,15 @@ export function getMarkiParser() { return markiInstance.MDP; }
 
 
 export function MarkiParse(content: string) {
-    return markiInstance.MDP.processDocument(content)
+    const doc: MarkiDocument = {
+        URL: '',  title: '',
+        input: content,
+        blocks: [],
+        localCtx: { }
+    }
+    return markiInstance.MDP.processDocument(doc)
     .then(Bs => {
-        doSectionNumbering(Bs);
+        doSectionNumbering(markiInstance.MDP, Bs.blocks);
         return Bs;
     });
 }

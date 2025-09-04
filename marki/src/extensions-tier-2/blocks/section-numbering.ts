@@ -6,7 +6,7 @@ import { MarkdownRendererInstance, Inserter } from "../../renderer/renderer.js";
 import { AnyBlock, Block_Extension, Block_Leaf } from "../../markdown-types.js";
 import { ParsingContext } from "../../block-parser.js";
 import { tier2_command_block_start } from "../traits.js";
-import { MarkdownParserTraits } from "src/markdown-parser.js";
+import { MarkdownParserTraits } from "../../markdown-parser.js";
 
 
 export interface SectionHeaderNumberingElement { label?: string;  num: number; };
