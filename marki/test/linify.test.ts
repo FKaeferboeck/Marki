@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { linify, LogicalLine, LogicalLine_with_cmt, sliceLine } from "../src/linify";
+import { describe, it, expect, test } from "vitest";
+import { linify, linify_, LogicalLine, LogicalLine_with_cmt, sliceLine } from "../src/linify";
 
 const text0 = `Hallooo!
 
@@ -122,4 +122,25 @@ describe('Full linify()', () => {
         expect(LL1 = sliceLine(LL0 = LL1, 1)).toStrictEqual({ type: "empty",    lineIdx: 101, indent: 0,                                              shiftCol: 20, parent: LL0 });
         expect(LL1 = sliceLine(LL0 = LL1, 9)).toStrictEqual({ type: "empty",    lineIdx: 101, indent: 0,                                              shiftCol: 29, parent: LL0 });
     });
+});
+
+
+describe("End in Cmt line", () => {
+    const doTest = (idx: number, input: string, endsInCmtLine: boolean) => {
+        test(idx.toString(), () => {
+            const result = linify_(input, true, 0);
+            expect(result.inCmtLine).toEqual(endsInCmtLine);
+        });
+    };
+
+    doTest( 1, 'Text',                     false);
+    doTest( 2, 'Text\n',                   false);
+    doTest( 3, 'Text\n<!--',               true);
+    doTest( 4, 'Text\n<!-- X',             true);
+    doTest( 5, 'Text\n<!--\nBla',          true);
+    doTest( 6, 'Text\n<!--\nBla\n\n',      true);
+    doTest( 7, 'Text\n <!--',              false); // leading space
+    doTest( 8, 'Text\n<!-- -->',           false);
+    doTest( 9, 'Text\n<!-- \n -->  <!--',  true);
+    doTest(10, 'Text\n<!-- \n --> A <!--', false);
 });

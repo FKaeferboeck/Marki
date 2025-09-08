@@ -1,10 +1,9 @@
-import { BlockParser, BlockParserBase, ParsingContext } from "./block-parser.js";
+import { BlockParser, ParsingContext } from "./block-parser.js";
 import { pairUpDelimiters, parseDelimiter } from "./delimiter-processing.js";
 import { InlineParser_Standard } from "./inline-parser.js";
 import { LogicalLine } from "./linify.js";
-import { MarkdownParser, MarkdownParserTraits } from "./markdown-parser.js";
-import { InlineElementType, Delimiter_nestable, InlineContent, InlineElement, Delimiter, InlinePos, isNestableDelimiter, MarkdownParserContext, IncludeFileContext } from "./markdown-types.js";
-import { LinePart } from "./parser.js";
+import { MarkdownParserTraits } from "./markdown-parser.js";
+import { InlineElementType, Delimiter_nestable, InlineContent, InlineElement, Delimiter, InlinePos, isNestableDelimiter } from "./markdown-types.js";
 import { InlineParserTraitsList, DelimiterTraits, isDelimFollowerTraits } from "./traits.js";
 import { BlockContentIterator, contentSlice, makeBlockContentIterator } from "./util.js";
 
@@ -89,10 +88,10 @@ export class InlineParsingContext {
     }
 
     inlineParseLoop(this: InlineParsingContext, It: BlockContentIterator, buf: InlineContent,
-                    contCbk?:  (It: BlockContentIterator, c: string | LinePart) => boolean,
-                    contCbk2?: (It: BlockContentIterator, c: string | LinePart) => boolean)
+                    contCbk?:  (It: BlockContentIterator, c: string) => boolean,
+                    contCbk2?: (It: BlockContentIterator, c: string) => boolean)
     {
-        let c: false | string | LinePart = false;
+        let c: false | string = false;
         const checkpoint = It.newPos(), checkpoint1 = It.newPos();
         let returnVal = "EOF";
     

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { global_MDPT, MarkdownParser } from '../src/markdown-parser';
+import { global_MDPT, MarkdownParser, MarkdownParserTraits } from '../src/markdown-parser';
 import { MarkdownRendererInstance } from '../src/renderer/renderer';
 import { extendTier1 } from "../src/extensions-tier-1/traits";
 import { markdownRendererTraits_standard } from '../src/renderer/renderer-standard';
@@ -7,9 +7,10 @@ import { sourceInclude_traits } from '../src/extensions-tier-1/blocks/source-inc
 import { MarkiDocument } from '../src/markdown-types';
 import { resolve, basename, posix } from 'path';
 
-extendTier1(global_MDPT, markdownRendererTraits_standard);
+const tier1_MDPT = new MarkdownParserTraits();
+extendTier1(tier1_MDPT, markdownRendererTraits_standard);
 
-const parser = new MarkdownParser();
+const parser = new MarkdownParser(tier1_MDPT);
 const renderer = new MarkdownRendererInstance(parser);
 
 // Very simplistic include path resolver for testing only
@@ -84,6 +85,10 @@ describe('Tabular', () => {
     doTest(1, '|Head 1|Head 2|\n|-|><|-><-|-|\n|C1|C2|\nafterwards',
     '<table>\n<thead>\n  <tr><th>Head 1</th><th class="c">Head 2</th></tr>\n</thead>\n<tbody>\n  <tr><td>C1</td><td class="c">C2</td></tr>\n</tbody>\n</table>\n<p>afterwards</p>\n');
 
-    doTest(2, 'One ~~~two~~three~~~ four',
+    // comment lines can come inbetween table rows (in fact this was the biggest reason for developing the comment line feature in the first place)
+    doTest(2, '|#|H2|\n|-|--|\n|1|AA|\n<!-- cmt\n\nline -->\n|2|BB|',
+        '<table>\n<thead>\n  <tr><th>#</th><th>H2</th></tr>\n</thead>\n<tbody>\n  <tr><td>1</td><td>AA</td></tr>\n  <tr><td>2</td><td>BB</td></tr>\n</tbody>\n</table>\n')
+
+    doTest(3, 'One ~~~two~~three~~~ four',
         '<p>One <s>~two~~three</s>~ four</p>\n');
 });

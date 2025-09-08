@@ -4,7 +4,7 @@ import { AnyBlock } from "marki";
 const endLine = (B: AnyBlock) => (B.lineIdx + B.logical_line_extent);
 
 // find which block the given line lies in, using binary search
-export function findBlock(Bs: AnyBlock[], lineIdx: number) {
+export function findBlock(Bs: AnyBlock[], lineIdx: number): AnyBlock | null {
     let i0 = 0, i1 = Bs.length;
     if(i0 === i1 || lineIdx < 0 || lineIdx >= endLine(Bs[i1 - 1]))
         return null;

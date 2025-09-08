@@ -1,4 +1,4 @@
-import { global_MDPT, MarkdownParser } from '../src/markdown-parser';
+import { MarkdownParser, MarkdownParserTraits } from '../src/markdown-parser';
 import { MarkdownRendererInstance } from '../src/renderer/renderer.js';
 import { markdownRendererTraits_standard } from '../src/renderer/renderer-standard.js';
 import { extendTier1 } from '../src/extensions-tier-1/traits.js';
@@ -6,7 +6,10 @@ import { sourceInclude_traits } from "../src/extensions-tier-1/blocks/source-inc
 import { MarkiDocument } from '../src/markdown-types.js';
 import { resolve } from 'path';
 
-extendTier1(global_MDPT, markdownRendererTraits_standard);
+const test_MDPT = new MarkdownParserTraits();
+test_MDPT.makeCommentLines = true;
+
+extendTier1(test_MDPT, markdownRendererTraits_standard);
 
 sourceInclude_traits.sourceIncludeResolve = (filepath, called_from) => {
   let fp = `./test/${filepath}`;
@@ -14,9 +17,9 @@ sourceInclude_traits.sourceIncludeResolve = (filepath, called_from) => {
   return fp;
 }
 
-const parser = new MarkdownParser();
+const parser = new MarkdownParser(test_MDPT);
 
-const input = `Hi!\n\n#include Marki-UnitTest-Tier1-2.sdsmd`;
+const input = '- foo\n<!-- -->\n- baz'; //`Hi!\n\n#include Marki-UnitTest-Tier1-2.sdsmd`;
 
 const doc: MarkiDocument = {
   URL: sourceInclude_traits.sourceIncludeResolve('Marki-UnitTest-Tier1-2.sdsmd', '', { mode: "relative",  prefix: '' }) as string,

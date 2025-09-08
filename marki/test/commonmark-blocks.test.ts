@@ -1,13 +1,17 @@
 import { describe, expect, test } from 'vitest'
 import * as commonmark from 'commonmark';
-import { MarkdownParser } from '../src/markdown-parser';
+import { MarkdownParser, MarkdownParserTraits } from '../src/markdown-parser';
 import { MarkdownRendererInstance } from '../src/renderer/renderer';
 import { MarkiDocument } from '../src/markdown-types';
+import { linify } from '../src/linify';
 
-// As of 2025-03-12 Vitest suddenly isn't able any more to import listItem on its own. Luckily we can repair it like this.
-//standardBlockParserTraits.listItem = listItem_traits;
+// comment lines are an extension feature, but there's no harm in running it through a few CommonMark tests as well to highlight the difference
+const test_MDPT = new MarkdownParserTraits();
+test_MDPT.makeCommentLines = true;
 
-const parser = new MarkdownParser();
+const parser                  = new MarkdownParser();
+const parser_withCommentLines = new MarkdownParser(test_MDPT);
+
 const renderer = new MarkdownRendererInstance(parser);
 
 var commonmark_reader = new commonmark.Parser();
@@ -15,7 +19,7 @@ var commonmark_writer = new commonmark.HtmlRenderer();
 
 const clearify = (s: string) => s.replace(/\t/g, '[\\t]');
 
-export function doTest(idx: number | string, input: string) {
+export function doTest(idx: number | string, input: string, myParserResult?: string) {
     test('' + idx, async () => {
         const doc: MarkiDocument = {
             URL: `Marki-UnitTest-${idx}.sdsmd`,
@@ -25,12 +29,19 @@ export function doTest(idx: number | string, input: string) {
             localCtx: { }
         }
 
-        const blocks = await parser.processDocument(doc);
-        const my_result = clearify(renderer.referenceRender(doc.blocks));
+        await parser.processDocument(doc);
+        const my_result_commonMark = clearify(renderer.referenceRender(doc.blocks));
+
+        await parser_withCommentLines.processDocument(doc);
+        const my_result_custom = clearify(renderer.referenceRender(doc.blocks));
+
+        if(idx === "308a")
+            console.log(linify(input, true));
 
         const commonmark_parsed = commonmark_reader.parse(input);
         const commonmark_result = clearify(commonmark_writer.render(commonmark_parsed) as string);
-        expect(my_result).toEqual(commonmark_result);
+        //expect(my_result_commonMark).toEqual(commonmark_result);
+        expect(my_result_custom)    .toEqual(typeof myParserResult === "string" ? myParserResult : commonmark_result);
     });
 }
 
@@ -270,7 +281,7 @@ describe('HTML blocks', () => {
     doTest(177, '<!-- foo -->*bar*\n*baz*');
     doTest(178, '<script>\nfoo\n</script>1. *bar*'); // Note that anything on the last line after the end tag will be included in the HTML block
     /* Type 2  */
-    doTest(179, '<!-- Foo\n\nbar\n   baz -->\nokay');
+    doTest(179, '<!-- Foo\n\nbar\n   baz -->\nokay', '<p>okay</p>\n'); // Custom behavior: Comment line
     /* Type 3 — processing instruction */
     doTest(180, '<?php\n\n  echo \'>\';\n\n?>\nokay');
     /* Type 4 — declaration */
@@ -429,8 +440,17 @@ describe('lists', () => {
     doTest(305, 'The number of windows in my house is\n1.  The number of doors is 6.');
     doTest(306, '- foo\n\n- bar\n\n\n- baz');
     doTest(307, '- foo\n  - bar\n    - baz\n\n\n      bim');
-    doTest(308, '- foo\n- bar\n\n<!-- -->\n\n- baz\n- bim');
-    doTest(309, '-   foo\n\n    notcode\n\n-   foo\n\n<!-- -->\n\n    code');
+
+    // Two lists separated by a comment line
+    doTest(308,    '- foo\n- bar\n\n<!-- -->\n\n- baz\n- bim',
+        '<ul>\n<li>\n<p>foo</p>\n</li>\n<li>\n<p>bar</p>\n</li>\n<li>\n<p>baz</p>\n</li>\n<li>\n<p>bim</p>\n</li>\n</ul>\n');
+    doTest('308a', '- foo\n- bar\n<!-- -->\n- baz\n- bim',
+        '<ul>\n<li>foo</li>\n<li>bar</li>\n<li>baz</li>\n<li>bim</li>\n</ul>\n');
+
+    // Extension Comment lines do not end list items, so the line afterwards can still be interpreted as a list item continuation
+    doTest(309, '-   foo\n\n    notcode\n\n-   foo\n\n<!-- -->\n\n    code',
+        '<ul>\n<li>\n<p>foo</p>\n<p>notcode</p>\n</li>\n<li>\n<p>foo</p>\n<p>code</p>\n</li>\n</ul>\n');
+
     doTest(310, '- a\n - b\n  - c\n   - d\n  - e\n - f\n- g'); // List items need not be indented to the same level
     doTest(311, '1. a\n\n  2. b\n\n   3. c');
     doTest(312, '- a\n - b\n  - c\n   - d\n    - e');

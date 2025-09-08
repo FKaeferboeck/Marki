@@ -8,6 +8,7 @@ import { BlockContentIterator } from "./util.js";
 
 
 export type BlockContinuationType = number     // block definitely continues in this line (e.g. because of the prefix)
+                                  | "cmtLine"  // we're using comment lines and this is one —> skip it
                                   | "soft"     // block potentially continues in this line unless another block wants to interrupt it
                                   | "end"      // block definitely does not continue in this line, the previous line is the last
                                   | "last"     // block ends after this line, this is the last line of the block

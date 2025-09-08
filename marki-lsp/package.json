@@ -5,20 +5,24 @@
 	"author": "Florian Käferböck",
 	"license": "GPL-3.0",
 	"type": "commonjs",
-	"engines": { "node": "*" },
+	"engines": {
+		"node": "*"
+	},
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/FKaeferboeck/Marki"
 	},
-	"main":  "./out/server.js",
+	"main": "./out/server.js",
 	"types": "./out/server.d.ts",
 	"dependencies": {
 		"marki": "file:../marki",
+		"vitest": "^3.2.4",
 		"vscode-languageserver": "^9.0.1",
 		"vscode-languageserver-textdocument": "^1.0.11"
 	},
 	"scripts": {
-		"compile": "tsc -b"
+		"compile": "tsc -b",
+		"test": "vitest --reporter=dot"
 	},
 	"devDependencies": {
 		"@types/node": "^22.10.2",

@@ -6,6 +6,8 @@ import { register_strikethrough } from "./inline/strikethrough.js";
 
 
 export function extendTier1(MDPT: MarkdownParserTraits, MDRT? : MarkdownRendererTraits) {
+    MDPT.makeCommentLines = true;
+
     extend_tier1_tabular(MDPT, MDRT);
     register_strikethrough(MDPT, MDRT);
 
@@ -16,6 +18,5 @@ export function extendTier1(MDPT: MarkdownParserTraits, MDRT? : MarkdownRenderer
     if(MDRT) {
         MDRT.blockHandler[sourceInclude_traits.blockType] = sourceInclude_render;
         MDRT.blockHandler[tabular_type] = ext_tier1_tabular_render;
-
     }
 }

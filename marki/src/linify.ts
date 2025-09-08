@@ -63,11 +63,18 @@ export const standardBlockStart = (LL: LogicalLine): LL is LogicalLine_text => (
 export const isSpaceLineType: Record<LogicalLineType, boolean> = { empty: true,  emptyish: true,  text: false,  comment: false };
 export const isSpaceLine = (LL: LogicalLine_with_cmt): LL is LogicalLine_emptyish => isSpaceLineType[LL.type];
 
-export const lineContent = (LL: LogicalLine_with_cmt | undefined) => (LL?.type === "text" ? LL.content : '');
+export const lineContent    = (LL: LogicalLine_with_cmt | undefined) => (LL?.type === "text" ? LL.content : '');
+export const lineReassemble = (LL: LogicalLine_with_cmt | undefined) => {
+    switch(LL?.type) {
+    case "comment":  return LL.content.join('\n');
+    case "text":     return LL.prefix + LL.content;
+    default:         return LL?.prefix || '';
+    }
+};
 
 
 export function linify(text: string, makeCommentLines: boolean, link_together = true): LogicalLine_with_cmt[] {
-    const A = linify_(text, makeCommentLines, { line: 0,  character: 0 }, false);
+    const A = linify_(text, makeCommentLines, 0).LLs;
     if(link_together)
         for(let i = 1, iN = A.length;  i < iN;  ++i) {
             A[i - 1].next = A[i];
@@ -140,12 +147,13 @@ export function measureColOffset(LL: LogicalLine, char_offset: number) {
 const leadingSpace = (LL: LogicalLine_with_cmt) => ("indent" in LL ? LL.indent : 0);
 
 
-export function linify_(text: string, makeCommentLines: boolean, pos: Position, inCmt: false) {
+export function linify_(text: string, makeCommentLines: boolean, start_line: number) {
     const buf: LogicalLine_with_cmt[] = [];
-    let i0 = 0, n_commentLine = 0, start = 0;
+    let i0 = 0, n_commentLine = 0;
     let lineIsOnlySpace = true, // is this physical line only ' ' and '\t'? (inside or outside an XML comment)
         commentLineEligible = true,
-        isInComment = false; // can only be true if the line is still comment line eligible
+        isInComment = false, // can only be true if the line is still comment line eligible
+        endInOpenCmtLine = false;
 
     for(let i = 0, iN = text.length;  i <= iN;  ++i) {
         switch(text[i]) {
@@ -153,24 +161,25 @@ export function linify_(text: string, makeCommentLines: boolean, pos: Position, 
         case '\r':
         case '\n':
             const content = text.slice(i0, i);
-            if(makeCommentLines && !isInComment && commentLineEligible && !lineIsOnlySpace &&
-               (n_commentLine > 0 ? leadingSpace(buf[buf.length - n_commentLine]) === 0 : !/^[ \t]/.test(content)))
+            endInOpenCmtLine = (makeCommentLines && commentLineEligible &&
+                                (n_commentLine > 0 ? leadingSpace(buf[buf.length - n_commentLine]) === 0 : !/^[ \t]/.test(content)));
+            if(endInOpenCmtLine && !isInComment && !lineIsOnlySpace)
             {   // a comment line ends here
                 const cl = (buf.splice(buf.length - n_commentLine, n_commentLine) as (LogicalLine_emptyish | LogicalLine_text)[])
                     .map(L => (L.prefix || '') + ("content" in L ? L.content : ''));
                 cl.push(content);
-                buf.push({ type: "comment",  lineIdx: start - n_commentLine,  content: cl });
+                buf.push({ type: "comment",  lineIdx: start_line - n_commentLine,  content: cl });
                 n_commentLine = 0;
             }
             else if(i0 === i)
-                buf.push({ type: "empty",  lineIdx: start,  indent: 0 });
+                buf.push({ type: "empty",  lineIdx: start_line,  indent: 0 });
             else if(lineIsOnlySpace)
-                buf.push({ type: "emptyish",  lineIdx: start,  prefix: content,  indent: prefixSize(content).cols });
+                buf.push({ type: "emptyish",  lineIdx: start_line,  prefix: content,  indent: prefixSize(content).cols });
             else {
                 let { chars, cols } = prefixSize(content);
-                buf.push({ type: "text",  lineIdx: start,  prefix: content.slice(0, chars),  indent: cols,  content: content.slice(chars) }); // may be converted into part of a comment line later
+                buf.push({ type: "text",  lineIdx: start_line,  prefix: content.slice(0, chars),  indent: cols,  content: content.slice(chars) }); // may be converted into part of a comment line later
             }
-            ++start;
+            ++start_line;
             if(isInComment)
                 ++n_commentLine;
             if(text[i] === '\r' && i + 1 < iN && text[i + 1] === '\n')    ++i; // handle \r\n line break
@@ -205,7 +214,7 @@ export function linify_(text: string, makeCommentLines: boolean, pos: Position, 
             break;
         }
     }
-    return buf;
+    return { LLs: buf,  inCmtLine: endInOpenCmtLine && isInComment };
 }
 
 

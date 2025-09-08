@@ -111,6 +111,7 @@ export class BlockParserProvider {
 
 
 export class MarkdownParserTraits {
+	makeCommentLines: boolean;
 	blockTraitsList: Partial<Record<BlockType, AnyBlockTraits>>;
 	tryOrder: BlockType[];
 
@@ -133,6 +134,7 @@ export class MarkdownParserTraits {
 		this.inlineParser_minimal.makeStartCharMap();
 
 		this.globalCtx = { tier2_command_char: '$' } as Tier2_ctx; // If the tier 2 extension isn't hooked in this has no effect
+		this.makeCommentLines = false;
 	}
 
 	inlineParser_standard: InlineParserProvider;
@@ -255,7 +257,7 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 		this.localCtx.URL = doc.URL;
 		doc.localCtx = this.localCtx;
 
-		const LLs = linify(doc.input, false); // TODO!!
+		const LLs = linify(doc.input, this.MDPT.makeCommentLines);
         doc.blocks = processContent.call(this, LLs[0], undefined);
 		return this.processAfterBlockParsing(doc)
 		.then(() => {
@@ -459,6 +461,9 @@ export function processLine(this: MarkdownParser, PP: ParseState, LL: LogicalLin
 		if(this.diagnostics)    console.log(`  Not interrupted -> accept line ${LL.lineIdx} as <${PP.curParser?.type}>`)
 		curParser.acceptLine(LL, bct, 0);
 		return PP;
+	case "cmtLine":
+		curParser.acceptLine(LL, bct, 0);
+		return PP;
 	default: // hard accept
 		curParser.acceptLine(LL, bct, bct);
 		return PP;
@@ -485,7 +490,7 @@ function processLines(this: MarkdownParser, LL0: LogicalLine_with_cmt, LL1: Logi
 
 
 export function blockSteps(this: ParsingContext, input: string) {
-	const LLs = linify(input, false); // TODO!!
+	const LLs = linify(input, this.MDP.MDPT.makeCommentLines);
 	const blocks = processContent.call(this, LLs[0], undefined);
 	return blocks;
 }

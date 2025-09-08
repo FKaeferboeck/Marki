@@ -7,14 +7,13 @@ import { paragraph_traits } from './blocks/paragraph.js';
 import { sectionHeader_traits } from './blocks/sectionHeader.js';
 import { sectionHeader_setext_traits } from './blocks/sectionHeader_setext.js';
 import { AnyBlock, Block, Block_Leaf, BlockBase, BlockType, BlockType_Container, BlockType_Leaf, IncludeFileContext, MarkdownParserContext } from './markdown-types.js';
-import { LogicalLineType } from './parser.js';
 import { BlockContinuationType, BlockTraits, BlockTraits_Container } from './traits.js';
 import { LLinfo } from './util.js';
 import { listItem_traits } from './blocks/listItem.js';
 import { BlockParserProvider, MarkdownParser, ParseState } from './markdown-parser.js';
 import { linkDef_traits } from './blocks/linkDef.js';
 import { htmlBlock_traits } from './blocks/html-block.js';
-import { isSpaceLine, LogicalLine, LogicalLine_text, LogicalLine_with_cmt, sliceLine } from './linify.js';
+import { isSpaceLine, LogicalLine, LogicalLine_with_cmt, sliceLine } from './linify.js';
 
 
 export const standardBlockTryOrder = [
@@ -109,8 +108,6 @@ export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits e
 		return this.B;
 	}
 
-	static textLines: Partial<Record<LogicalLineType, boolean>> = { text: true,  single: true };
-
 	beginsHere(LL: LogicalLine_with_cmt, interrupting?: BlockType | undefined): number {
 		if(LL.type !== "text")
 			return -1;
@@ -138,7 +135,7 @@ export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits e
 		};
 
 		if(LL.type === "comment")
-			return "end"; // TODO!!!
+			return (this.traits.allowCommentLines ? "cmtLine" : "end");
 
 		if (this.traits.continuesHere) {
 			const x = this.traits.continuesHere.call(this, LL, isSoftContainerContinuation);
@@ -148,8 +145,6 @@ export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits e
 
 		if(isSpaceLine(LL))
 			return ret("end");
-		/*if(LL.type === "comment")
-			return ret(this.traits.allowCommentLines ? "soft" : "end");*/
 
 		const cpfx = this.traits.continuationPrefix;
 		if(cpfx) {
@@ -167,6 +162,10 @@ export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits e
 			return;
 		if(bct === "start")
 			this.startLine = LL;
+		if(bct === "cmtLine") {
+			this.lastLine = LL;
+			return;
+		}
 		//if(this.MDP.diagnostics)    console.log('acceptLine into', this.type, LLD, prefix_length, sliceLLD(LLD, prefix_length))
 
 		// We prepare the content part of the line for acceptance, even if we don't accept it right away due to checkpoint (and perhaps never will)
@@ -288,7 +287,7 @@ export class BlockParser_Container<K extends BlockType_Container = BlockType_Con
     continues(LL: LogicalLine): BlockContinuationType {
         let cont = super.continues(LL);
 		if(this.MDP.diagnostics && cont !== "soft")    console.log(`  block container <${this.type}> continues at line ${LL.lineIdx}? ${cont}`);
-		if(cont === "end")
+		if(cont === "end" || cont === "cmtLine")
 			return cont;
 			
 		/* The following line will sometimes cause a line to be enqueued that in the end isn't used because the block ends,
