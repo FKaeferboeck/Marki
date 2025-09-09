@@ -65,7 +65,7 @@ export class MarkdownRendererInstance implements MarkdownRendererTraits {
     renderBlock(B: AnyBlock, I: Inserter) {
         const H = this.blockHandler[B.type];
         if(!H)
-            return I.add('<??>');
+            return I.add(`<${B.type}>`);
         (H as any).call(this, B, I);
     }
 

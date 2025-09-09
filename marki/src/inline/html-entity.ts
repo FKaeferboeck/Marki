@@ -1,7 +1,6 @@
 import { PositionOps } from "../position-ops.js";
 import { AnyInline, InlineElement } from "../markdown-types.js";
 import { InlineElementTraits } from "../traits.js";
-
 import { resolveSourcePath } from "../path.js"
 import * as fs from 'fs';
 

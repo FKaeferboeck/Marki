@@ -489,9 +489,9 @@ function processLines(this: MarkdownParser, LL0: LogicalLine_with_cmt, LL1: Logi
 }
 
 
-export function blockSteps(this: ParsingContext, input: string) {
+export function blockSteps(this: ParsingContext, input: string, tryOrderName? : string) {
 	const LLs = linify(input, this.MDP.MDPT.makeCommentLines);
-	const blocks = processContent.call(this, LLs[0], undefined);
+	const blocks = processContent.call(this, LLs[0], tryOrderName);
 	return blocks;
 }
 
