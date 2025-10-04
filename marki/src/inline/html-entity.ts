@@ -1,10 +1,7 @@
 import { PositionOps } from "../position-ops.js";
 import { AnyInline, InlineElement } from "../markdown-types.js";
 import { InlineElementTraits } from "../traits.js";
-import { resolveSourcePath } from "../path.js"
-import * as fs from 'fs';
-
-const entityList = JSON.parse(fs.readFileSync(resolveSourcePath('htmlEntities.json'), 'utf8')) as Record<string, number | number[]>;
+import entityList from '../htmlEntities.js'
 
 
 const rex = /^&(?:#\d{1,7};|#[xX][\dA-Fa-f]{1,6};|[A-Za-z][A-Za-z\d]{0,32};)/; // 32 is the length of the longest existing HTML entity
