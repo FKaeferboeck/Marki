@@ -18,6 +18,7 @@ function doTest(idx: number | string, input: string, expectation: string) {
             URL: `Marki-UnitTest-${idx}.sdsmd`,
             title: undefined,
             input,
+            LLs: [],
             blocks: [],
             localCtx: { }
         }

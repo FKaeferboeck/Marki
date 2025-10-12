@@ -1,4 +1,4 @@
-import { Position, Range, uinteger } from 'vscode-languageserver';
+import { Range, uinteger } from 'vscode-languageserver';
 
 export interface IncrementalChange {
 	range: Range;
@@ -45,6 +45,10 @@ export interface LineStructure {
 	logical_lines: LogicalLine_with_cmt[];
 }
 
+export interface IncrementalChange_LL {
+	range: [number, number];
+	newLines: LogicalLine_with_cmt[];
+}
 
 
 export interface LL_Slice_additions {

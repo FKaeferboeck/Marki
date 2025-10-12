@@ -1,6 +1,5 @@
 import { lineContent, LogicalLine, LogicalLine_comment, LogicalLine_text, LogicalLine_with_cmt, LogicalLineType, shiftCol, Slice, sliceLine_to } from "./linify.js";
-import { AnyBlock, AnyInline, hasSevereError, InlinePos, isBlockWrapper, isContainer, Pos } from "./markdown-types.js";
-import { PositionOps } from "./position-ops.js";
+import { AnyBlock, hasSevereError, InlinePos, isBlockWrapper, isContainer, Pos } from "./markdown-types.js";
 
 const spaces: Record<string, boolean> = { ' ': true,  '\t': true,  '\n': true };
 
@@ -509,4 +508,34 @@ export function startSnippet(str: string, length_cap = 32) {
     if(str.length <= length_cap)
         return str;
     str.slice(0, Math.max(length_cap - 4, 1)) + ' ...';
+}
+
+
+
+const endLine = (B: AnyBlock) => (B.lineIdx + B.logical_line_extent);
+
+// find which block the given line lies in, using binary search
+export function findBlock(Bs: AnyBlock[], lineIdx: number): number {
+    let i0 = 0, i1 = Bs.length;
+    if(i0 === i1 || lineIdx < 0 || lineIdx >= endLine(Bs[i1 - 1]))
+        return -1;
+    while(i1 - i0 > 1) {
+        const i = Math.floor((i0 + i1) / 2);
+        if(lineIdx < Bs[i].lineIdx)
+            i1 = i;
+        else
+            i0 = i;
+    }
+    return (lineIdx < endLine(Bs[i0]) ? i0 : -1);
+}
+
+
+export function updateBlockRange(Bs: AnyBlock[], lineIdx_begin: number,  lineIdx_end: number): null | [number, number] {
+    let b0 = findBlock(Bs, lineIdx_begin);
+    let b1 = (lineIdx_end <= lineIdx_begin + 1 ? b0 : findBlock(Bs, lineIdx_begin));
+    if(b0 < 0 || b1 < 0)
+        return null;
+    if(lineIdx_begin == Bs[b0].lineIdx && b0 > 0)
+        --b0;
+    return [b0, b1 + 1];
 }

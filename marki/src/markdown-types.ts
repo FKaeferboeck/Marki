@@ -108,6 +108,7 @@ export interface MarkiDocument {
 	URL:      string | undefined;
 	title:    string | undefined;
 	input?:   string;
+	LLs:      LogicalLine_with_cmt[];
 	blocks:   AnyBlock[];
 	localCtx: MarkdownParserContext;
 }

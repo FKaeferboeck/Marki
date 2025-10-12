@@ -18,10 +18,11 @@
     },
     "./path": {
       "require": "./dist-cjs/path.cjs.js",
-      "import":{
+      "import": {
         "types": "./dist-types/path.d.ts",
         "default": "./dist-esm/path.esm.js"
-    } },
+      }
+    },
     "./util": {
       "require": "./dist-cjs/exports/index-util.js",
       "import": {
@@ -102,6 +103,7 @@
     "vscode-languageserver": "^9.0.1"
   },
   "devDependencies": {
+    "@types/commonmark": "^0.27.10",
     "@types/node": "^24.1.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"

@@ -25,6 +25,7 @@ export function doTest(idx: number | string, input: string, myParserResult?: str
             URL: `Marki-UnitTest-${idx}.sdsmd`,
             title: undefined,
             input,
+            LLs: [],
             blocks: [],
             localCtx: { }
         }

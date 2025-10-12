@@ -10,7 +10,7 @@ import { AnyBlock, Block, Block_Leaf, BlockBase, BlockType, BlockType_Container,
 import { BlockContinuationType, BlockTraits, BlockTraits_Container } from './traits.js';
 import { LLinfo } from './util.js';
 import { listItem_traits } from './blocks/listItem.js';
-import { BlockParserProvider, MarkdownParser, ParseState } from './markdown-parser.js';
+import { BlockParserProvider, blockStoper_doNothing as blockStopper_doNothing, MarkdownParser, ParseState } from './markdown-parser.js';
 import { linkDef_traits } from './blocks/linkDef.js';
 import { htmlBlock_traits } from './blocks/html-block.js';
 import { isSpaceLine, LogicalLine, LogicalLine_with_cmt, sliceLine } from './linify.js';
@@ -278,7 +278,8 @@ export class BlockParser_Container<K extends BlockType_Container = BlockType_Con
 		if(this.traits.acceptLineHook?.call(this, LL, "start") === false)
 			return n0;
 		const LLD_c = this.enqueueContentSlice(LL, n0);
-        this.curContentParser = this.MDP.processLine({ tryOrderName: this.contentParserTryOrder,  container: this,  curParser: null,  generator: null,  includeFileContext: this.includeFileCtx }, LLD_c);
+		const state = { tryOrderName: this.contentParserTryOrder,  container: this,  curParser: null,  generator: null,  includeFileContext: this.includeFileCtx };
+        this.curContentParser = this.MDP.processLine(state, LLD_c, blockStopper_doNothing);
         if(!this.curContentParser.curParser)
             throw new Error(`Content of container ${this.type} not recognized as any block type!`);
 		return n0;
@@ -298,7 +299,7 @@ export class BlockParser_Container<K extends BlockType_Container = BlockType_Con
 			let curLL: LogicalLine = LL_c;
 			while(true) {
 				if(this.MDP.diagnostics)    console.log(`      = Parsing content slice ${LLinfo(curLL)} inside ${this.type}`);
-				this.curContentParser = this.MDP.processLine(this.curContentParser, curLL);
+				this.curContentParser = this.MDP.processLine(this.curContentParser, curLL, blockStopper_doNothing);
 				if(this.curContentParser.retry) {
 					curLL = this.curContentParser.retry;
 					if(this.MDP.diagnostics)    console.log(`      = Retry in line ${LLinfo(curLL)}`);

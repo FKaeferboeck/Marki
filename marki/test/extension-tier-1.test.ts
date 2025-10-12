@@ -40,6 +40,7 @@ function doTest(idx: number | string, input: string, expectation: string) {
             URL: sourceInclude_traits.sourceIncludeResolve!(`Marki-UnitTest-Tier1-${idx}.sdsmd`, '', { mode: "relative",  prefix: '' }) as string,
             title: undefined,
             input,
+            LLs: [],
             blocks: [],
             localCtx: { }
         }

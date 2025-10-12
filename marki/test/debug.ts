@@ -25,6 +25,7 @@ const doc: MarkiDocument = {
   URL: sourceInclude_traits.sourceIncludeResolve('Marki-UnitTest-Tier1-2.sdsmd', '', { mode: "relative",  prefix: '' }) as string,
   title: undefined,
   input,
+  LLs: [],
   blocks: [],
   localCtx: { }
 };

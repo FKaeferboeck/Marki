@@ -1,11 +1,17 @@
-import { lineReassemble, linify_, LogicalLine_with_cmt } from 'marki/util';
+import { findBlock, lineReassemble, linify_, LogicalLine_with_cmt } from 'marki/util';
 import { Position } from 'vscode-languageserver';
 import { IncrementalChange } from './change-managment';
+import { AnyBlock, BlockStopper, MarkiDocument, ParsingContext, reprocessContent } from 'marki';
 
 
 export interface IncrementalChange_LL {
 	range: [number, number];
 	newLines: LogicalLine_with_cmt[];
+}
+
+export interface IncrementalChange_Blocks {
+	range: [number, number]; // block indices
+	newBlocks: AnyBlock[];
 }
 
 
@@ -91,4 +97,80 @@ export function spliceIncrementalChange(LLs: LogicalLine_with_cmt[], change: Inc
     }
 
     return { range: [i0, i1],  newLines: result.LLs };
+}
+
+
+export const blockInfo = (B: AnyBlock, line_delta?: number) => `[${B.lineIdx}, ${B.lineIdx + B.logical_line_extent}${line_delta ? '+' + line_delta : ''}, ${B.type}]`;
+export const blockDiag = (Bs: AnyBlock[]) => console.log('<<' + Bs.map(B => blockInfo(B)).join('\n  ') + '>>');
+
+type BlockStopper_matchingEndline = BlockStopper & {
+    lastBlock: number;
+};
+function makeBlockStopper_matchingEndline(Bs: AnyBlock[], b1: number, line_delta: number): BlockStopper_matchingEndline {
+    const fct = (B_in: AnyBlock) => {
+        while(fct.lastBlock < Bs.length) {
+            const B = Bs[fct.lastBlock];
+            const end_line = B.lineIdx + B.logical_line_extent + line_delta;
+            const line_idx = B_in.lineIdx + B_in.logical_line_extent;
+            if(line_idx > end_line) {
+                ++fct.lastBlock;
+                continue;
+            }
+            fct.continues_ = (line_idx !== end_line);
+            //console.log(`New block ${blockInfo(B_in)} ends at ${blockInfo(B, line_delta)}?}`, !fct.continues_);
+            return;
+        }
+    };
+    //console.log('Start Abgelich at block', b1)
+    fct.lastBlock = b1;
+    fct.continues_ = true;
+    fct.continues = () => fct.continues_ || false;
+	return fct;
+}
+
+
+
+export function incrementalBlockChange(ctx: ParsingContext, doc: MarkiDocument, delta: IncrementalChange_LL): IncrementalChange_Blocks {
+    const LLs = doc.LLs;
+    const [line0, line1] = delta.range;
+    //console.log('Line range', delta.range)
+    let   b0 = findBlock(doc.blocks, line0) - 1; // unfortunately there are multiple scenarios where a change can affect the previous block, so lets keep it easy and ALWAYS reparse it
+    const b1 = findBlock(doc.blocks, line1 - 1);
+    let   B0 = doc.blocks[Math.max(b0, 0)];
+    let line_delta = 0; // difference in indices of lines behind the change
+    //console.log('Deliverd:');  blockDiag(doc.blocks)
+    
+    if(line1 - line0 === 1 && delta.newLines.length === 1) { // most common case: change within a single line
+        (LLs[line0] = delta.newLines[0]).next = LLs[line1];
+        if(line0 > 0)
+            LLs[line0 - 1].next = LLs[line0];
+    }
+    else {
+        line_delta = delta.newLines.length - (line1 - line0);
+        LLs.splice(line0, line1 - line0, ... delta.newLines);
+        for(let i = Math.max(line0 - 1, 0), ie = LLs.length, l_idx = LLs[i]?.lineIdx;  i < ie;  ++i)
+        {
+            LLs[i].next    = LLs[i + 1]; // will be undefined for the last element
+            LLs[i].lineIdx = l_idx++;
+        }
+        //for(let b - b1)
+    }
+    //console.log('End line', line0, line1, line_delta, b1)
+
+    const stopper = makeBlockStopper_matchingEndline(doc.blocks, b1, line_delta);
+    const Bs = reprocessContent(ctx, LLs[B0.lineIdx], stopper);
+    //console.log('New blocks until', line1, '+', line_delta, stopper);  blockDiag(Bs);
+    if(b0 >= 0) {
+        // If the previous block ends at the same line as it did previously and has the same type it must be unchanged, since it only consists of unchanged lines
+        const B0_new = Bs[0];
+        if (B0.type === B0_new.type && B0.lineIdx === B0_new.lineIdx && B0.logical_line_extent == B0_new.logical_line_extent) {
+            Bs.shift(); // ... nothing to do with this block
+            B0 = doc.blocks[++b0];
+        }
+    }
+
+    return {
+        range: [Math.max(b0, 0), Math.min(stopper.lastBlock + 1, doc.blocks.length)],
+        newBlocks: Bs
+    };
 }
