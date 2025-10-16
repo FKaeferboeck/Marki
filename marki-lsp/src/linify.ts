@@ -174,3 +174,15 @@ export function incrementalBlockChange(ctx: ParsingContext, doc: MarkiDocument, 
         newBlocks: Bs
     };
 }
+
+
+export function integrateBlockDelta(ctx: ParsingContext, doc: MarkiDocument, delta: IncrementalChange_Blocks) {
+    const b0 = delta.range[0],  b1 = delta.range[1],  Bs = doc.blocks;
+    const d_i = delta.newBlocks.length - (b1 - b0);
+    let i_LL = Bs[b0].lineIdx;
+    doc.blocks.splice(b0, b1 - b0, ... delta.newBlocks);
+    for(let b = b0, b_e = Bs.length;  b < b_e;  ++b) {
+        Bs[b].lineIdx = i_LL;
+        i_LL += Bs[b].logical_line_extent;
+    }
+}

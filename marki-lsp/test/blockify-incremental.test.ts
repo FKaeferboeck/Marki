@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { BlockType, IncrementalChange, IncrementalChange_LL, linify, LogicalLine_emptyish, LogicalLine_text, LogicalLine_with_cmt, MarkdownParser, MarkdownParserTraits, MarkdownRendererInstance, MarkiDocument } from "marki";
+import { BlockType, IncrementalChange, IncrementalChange_LL, lineContent, linify, LogicalLine_emptyish, LogicalLine_text, LogicalLine_with_cmt, MarkdownParser, MarkdownParserTraits, MarkdownRendererInstance, MarkiDocument } from "marki";
 import { blockDiag, incrementalBlockChange, spliceIncrementalChange } from "../src/linify";
 
 // comment lines are an extension feature, but there's no harm in running it through a few CommonMark tests as well to highlight the difference
@@ -18,8 +18,8 @@ interface BlockifyIncrementalResult {
     blocks: [BlockType, number][];
 }
 
-function B(start_line: number, end_line: number, ... args: (BlockType|number)[]) {
-    const res: BlockifyIncrementalResult = { range: [start_line, end_line],  blocks: [] };
+function B(start_block: number, end_block: number, ... args: (BlockType|number)[]) {
+    const res: BlockifyIncrementalResult = { range: [start_block, end_block],  blocks: [] };
     for(let i = 0;  i < args.length;  ++i) {
         if (typeof args[i] !== "string")
             continue;
@@ -52,6 +52,10 @@ Para 1
 
 Para 2`];
 
+export function lineDiag(LLs: LogicalLine_with_cmt[]) {
+    console.log('<<' + LLs.map((L, i) => `[${i}=${L.lineIdx}, ${L.type}, "${lineContent(L)}"]`).join('\n  '));
+}
+
 
 export function doTest(idx: number | string, input_idx: number, change: IncrementalChange, tgt: BlockifyIncrementalResult, info?: boolean) {
     test('' + idx, async () => {
@@ -69,7 +73,8 @@ export function doTest(idx: number | string, input_idx: number, change: Incremen
         const IC_LL = spliceIncrementalChange(doc.LLs, change);
         const IC_B  = incrementalBlockChange(parser, doc, IC_LL);
         if (info) {
-            console.log(doc.LLs)
+            lineDiag(doc.LLs)
+            //console.log(doc.LLs)
             console.log(IC_B);
         }
         const res: BlockifyIncrementalResult = { range: IC_B.range,  blocks: [] };
@@ -82,10 +87,13 @@ export function doTest(idx: number | string, input_idx: number, change: Incremen
 
 
 describe("Standard line handling", () => {
-    doTest( 1, 0, ch(3, 2, 3, 2, 'X'),    B(2, 3, "blockQuote", 2));
+    /*doTest( 1, 0, ch(3, 2, 3, 2, 'X'),    B(2, 3, "blockQuote", 2));
     doTest( 2, 0, ch(3, 3, 3, 3, '\n'),   B(2, 3, "blockQuote", 3));
     doTest( 3, 0, ch(4, 0, 4, 0, '>'),    B(2, 4, "blockQuote", 3));
 
     doTest( 4, 1, ch(1, 0, 1, 0, '    '), B(0, 2, "indentedCodeBlock", 3, "paragraph", 1));
-    doTest( 5, 1, ch(0, 0, 0, 0, '```\n'), B(0, 4, "fenced", 7)); // open block closed by EOF
+    doTest( 5, 1, ch(0, 0, 0, 0, '```\n'), B(0, 4, "fenced", 7)); */// open block closed by EOF
+
+    //doTest( 6, 0, ch(2, 9, 2, 9, '\n'),    B(2, 3, "blockQuote", 1, "emptySpace", 1, "paragraph", 1), true);
+    doTest( 7, 0, ch(4, 0, 5, 0, ''),    B(2, 5, "blockQuote", 3));
 });

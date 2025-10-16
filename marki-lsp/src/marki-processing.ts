@@ -47,6 +47,7 @@ export function MarkiParse(content: string) {
     const doc: MarkiDocument = {
         URL: '',  title: '',
         input: content,
+        LLs: [],
         blocks: [],
         localCtx: { }
     }

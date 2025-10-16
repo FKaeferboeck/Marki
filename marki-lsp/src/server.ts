@@ -7,14 +7,16 @@ import { createConnection, TextDocuments, ProposedFeatures, InitializeParams,
 } from 'vscode-languageserver/node.js';
 
 import { DocumentUri, TextDocument } from 'vscode-languageserver-textdocument';
-import { LineStructure, IncrementalChange, linify, MarkiDocument } from "marki";
+import { IncrementalChange, MarkiDocument } from "marki";
 
 import EventEmitter = require('events');
 import { getMarkiInstance, Marki_LSP_plugin, MarkiParse } from './marki-processing.js';
-import { AnyBlock } from 'marki';
-import { blockDistributionInfo, findBlock } from './util.js';
+import { blockDistributionInfo } from './util.js';
 import { provideTooltip } from './provide-tooltip.js';
 import { InlineCompletionFeatureShape } from 'vscode-languageserver/lib/common/inlineCompletion.proposed.js';
+import { findBlock, lineContent, LogicalLine_with_cmt } from 'marki/util';
+import { condenseChanges } from './change-managment.js';
+import { incrementalBlockChange, integrateBlockDelta, spliceIncrementalChange } from './linify.js';
 
 export { getMarkiParser } from './marki-processing.js';
 
@@ -22,48 +24,42 @@ const eventEmitter = new EventEmitter();
 
 const waitForDocument = (docname: DocumentUri) => new Promise(resolve => void(eventEmitter.once('loadDocument:' + docname, resolve)));
 
-
 interface MyTextDocument {
 	uri:           DocumentUri;
 	doc:           TextDocument;
-	lineStructure: LineStructure;
 	pending:       Promise<MarkiDocument> | undefined;
-	blocks:        AnyBlock[];
+	markiDoc:      MarkiDocument | undefined;
 	changeBuffer:  IncrementalChange[];
 	builder:       SemanticTokensBuilder;
 }
 
 const MyTextDocument: TextDocumentsConfiguration<MyTextDocument> = {
 	create: function(uri: DocumentUri, languageId: string, version: number, content: string): MyTextDocument {
-		//console.log(`Create document [${uri}]`);
 		const pending = MarkiParse(content).then(doc => {
-			console.log(blockDistributionInfo(doc.blocks));
+			//console.log(blockDistributionInfo(doc.blocks));
+			console.log(`Finished parsing "${doc.URL}"`);
 			return doc;
 		});
 
 		const D: MyTextDocument = {
-			uri:           uri,
-			doc:           TextDocument.create(uri, languageId, version, content),
-			lineStructure: { logical_lines: linify(content, true) },
+			uri:          uri,
+			doc:          TextDocument.create(uri, languageId, version, content),
 			pending,
-			blocks:        [],
-			changeBuffer:  [],
-			builder:       new SemanticTokensBuilder()
+			markiDoc:     undefined,
+			changeBuffer: [],
+			builder:      new SemanticTokensBuilder()
 		};
 		return D;
 	},
-	update: function(document: MyTextDocument, changes: TextDocumentContentChangeEvent[], version: number): MyTextDocument {
-		//console.log('Intercepted update!', changes);
-		//document.changeBuffer
-		TextDocument.update(document.doc, changes, version);
 
+	update: function(document: MyTextDocument, changes: TextDocumentContentChangeEvent[], version: number): MyTextDocument {
+		TextDocument.update(document.doc, changes, version);
 		for(const C of changes) {
 			if(TextDocumentContentChangeEvent.isIncremental(C))
 				document.changeBuffer.push(C);
 			else
 				console.log('onDidChangeTextDocument full!');
 		}
-
 		return document;
 	}
 };
@@ -93,9 +89,24 @@ const documentSettings = new Map<string, Thenable<ExampleSettings>>();
 documents.onDidClose(e => { documentSettings.delete(e.document.uri); });
 
 
+documents.onDidChangeContent((change) => {
+	const document = change.document;
+	const markiDoc = document.markiDoc;
+	if(!markiDoc)
+		return;
+	//condenseChanges(document);
+	//console.log(`Pooled to ${document.changeBuffer.length} changes`, document.changeBuffer[0]);
+	let ch: IncrementalChange|undefined;
+	while(ch = document.changeBuffer.shift()) {
+		const deltaLL = spliceIncrementalChange(markiDoc.LLs, ch);
+		const MDP = getMarkiInstance().MDP;
+		const deltaBs = incrementalBlockChange(MDP, markiDoc, deltaLL);
+		integrateBlockDelta(MDP, markiDoc, deltaBs);
+	}
+});
+
 
 export function startMarkiLSP(pluginModuleFiles: string[]): _Connection<_, _, _, _, _, _, InlineCompletionFeatureShape, _> {
-	// Create a connection for the server, using Node's IPC as a transport.
 	const sdsmd_language_server = createConnection(ProposedFeatures.all);
 
 	sdsmd_language_server.onInitialize((params: InitializeParams) => {
@@ -110,6 +121,7 @@ export function startMarkiLSP(pluginModuleFiles: string[]): _Connection<_, _, _,
 			const plugin = F as Marki_LSP_plugin;
 			plugin.registerMarkiExtension?.(MDP);
 			plugin.registerTooltipProviders?.(inst.tooltip);
+			console.log(`Finished loading plugin "${file}"`);
 		});
 
 		// Does the client support the `workspace/configuration` request?
@@ -137,7 +149,6 @@ export function startMarkiLSP(pluginModuleFiles: string[]): _Connection<_, _, _,
 
 		if (hasWorkspaceFolderCapability)
 			result.capabilities.workspace = { workspaceFolders: { supported: true } };
-		console.log('Initialie!')
 		return result;
 	});
 
@@ -166,6 +177,8 @@ export function startMarkiLSP(pluginModuleFiles: string[]): _Connection<_, _, _,
 		sdsmd_language_server.languages.diagnostics.refresh();
 	});
 
+	//sdsmd_language_server.onDidChangeContent
+
 	function getDocumentSettings(resource: string): Thenable<ExampleSettings> {
 		if (!hasConfigurationCapability) {
 			return Promise.resolve(globalSettings);
@@ -182,6 +195,8 @@ export function startMarkiLSP(pluginModuleFiles: string[]): _Connection<_, _, _,
 	}
 
 	sdsmd_language_server.onRequest(SemanticTokensRequest.method, async (params: SemanticTokensParams) => {
+		sdsmd_language_server.console.log('Hi extension')
+		
 		let document = documents.get(params.textDocument.uri);
 		if(!document) {
 			await waitForDocument(params.textDocument.uri);
@@ -225,15 +240,17 @@ export function startMarkiLSP(pluginModuleFiles: string[]): _Connection<_, _, _,
 		if(!doc)    return null;
 	
 		if(doc.pending)
-			await doc.pending.then(Bs => {
-				doc.blocks = Bs.blocks;
-				doc.pending = undefined;
+			await doc.pending.then(markiDoc => {
+				doc.markiDoc = markiDoc;
+				doc.pending  = undefined;
 			});
-		const B = findBlock(doc.blocks, params.position.line);
+		const Bs = doc.markiDoc?.blocks || [];
+		const b = findBlock(Bs, params.position.line);
+		const B = (b >= 0 ? Bs[b] : null);
 		if(!B || B.type === "emptySpace")    return null;
 		const P = { ... params.position };
 		P.line -= B.lineIdx;
-		const contents = provideTooltip(B, P);
+		const contents = provideTooltip(B, P, b);
 		if(!contents)
 			return null;
 		if(typeof contents === "string")
