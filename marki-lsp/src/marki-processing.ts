@@ -27,9 +27,14 @@ const markiInstance: MarkiInstance = {
 };
 
 
+/*export interface Marki_LSP_context {
+    baseDir: string; // the base directory of the extension; e.g. for locating resource files
+}*/
+
 export interface Marki_LSP_plugin {
-    registerMarkiExtension?   (MDP: MarkdownParser): void;
-    registerTooltipProviders? (tt: MarkiInstance["tooltip"]): void;
+    context: Record<string, any>;
+    registerMarkiExtension?   (this: Marki_LSP_plugin, MDPt: MarkdownParserTraits): void;
+    registerTooltipProviders? (this: Marki_LSP_plugin, tt: MarkiInstance["tooltip"]): void;
 }
 
 

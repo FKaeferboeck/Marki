@@ -106,20 +106,21 @@ documents.onDidChangeContent((change) => {
 });
 
 
-export function startMarkiLSP(pluginModuleFiles: string[]): _Connection<_, _, _, _, _, _, InlineCompletionFeatureShape, _> {
+export function startMarkiLSP(context: Record<string, any>, pluginModuleFiles: string[]): _Connection<_, _, _, _, _, _, InlineCompletionFeatureShape, _> {
 	const sdsmd_language_server = createConnection(ProposedFeatures.all);
 
 	sdsmd_language_server.onInitialize((params: InitializeParams) => {
 		const caps = params.capabilities;
 		const inst = getMarkiInstance();
 		inst.pluginFiles.push(... pluginModuleFiles);
-		const MDP = getMarkiInstance().MDP;
+		const MDPT = getMarkiInstance().MDPT;
 		pluginModuleFiles.forEach(file => {
-			const F = require(file);
-			if(!F)
+			const plugin: Marki_LSP_plugin = require(file);
+			if(!plugin)
 				throw new Error(`Cannot read plugin source "${file}"`);
-			const plugin = F as Marki_LSP_plugin;
-			plugin.registerMarkiExtension?.(MDP);
+			plugin.context = { ... context };
+			console.log(plugin)
+			plugin.registerMarkiExtension?.(MDPT);
 			plugin.registerTooltipProviders?.(inst.tooltip);
 			console.log(`Finished loading plugin "${file}"`);
 		});

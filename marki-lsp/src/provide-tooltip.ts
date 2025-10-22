@@ -1,11 +1,11 @@
-import { AnyBlock, Block, Block_Leaf, BlockType } from "marki";
+import { AnyBlock, Block, Block_Leaf, BlockType, ParsingContext } from "marki";
 import { makeSectionHeader_handle, SectionHeader_ext } from "marki/extensions";
 import { InlineElement, InlineElementType } from "marki/inline";
 import { Pos, PositionOps } from "marki/util";
 
 
-export type TooltipProvider<T extends BlockType> = (B: Block<T>, P: Pos) => null | string | Promise<string>;
-export type TooltipProviderInline<T extends InlineElementType> = (elt: InlineElement<T>) => null | string | Promise<string>;
+export type TooltipProvider<T extends BlockType> = (B: Block<T>, P: Pos, ctx: ParsingContext) => null | string | Promise<string>;
+export type TooltipProviderInline<T extends InlineElementType> = (elt: InlineElement<T>, ctx: ParsingContext) => null | string | Promise<string>;
 
 
 export const tooltipProviderInline: Partial<{ [K in InlineElementType]: TooltipProviderInline<K>; }> = {
@@ -27,7 +27,7 @@ export const tooltipProviders: Partial<{ [K in BlockType]: TooltipProvider<K>; }
         buf.push(`Link anchor "\`${H.anchor}\`"`)
         return buf.join('\\\n');
     },
-    paragraph: (B, P) => {
+    paragraph: (B, P, ctx) => {
         if(!B.inlineContent)
             return null;
         const i = PositionOps.locateInline(B.inlineContent, P);
@@ -39,7 +39,21 @@ export const tooltipProviders: Partial<{ [K in BlockType]: TooltipProvider<K>; }
         const fct = tooltipProviderInline[elt.type as any];
         if(!fct) // this inline element type isn't being handled
             return null;
-        return fct(elt as any);
+        return fct(elt as any, ctx);
+    },
+    listItem: (B, P, ctx) => {
+        if(!B.inlineContent)
+            return null;
+        const i = PositionOps.locateInline(B.inlineContent, P);
+        if(i === undefined)
+            return null;
+        const elt = B.inlineContent[i];
+        if(typeof elt === "string")
+            return null;
+        const fct = tooltipProviderInline[elt.type as any];
+        if(!fct) // this inline element type isn't being handled
+            return null;
+        return fct(elt as any, ctx);
     }
 }
 
