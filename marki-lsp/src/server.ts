@@ -251,7 +251,7 @@ export function startMarkiLSP(context: Record<string, any>, pluginModuleFiles: s
 		if(!B || B.type === "emptySpace")    return null;
 		const P = { ... params.position };
 		P.line -= B.lineIdx;
-		const contents = provideTooltip(B, P, b);
+		const contents = provideTooltip(getMarkiInstance().MDP, B, P, b);
 		if(!contents)
 			return null;
 		if(typeof contents === "string")

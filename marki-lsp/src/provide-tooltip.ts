@@ -59,9 +59,9 @@ export const tooltipProviders: Partial<{ [K in BlockType]: TooltipProvider<K>; }
 
 
 
-export function provideTooltip(B: AnyBlock, P: Pos, blockIdx: number) {
+export function provideTooltip(ctx: ParsingContext, B: AnyBlock, P: Pos, blockIdx: number) {
     const fct = tooltipProviders[B.type];
-    const tt = fct ? (fct as any)(B, P) as null | string | Promise<string> : null;
+    const tt = fct ? (fct as any)(B, P, ctx) as null | string | Promise<string> : null;
     if(tt)
         return tt;
 

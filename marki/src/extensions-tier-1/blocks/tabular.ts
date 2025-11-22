@@ -9,7 +9,7 @@ import { BlockTraits, InlineElementTraits, castExtensionBlock } from "../../trai
 import { makeBlockContentIterator } from "../../util.js";
 
 export const tabular_type = "ext_tier1_tabular" as const;
-const tabular_linebr_type = "ext_tier1_tabular_cellbr" as const;
+const tabular_cellbr_type = "ext_tier1_tabular_cellbr" as const;
 
 export type TabularHalign = "left" | "right" | "center" | "justify";
 const halign_finder: Record<string, TabularHalign> = { '<': "left",  '>': "right",  '><': "center",  '<>': "justify" };
@@ -52,16 +52,16 @@ function isFormatLine(LL: LogicalLine) {
 
 
 
-interface TabularCellbrMarker { type: typeof tabular_linebr_type; }
+interface TabularCellbrMarker { type: typeof tabular_cellbr_type; }
 
-export const tabular_cellbr_traits: InlineElementTraits<typeof tabular_linebr_type, TabularCellbrMarker & InlineElementBase<typeof tabular_linebr_type>> = {
+export const tabular_cellbr_traits: InlineElementTraits<typeof tabular_cellbr_type, TabularCellbrMarker & InlineElementBase<typeof tabular_cellbr_type>> = {
     startChars: [ '|' ],
     parse(It) {
         It.pop();
         return true;
     },
-    creator(ctx) { return new InlineParser_Standard<typeof tabular_linebr_type>(ctx, this); },
-    defaultElementInstance: { type: tabular_linebr_type }
+    creator(ctx) { return new InlineParser_Standard<typeof tabular_cellbr_type>(ctx, this); },
+    defaultElementInstance: { type: tabular_cellbr_type }
 };
 
 function inlineProcessTabularRow(ctx: ParsingContext, IPP: InlineParserProvider, H: MarkdownTabularRow) {
@@ -72,7 +72,7 @@ function inlineProcessTabularRow(ctx: ParsingContext, IPP: InlineParserProvider,
     context.inlineParseLoop(It, buf);
     let i0 = 0;
     buf.forEach((elt, i) => {
-        if(!(typeof elt !== "string" && elt.type === tabular_linebr_type))    return;
+        if(!(typeof elt !== "string" && elt.type === tabular_cellbr_type))    return;
         H.cells.push({ content: buf.slice(i0, i) });
         i0 = i + 1;
     });
@@ -197,6 +197,6 @@ export function ext_tier1_tabular_render(this: MarkdownRendererInstance, B: Bloc
 export function extend_tier1_tabular(MDPT: MarkdownParserTraits, MDRT?: MarkdownRendererTraits) {
     const table_cell_parser = new InlineParserProvider(MDPT, MDPT.inlineParser_standard);
     //table_cell_parser.delims[braced_start_traits.name] = braced_start_traits;
-    table_cell_parser.traits[tabular_linebr_type] = tabular_cellbr_traits;
+    table_cell_parser.traits[tabular_cellbr_type] = tabular_cellbr_traits;
     MDPT.customInlineParserProviders[tabular_type] = table_cell_parser;
 }
