@@ -36,8 +36,8 @@ export function doTest(idx: number | string, input: string, myParserResult?: str
         await parser_withCommentLines.processDocument(doc);
         const my_result_custom = clearify(renderer.referenceRender(doc.blocks));
 
-        if(idx === "308a")
-            console.log(linify(input, true));
+        /*if(idx === "308a")
+            console.log(linify(input, true));*/
 
         const commonmark_parsed = commonmark_reader.parse(input);
         const commonmark_result = clearify(commonmark_writer.render(commonmark_parsed) as string);

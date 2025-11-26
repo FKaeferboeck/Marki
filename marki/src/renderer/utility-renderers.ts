@@ -18,7 +18,8 @@ const inlineHandler_plain: InlineRenderHandler = {
         "hardBreak":  (elt, I) => I.add(elt.nSpaces === 1 ? '\n' : '<br />\n'),
         "htmlEntity": (elt, I) => I.add(escapeXML(renderHTML_entity(elt))),
         "image":      function(elt, I) { this.render(elt.linkLabelContents, I); },
-        "rawHTML":    (elt, I) => I.add(elt.tag)
+        "rawHTML":    (elt, I) => I.add(elt.tag),
+        "lineBreak":  (elt, I) => I.add('\n')
     },
     delimHandlers: { '*': () => {} }
 };
@@ -44,7 +45,8 @@ const inlineHandler_reassemble: InlineRenderHandler = {
         "hardBreak":  (elt, I) => I.add(typeof elt.nSpaces === "number" ? ' '.repeat(elt.nSpaces) + '\n' : '\\\n'),
         "htmlEntity": (elt, I) => I.add(escapeXML(renderHTML_entity(elt))),
         "image":      () => { },
-        "rawHTML":    (elt, I) => I.add(elt.tag)
+        "rawHTML":    (elt, I) => I.add(elt.tag),
+        "lineBreak":  (elt, I) => I.add('\n')
     },
     delimHandlers: { }
 };

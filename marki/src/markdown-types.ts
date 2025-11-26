@@ -167,6 +167,7 @@ export interface InlineElementMap {
 				  includeFileContext: IncludeFileContext;
 				  reference?:         Block<"linkDef">; };
 	hardBreak:  { nSpaces: number | false; }; // nSpaces === false means backslash
+	lineBreak:  { }; // only for special purposes/extensions
 	emphasis:   { delimiter: "*" | "_";
 				  delimiterSize: number;
                   strong: boolean; };

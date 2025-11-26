@@ -31,3 +31,17 @@ export const hardBreak_traits: InlineElementTraits<"hardBreak"> = {
         nSpaces: 0
     }
 };
+
+
+
+/* Normally line breaks are not parsed as inline elements unless they are deliberate hard breaks.
+ * However we may need them for extensions, e.g. for tables (where they mark the end of a table row, naturally)
+ */
+export const lineBreak_traits: InlineElementTraits<"lineBreak"> = {
+    startChars: [ '\n' ],
+    parse(It) {
+        It.pop();
+        return true;
+    },
+    defaultElementInstance: { type: "lineBreak" }
+};

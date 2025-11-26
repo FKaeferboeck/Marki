@@ -110,7 +110,8 @@ export const markdownRendererTraits_standard: MarkdownRendererTraits = {
                 I.add(`<a href="${elt.scheme}:${urlEncode([URI])}">${elt.scheme}:${URI}</a>`);
             }
         },
-        "rawHTML": (elt, I) => I.add(elt.tag)
+        "rawHTML":   (elt, I) => I.add(elt.tag),
+        "lineBreak": (elt, I) => I.add('\n')
     },
 
     delimHandlers: {

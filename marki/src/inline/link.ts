@@ -1,7 +1,7 @@
 import { makeDelimiter, pairUpDelimiters, reassembleContent } from "../delimiter-processing.js";
 import { parseBackslashEscapes } from "../inline-parser.js";
 import { MarkdownParser } from "../markdown-parser.js";
-import { AnyInline, Delimiter_nestable, InlineContent, InlineElement, InlineElementType, InlinePos } from "../markdown-types.js";
+import { AnyInline, Delimiter_nestable, InlineContent, InlineElement, InlineElementType } from "../markdown-types.js";
 import { DelimFollowerTraits, DelimiterTraits } from "../traits.js";
 import { BlockContentIterator, contentSlice, removeDelimiter } from "../util.js";
 

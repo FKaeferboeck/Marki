@@ -83,13 +83,31 @@ Afterwards, [foodoo]`, `<h1>Main file</h1>
 
 
 describe('Tabular', () => {
-    doTest(1, '|Head 1|Head 2|\n|-|><|-><-|-|\n|C1|C2|\nafterwards',
-    '<table>\n<thead>\n  <tr><th>Head 1</th><th class="c">Head 2</th></tr>\n</thead>\n<tbody>\n  <tr><td>C1</td><td class="c">C2</td></tr>\n</tbody>\n</table>\n<p>afterwards</p>\n');
+    doTest(1, '|Head 1|Head 2|\n|-|><|-><-|-|\n|C1  |  C2|\nafterwards',
+        '<table>\n<thead>\n  <tr><th>Head 1</th><th class="c">Head 2</th></tr>\n</thead>\n<tbody>\n  <tr><td>C1</td><td class="c">C2</td></tr>\n</tbody>\n</table>\n<p>afterwards</p>\n');
+
+    // The '|' ending a table row can be omitted
+    doTest(2, '|Head 1|Head 2\n|-|><|-><-|-|\n|C1|C2\n|D1|D2\nafterwards',
+        `<table>\n<thead>\n  <tr><th>Head 1</th><th class="c">Head 2</th></tr>\n</thead>\n<tbody>
+  <tr><td>C1</td><td class="c">C2</td></tr>
+  <tr><td>D1</td><td class="c">D2</td></tr>
+</tbody>\n</table>\n<p>afterwards</p>\n`);
 
     // comment lines can come inbetween table rows (in fact this was the biggest reason for developing the comment line feature in the first place)
-    doTest(2, '|#|H2|\n|-|--|\n|1|AA|\n<!-- cmt\n\nline -->\n|2|BB|',
+    doTest(3, '|#|H2|\n|-|--|\n|1|AA|\n<!-- cmt\n\nline -->\n|2|BB|',
         '<table>\n<thead>\n  <tr><th>#</th><th>H2</th></tr>\n</thead>\n<tbody>\n  <tr><td>1</td><td>AA</td></tr>\n  <tr><td>2</td><td>BB</td></tr>\n</tbody>\n</table>\n')
 
-    doTest(3, 'One ~~~two~~three~~~ four',
+    // Table rows can be split across multiple lines of source
+    doTest(4, '|H1|H2|H3|\n|-|-|-|\n|C1| |123  |\\\n| |C2|456|\n|C1|C2|C3|\nafterwards',
+            `<table>\n<thead>\n  <tr><th>H1</th><th>H2</th><th>H3</th></tr>\n</thead>\n<tbody>
+  <tr><td>C1</td><td>C2</td><td>123\n456</td></tr>
+  <tr><td>C1</td><td>C2</td><td>C3</td></tr>
+</tbody>\n</table>\n<p>afterwards</p>\n`);
+
+    // Delimiter matching works across split rows
+    doTest(5, '|H1||\n|-|\n|*Row|\\\n|contd.*|\nafterwards',
+    `<table>\n<thead>\n  <tr><th>H1</th></tr>\n</thead>\n<tbody>\n  <tr><td><em>Row\ncontd.</em></td></tr>\n</tbody>\n</table>\n<p>afterwards</p>\n`);
+
+    doTest(6, 'One ~~~two~~three~~~ four',
         '<p>One <s>~two~~three</s>~ four</p>\n');
 });

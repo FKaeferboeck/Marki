@@ -1,5 +1,5 @@
 import { isAbsolute, posix } from "path";
-import { AnyInline, IncludeFileContext, InlineElement } from "../markdown-types.js";
+import { AnyInline, IncludeFileContext, InlineContent, InlineElement } from "../markdown-types.js";
 
 export function renderHTML_entity(elt: InlineElement<"htmlEntity">) {
     if(elt.codePoint === undefined)
@@ -73,4 +73,16 @@ export function actualizeLinkURL(url: string,  elt: { includeFileContext?: Inclu
     if(url === '.')
         url = '';
     return url;
+}
+
+
+export function inlineTrimRight(elts: InlineContent) {
+    const n = elts.length - 1;
+    if(n >= 0 && typeof elts[n] === "string") {
+        const s = elts[n].replace(/[ \t]+$/, '');
+        if(s)
+            elts[n] = s;
+        else
+            elts.pop();
+    }
 }
