@@ -95,10 +95,10 @@ function inlineProcessTabularSection(ctx: ParsingContext, IPP: InlineParserProvi
     context.inlineParseLoop(It, buf);
     let i0 = 0,  i_row = 0,  i_cell = -1;
     const flush = (i1: number) => {
-        if(i_cell >= 0 && i1 > i0) { // flush contents to cell
+        if(i_cell >= 0) { // flush contents to cell
             const row = (S.rows[i_row] ||= { LL: S.LLs[0],  cells: [] });
             const C = (row.cells[i_cell] ||= { content: [] }).content;
-            if (C.length > 0) {
+            if (C.length > 0 && i1 > i0) {
                 inlineTrimRight(C);
                 C.push({ type: "lineBreak" } as InlineContentElement);
             }
@@ -127,7 +127,7 @@ function inlineProcessTabularSection(ctx: ParsingContext, IPP: InlineParserProvi
     if(buf.length > 0 && !isTabularCellBreak(elt1 = buf[buf.length - 1]))
         flush(buf.length);
 
-    for(const row of S.rows) {
+    for(const row of S.rows) {(row)
         for(const cell of row.cells)
             pairUpDelimiters(cell.content);
     }
