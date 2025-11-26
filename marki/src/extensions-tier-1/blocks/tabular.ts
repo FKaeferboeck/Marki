@@ -1,4 +1,4 @@
-import { lineBreak_traits } from "src/inline/hard-break.js";
+import { lineBreak_traits } from "../../inline/hard-break.js";
 import { ParsingContext } from "../../block-parser.js";
 import { InlineParser_Standard } from "../../inline-parser.js";
 import { InlineParserProvider, InlineParsingContext } from "../../inline-parsing-context.js";
@@ -8,8 +8,8 @@ import { Block_Extension, ExtensionBlockType, InlineContent, InlineContentElemen
 import { Inserter, EasyInserter, MarkdownRendererInstance, MarkdownRendererTraits } from "../../renderer/renderer.js";
 import { BlockTraits, InlineElementTraits, castExtensionBlock } from "../../traits.js";
 import { makeBlockContentIterator } from "../../util.js";
-import { pairUpDelimiters } from "src/delimiter-processing.js";
-import { inlineTrimRight } from "src/renderer/util.js";
+import { pairUpDelimiters } from "../../delimiter-processing.js";
+import { inlineTrimRight } from "../../renderer/util.js";
 
 export const tabular_type = "ext_tier1_tabular" as const;
 const tabular_cellbr_type = "ext_tier1_tabular_cellbr" as const;
@@ -86,10 +86,12 @@ export const tabular_cellbr_traits: InlineElementTraits<typeof tabular_cellbr_ty
 
 
 function inlineProcessTabularSection(ctx: ParsingContext, IPP: InlineParserProvider, S: MarkdownTabularSection) {
+    if(S.LLs.length === 0)
+        return;
     let It = makeBlockContentIterator(S.LLs[0]);
     const buf: InlineContent = [];
     let elt1: InlineContentElement = '';
-    const context = new InlineParsingContext(IPP, ctx.MDP);
+    const context = new InlineParsingContext(IPP, ctx);
     context.inlineParseLoop(It, buf);
     let i0 = 0,  i_row = 0,  i_cell = -1;
     const flush = (i1: number) => {
@@ -187,6 +189,7 @@ export const markdown_tabular_traits: BlockTraits<ExtensionBlockType, MarkdownTa
         if(!castExtensionBlock(B, markdown_tabular_traits))    return;
         const IPP = this.MDP.MDPT.customInlineParserProviders[tabular_type];
         if(!IPP)    return;
+        //IPP.
 
         inlineProcessTabularSection(this, IPP, B.head);
         inlineProcessTabularSection(this, IPP, B.body);
