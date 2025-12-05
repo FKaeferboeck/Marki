@@ -1,7 +1,10 @@
 import { Pos, PosDelta } from "./markdown-types.js";
 
 
-export interface KnowsEnd { endPos: Pos; }
+export interface KnowsEnd {
+    startPos: Pos;
+    endPos:   Pos;
+}
 type InlineStream = (KnowsEnd | string)[]; // duck type for AnyInline[] or InlineContent
 
 

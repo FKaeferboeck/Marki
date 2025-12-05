@@ -189,7 +189,8 @@ export type InlineElementType = keyof InlineElementMap | ExtensionInlineElementT
 
 export interface InlineElementBase<K extends InlineElementType> {
 	type: K;
-	endPos: Pos; // line is relative to block start, character is relative to line content start (which may be not identical for all lines of the block)
+	startPos: Pos; // line is relative to block start, character is relative to line content start (which may be not identical for all lines of the block)
+	endPos:   Pos; //
 	followedDelimiter?: Delimiter_nestable;
 }
 

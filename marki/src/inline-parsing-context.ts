@@ -3,7 +3,7 @@ import { pairUpDelimiters, parseDelimiter } from "./delimiter-processing.js";
 import { InlineParser_Standard } from "./inline-parser.js";
 import { LogicalLine } from "./linify.js";
 import { MarkdownParserTraits } from "./markdown-parser.js";
-import { InlineElementType, Delimiter_nestable, InlineContent, InlineElement, Delimiter, InlinePos, isNestableDelimiter } from "./markdown-types.js";
+import { InlineElementType, Delimiter_nestable, InlineContent, InlineElement, Delimiter, InlinePos, isNestableDelimiter, Pos } from "./markdown-types.js";
 import { InlineParserTraitsList, DelimiterTraits, isDelimFollowerTraits } from "./traits.js";
 import { BlockContentIterator, contentSlice, makeBlockContentIterator } from "./util.js";
 
@@ -105,26 +105,27 @@ export class InlineParsingContext {
                 let found = false;
                 if(this.curDelimClosingStartChar && this.curDelimClosingStartChar === c) {
                     It.setCheckPoint(checkpoint1);
+                    const startPos = It.relativePos();
                     const curOpenDelimiter = this.delimiterStack[this.delimiterStack.length - 1];
                     const curOpenDelimiterTraits = this.provider.getDelimiterTraits(curOpenDelimiter.type);
-                    found = inlineParse_try.call(this, curOpenDelimiterTraits, curOpenDelimiter, It, buf, checkpoint, checkpoint1);
+                    found = inlineParse_try.call(this, curOpenDelimiterTraits, curOpenDelimiter, It, buf, checkpoint, checkpoint1, startPos);
                     if(found) { // open delimiter successfully closed
                         if(this.delimFollowerMap[curOpenDelimiter.type]) { // now we'll look if it has a delimiter follower
                             It.setCheckPoint(checkpoint1);
                             for(const t of this.delimFollowerMap[curOpenDelimiter.type]) {
-                                if(inlineParse_try.call(this, t, curOpenDelimiter, It, buf, checkpoint, checkpoint1)) {
+                                if(inlineParse_try.call(this, t, curOpenDelimiter, It, buf, checkpoint, checkpoint1, startPos)) {
                                     found = true;
                                     break;
                                 }
                             }
                         }
                     }
-
                 }
                 if(!found && this.startCharMap[c]) {
                     It.setCheckPoint(checkpoint1);
+                    const startPos = It.relativePos();
                     for(const t of this.startCharMap[c]) {
-                        if(inlineParse_try.call(this, t, undefined, It, buf, checkpoint, checkpoint1)) {
+                        if(inlineParse_try.call(this, t, undefined, It, buf, checkpoint, checkpoint1, startPos)) {
                             found = true;
                             break;
                         }
@@ -144,14 +145,15 @@ export class InlineParsingContext {
 
         if(this.curDelimClosingStartChar === false || this.curDelimClosingStartChar === '\n') {
             It.setCheckPoint(checkpoint1);
+            const startPos = It.relativePos();
             const curOpenDelimiter = this.delimiterStack[this.delimiterStack.length - 1];
             const curOpenDelimiterTraits = this.provider.getDelimiterTraits(curOpenDelimiter.type);
             // With a closing delimiter that is end-of-block there's not much to check, but there might be lookbehinds:
-            let found = inlineParse_try.call(this, curOpenDelimiterTraits, curOpenDelimiter, It, buf, checkpoint, checkpoint1);
+            let found = inlineParse_try.call(this, curOpenDelimiterTraits, curOpenDelimiter, It, buf, checkpoint, checkpoint1, startPos);
             if(found && this.delimFollowerMap[curOpenDelimiter.type]) { // open delimiter successfully closed, now we'll look if it has a delimiter follower
                 It.setCheckPoint(checkpoint1);
                 for(const t of this.delimFollowerMap[curOpenDelimiter.type]) {
-                    if(inlineParse_try.call(this, t, curOpenDelimiter, It, buf, checkpoint, checkpoint1)) {
+                    if(inlineParse_try.call(this, t, curOpenDelimiter, It, buf, checkpoint, checkpoint1, startPos)) {
                         found = true;
                         break;
                     }
@@ -172,7 +174,7 @@ export const makeInlineContext_minimal = (P: BlockParser<any, any>) => new Inlin
 
 function inlineParse_try(this: InlineParsingContext, t: InlineElementType | DelimiterTraits,
                          openDelim: Delimiter_nestable | undefined,
-                         It: BlockContentIterator, buf: InlineContent, checkpoint: InlinePos, checkpoint1: InlinePos)
+                         It: BlockContentIterator, buf: InlineContent, checkpoint: InlinePos, checkpoint1: InlinePos, startPos: Pos)
 {
     let elt: InlineElement<InlineElementType> | Delimiter | false = false;
     if(typeof t === "string") { // == InlineElementType
@@ -192,7 +194,7 @@ function inlineParse_try(this: InlineParsingContext, t: InlineElementType | Deli
                 return true;
             }
         } else
-            elt = P.parse(It, checkpoint1);
+            elt = P.parse(It, checkpoint1, startPos);
     } else { // it's a delimiter
         elt = parseDelimiter(this, It, checkpoint1, t, openDelim);
         if(!elt)

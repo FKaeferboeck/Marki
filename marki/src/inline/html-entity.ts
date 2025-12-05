@@ -53,9 +53,12 @@ export function parseHTML_entities(s: string, buf: AnyInline[]) {
         const entity_length = entity[0].length;
         if(i !== checkpoint)
             buf.push(s.slice(checkpoint, i));
-        const endPos = PositionOps.endPos(buf);
-        endPos.character += entity_length;
-        const B = { ... htmlEntity_traits.defaultElementInstance,  endPos };
+        const startPos = PositionOps.endPos(buf);
+        const B = {
+            ... htmlEntity_traits.defaultElementInstance,
+            startPos,
+            endPos: { line: startPos.line,  character: startPos.character + entity_length }
+        };
         processHTML_entity(entity, B);
         buf.push(B);
         i += entity_length - 1;

@@ -2,7 +2,7 @@ import { MarkdownLocalContext, ParsingContext } from "./block-parser.js";
 import { backslashEscapeds } from "./inline/backslash-escape.js";
 import { parseHTML_entities } from "./inline/html-entity.js";
 import { MarkdownParser } from "./markdown-parser.js";
-import { AnyInline, Delimiter_nestable, ExtensionInlineElementType, IncludeFileContext, InlineContent, InlineElement, InlineElementType, InlinePos, MarkdownParserContext } from "./markdown-types.js";
+import { AnyInline, Delimiter_nestable, ExtensionInlineElementType, IncludeFileContext, InlineContent, InlineElement, InlineElementType, InlinePos, MarkdownParserContext, Pos } from "./markdown-types.js";
 import { PositionOps } from "./position-ops.js";
 import { DelimFollowerTraits, InlineElementTraits } from "./traits.js";
 import { BlockContentIterator } from "./util.js";
@@ -15,7 +15,7 @@ export interface InlineParser<K extends InlineElementType = ExtensionInlineEleme
 
     // guarantee: if an element is successfully parsed, It will afterwards point behind it
     //            if it cannot be parsed here, It will be at the same start position it was in before (though the checkpoint may have been changed)
-    parse(It: BlockContentIterator, startCheckpoint: InlinePos): Elt | false;
+    parse(It: BlockContentIterator, startCheckpoint: InlinePos, startPos: Pos): Elt | false;
 
     parseFollowingDelim(D: Delimiter_nestable, It: BlockContentIterator, startCheckpoint: InlinePos): false | InlineElement<K>;
 
@@ -32,18 +32,19 @@ export class InlineParser_Standard<K extends InlineElementType = ExtensionInline
     buf?: InlineContent;
 
     constructor(ctx: ParsingContext, traits: InlineElementTraits<K, Elt> | DelimFollowerTraits<K, Elt>) {
-        this.type      = traits.defaultElementInstance.type as K;
+        this.type           = traits.defaultElementInstance.type as K;
         this.MDP            = ctx.MDP;
 		this.globalCtx      = ctx.globalCtx;
 		this.localCtx       = ctx.localCtx;
         this.includeFileCtx = ctx.includeFileCtx;
-        this.traits    = traits;
-        this.B         = structuredClone(traits.defaultElementInstance) as Elt;
-        this.B.endPos  = { line: 0,  character: 0 };
+        this.traits         = traits;
+        this.B              = structuredClone(traits.defaultElementInstance) as Elt;
+        this.B.startPos     = { line: 0,  character: 0 };
+        this.B.endPos       = { line: 0,  character: 0 };
     }
         
 
-    parse(It: BlockContentIterator, startCheckpoint: InlinePos): false | Elt {
+    parse(It: BlockContentIterator, startCheckpoint: InlinePos, startPos: Pos): false | Elt {
         if(!("startChars" in this.traits)) // this function doesn't handle DelimFollowerTraits
             return false;
         const found = this.traits.parse.call(this, It, this.B, startCheckpoint);
@@ -52,6 +53,7 @@ export class InlineParser_Standard<K extends InlineElementType = ExtensionInline
             return false;
         }
         else {
+            this.B.startPos = { ... startPos };
             this.B.endPos = It.relativePos();
             /*const endCheckpoint = It.newPos();*/
             return this.B;
@@ -102,9 +104,14 @@ export function parseBackslashEscapes(s: string, buf: AnyInline[], pusher?: (s: 
             continue;
         if(i !== checkpoint)
             pusher(s.slice(checkpoint, i), buf);
-        const endPos = PositionOps.endPos(buf);
-        endPos.character += 2;
-        buf.push({ type: "escaped",  endPos,  character: s[i + 1] });
+        const startPos = PositionOps.endPos(buf);
+        buf.push({
+            type: "escaped",
+            startPos,
+            endPos : { line: startPos.line,  character: startPos.character + 2 },
+            character: s[i + 1]
+        });
+
         ++i;
         checkpoint = i + 1;
     }

@@ -105,7 +105,7 @@ describe('Tabular', () => {
 </tbody>\n</table>\n<p>afterwards</p>\n`);
 
     // Delimiter matching works across split rows
-    doTest(5, '|H1||\n|-|\n|*Row|\\\n|contd.*|\nafterwards',
+    doTest(5, '|H1|\n|-|\n|*Row|\\\n|contd.*|\nafterwards',
     `<table>\n<thead>\n  <tr><th>H1</th></tr>\n</thead>\n<tbody>\n  <tr><td><em>Row\ncontd.</em></td></tr>\n</tbody>\n</table>\n<p>afterwards</p>\n`);
 
     doTest(6, 'One ~~~two~~three~~~ four',

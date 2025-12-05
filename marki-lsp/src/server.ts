@@ -4,6 +4,8 @@ import { createConnection, TextDocuments, ProposedFeatures, InitializeParams,
 	Hover, TextDocumentContentChangeEvent, SemanticTokensParams, SemanticTokensRequest, TextDocumentsConfiguration,
 	_,
 	_Connection,
+	Diagnostic,
+	DiagnosticSeverity,
 } from 'vscode-languageserver/node.js';
 
 import { DocumentUri, TextDocument } from 'vscode-languageserver-textdocument';
@@ -17,6 +19,7 @@ import { InlineCompletionFeatureShape } from 'vscode-languageserver/lib/common/i
 import { findBlock, lineContent, LogicalLine_with_cmt } from 'marki/util';
 import { condenseChanges } from './change-managment.js';
 import { incrementalBlockChange, integrateBlockDelta, spliceIncrementalChange } from './linify.js';
+import { provideInlineDiagnostics } from './provide-diagnostics.js';
 
 export { getMarkiParser } from './marki-processing.js';
 
@@ -89,27 +92,13 @@ const documentSettings = new Map<string, Thenable<ExampleSettings>>();
 documents.onDidClose(e => { documentSettings.delete(e.document.uri); });
 
 
-documents.onDidChangeContent((change) => {
-	const document = change.document;
-	const markiDoc = document.markiDoc;
-	if(!markiDoc)
-		return;
-	//condenseChanges(document);
-	//console.log(`Pooled to ${document.changeBuffer.length} changes`, document.changeBuffer[0]);
-	let ch: IncrementalChange|undefined;
-	while(ch = document.changeBuffer.shift()) {
-		const deltaLL = spliceIncrementalChange(markiDoc.LLs, ch);
-		const MDP = getMarkiInstance().MDP;
-		const deltaBs = incrementalBlockChange(MDP, markiDoc, deltaLL);
-		integrateBlockDelta(MDP, markiDoc, deltaBs);
-	}
-});
+
 
 
 export function startMarkiLSP(context: Record<string, any>, pluginModuleFiles: string[]): _Connection<_, _, _, _, _, _, InlineCompletionFeatureShape, _> {
-	const sdsmd_language_server = createConnection(ProposedFeatures.all);
+	const marki_language_server = createConnection(ProposedFeatures.all);
 
-	sdsmd_language_server.onInitialize((params: InitializeParams) => {
+	marki_language_server.onInitialize((params: InitializeParams) => {
 		const caps = params.capabilities;
 		const inst = getMarkiInstance();
 		inst.pluginFiles.push(... pluginModuleFiles);
@@ -153,19 +142,19 @@ export function startMarkiLSP(context: Record<string, any>, pluginModuleFiles: s
 		return result;
 	});
 
-	sdsmd_language_server.onInitialized(() => {
+	marki_language_server.onInitialized(() => {
 		if (hasConfigurationCapability) {
 			// Register for all configuration changes.
-			sdsmd_language_server.client.register(DidChangeConfigurationNotification.type, undefined);
+			marki_language_server.client.register(DidChangeConfigurationNotification.type, undefined);
 		}
 		if (hasWorkspaceFolderCapability) {
-			sdsmd_language_server.workspace.onDidChangeWorkspaceFolders(_event => {
-				sdsmd_language_server.console.log('Workspace folder change event received.');
+			marki_language_server.workspace.onDidChangeWorkspaceFolders(_event => {
+				marki_language_server.console.log('Workspace folder change event received.');
 			});
 		}
 	});
 
-	sdsmd_language_server.onDidChangeConfiguration(change => {
+	marki_language_server.onDidChangeConfiguration(change => {
 		if (hasConfigurationCapability)
 			documentSettings.clear(); // Reset all cached document settings
 		else
@@ -175,10 +164,8 @@ export function startMarkiLSP(context: Record<string, any>, pluginModuleFiles: s
 		// Refresh the diagnostics since the `maxNumberOfProblems` could have changed.
 		// We could optimize things here and re-fetch the setting first can compare it
 		// to the existing setting, but this is out of scope for this example.
-		sdsmd_language_server.languages.diagnostics.refresh();
+		marki_language_server.languages.diagnostics.refresh();
 	});
-
-	//sdsmd_language_server.onDidChangeContent
 
 	function getDocumentSettings(resource: string): Thenable<ExampleSettings> {
 		if (!hasConfigurationCapability) {
@@ -186,7 +173,7 @@ export function startMarkiLSP(context: Record<string, any>, pluginModuleFiles: s
 		}
 		let result = documentSettings.get(resource);
 		if (!result) {
-			result = sdsmd_language_server.workspace.getConfiguration({
+			result = marki_language_server.workspace.getConfiguration({
 				scopeUri: resource,
 				section: 'languageServerExample'
 			});
@@ -195,9 +182,7 @@ export function startMarkiLSP(context: Record<string, any>, pluginModuleFiles: s
 		return result;
 	}
 
-	sdsmd_language_server.onRequest(SemanticTokensRequest.method, async (params: SemanticTokensParams) => {
-		sdsmd_language_server.console.log('Hi extension')
-		
+	marki_language_server.onRequest(SemanticTokensRequest.method, async (params: SemanticTokensParams) => {
 		let document = documents.get(params.textDocument.uri);
 		if(!document) {
 			await waitForDocument(params.textDocument.uri);
@@ -216,7 +201,25 @@ export function startMarkiLSP(context: Record<string, any>, pluginModuleFiles: s
 		return builder.build();
 	});
 
-	sdsmd_language_server.languages.diagnostics.on(async (params) => {
+	documents.onDidChangeContent((change) => {
+		const document = change.document;
+		const markiDoc = document.markiDoc;
+		if(!markiDoc)
+			return;
+		//condenseChanges(document);
+		//console.log(`Pooled to ${document.changeBuffer.length} changes`, document.changeBuffer[0]);
+		let ch: IncrementalChange|undefined;
+		while(ch = document.changeBuffer.shift()) {
+			const deltaLL = spliceIncrementalChange(markiDoc.LLs, ch);
+			const MDP = getMarkiInstance().MDP;
+			const deltaBs = incrementalBlockChange(MDP, markiDoc, deltaLL);
+			integrateBlockDelta(MDP, markiDoc, deltaBs);
+		}
+	
+		
+	});
+
+	marki_language_server.languages.diagnostics.on(async (params) => {
 		//console.log('Diagnostics event on ' + params.textDocument.uri);
 		//const document = documents.get(params.textDocument.uri);
 		//console.log(document);
@@ -225,17 +228,21 @@ export function startMarkiLSP(context: Record<string, any>, pluginModuleFiles: s
 				kind: DocumentDiagnosticReportKind.Full,
 				items: await validateTextDocument(connection, document)
 			} satisfies DocumentDiagnosticReport;
-		} else */{
-			// We don't know the document. We can either try to read it from disk
-			// or we don't report problems for it.
+		} else */
+		const doc = documents.get(params.textDocument.uri);
+		if(!doc?.markiDoc?.blocks)
 			return {
 				kind: DocumentDiagnosticReportKind.Full,
 				items: []
-			} satisfies DocumentDiagnosticReport;
-		}
+			};
+
+		return {
+			kind: DocumentDiagnosticReportKind.Full,
+			items: provideInlineDiagnostics(doc.markiDoc.blocks)
+		} satisfies DocumentDiagnosticReport;
 	});
 	
-	sdsmd_language_server.onHover(async (params: TextDocumentPositionParams): Promise<Hover | null> => {
+	marki_language_server.onHover(async (params: TextDocumentPositionParams): Promise<Hover | null> => {
 		console.log(`Hover on "${params.textDocument.uri}" ${params.position.line}/${params.position.character}`);
 		const doc = documents.get(params.textDocument.uri);
 		if(!doc)    return null;
@@ -264,11 +271,11 @@ export function startMarkiLSP(context: Record<string, any>, pluginModuleFiles: s
 	});*/
 	
 	// Make the text document manager listen on the connection for open, change and close text document events
-	documents.listen(sdsmd_language_server);
+	documents.listen(marki_language_server);
 	
 	// Listen on the connection
-	//sdsmd_language_server.listen();
-	return sdsmd_language_server;
+	//marki_language_server.listen();
+	return marki_language_server;
 } // function startMarkiLSP()
 
 

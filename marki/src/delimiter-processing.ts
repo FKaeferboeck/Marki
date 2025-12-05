@@ -59,13 +59,15 @@ export function parseDelimiter(context: InlineParsingContext, It: BlockContentIt
         } else if(!(endDelim = T.parseCloser(It, checkpoint1)))
             return false;
         // opening and closing delimiter get double-linked
+        const endPos = It.relativePos();
         delim = {
             type:         toClose.type,
             delim:        endDelim || '',
             isOpener:     false,
             partnerDelim: toClose,
             active:       true,
-            endPos:       It.relativePos()
+            startPos:     { line: endPos.line,  character: endPos.character - (endDelim || '').length },
+            endPos
         };
         toClose.partnerDelim = delim;
     }
@@ -82,19 +84,21 @@ export function parseDelimiter(context: InlineParsingContext, It: BlockContentIt
 
 
 export function makeDelimiter(It: BlockContentIterator, delim: string, expected_end_delim: string | number): Delimiter {
+    const endPos = It.relativePos();
+    const startPos = { line: endPos.line,  character: endPos.character - delim.length }; // no line break within a delimiter
     if(typeof expected_end_delim === "string")
         return {
             type: '?',
             delim,  endDelimStartChar: expected_end_delim,
             isOpener: true,  active: true,
-            endPos: It.relativePos()
+            startPos,  endPos
         };
     else
         return {
             type: '?',
             delim,
             remaining: expected_end_delim,
-            endPos: It.relativePos()
+            startPos,  endPos
         };
 }
 
