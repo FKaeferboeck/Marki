@@ -288,7 +288,7 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 	processBlock(B: AnyBlock, ctx: ParsingContext, PP?: InlineParserProvider) {
 		const T = this.MDPT.blockTraitsList[B.type];
 		if(!T)    throw new Error(`Cannot process content of block "${B.type}"`);
-		if(isContainer(B)) {
+		if(isContainer(B) || isBlockWrapper(B)) {
 			const T1 = T as BlockTraits_Container<any>;
 			B.blocks.forEach((B1, i) => this.processBlock(B1, ctx, T1.customChildParser?.(B, i, ctx)));
 		}
