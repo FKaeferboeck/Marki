@@ -28,8 +28,17 @@ export const markdownRendererTraits_standard: MarkdownRendererTraits = {
         "paragraph":            function (B, I) { I.add(`<p>${this.renderBlockContent(B, null, "trimmed")}</p>`); },
         "indentedCodeBlock":    function (B, I) { I.add(`<pre><code>${this.renderBlockContent(B, null, "literal")}</code></pre>`); },
         "fenced":               function (B, I) {
-            if(B.language && this.customLanguageRenderer[B.language])
-                this.customLanguageRenderer[B.language].render(B, I);
+            if(B.language && this.customLanguageRenderer[B.language]) {
+                const LR = this.customLanguageRenderer[B.language];
+                if(LR.useCustomEnvironment)
+                    LR.render(B, I);
+                else {
+                    I.add(`<pre>${this.fencedOpener(B)}`);
+                    I.suppressNextJoin();
+                    LR.render(B, I);
+                    I.append(`</code></pre>`);
+                }
+            }
             else
                 I.add(`<pre>${this.fencedOpener(B)}${this.renderBlockContent(B, null, "literal")}</code></pre>`);
         },

@@ -8,12 +8,30 @@ import { actualizeTab, escapeXML } from "./util.js";
 
 export interface Inserter {
     add(... S: string[]): void;
+    append(S: string): void; // append to most recent inserted segment, without a joiner inbetween
+    suppressNextJoin(): void;
     join(sep: string): string;
 }
 
 export class EasyInserter implements Inserter {
     buf: string[] = [];
-    add(... S: string[]) { this.buf.push(... S); }
+    _suppressNext = false;
+    add(... S: string[]) {
+        if(this._suppressNext) {
+            const S0 = S.shift();
+            if(S0)
+                this.append(S0);
+            this._suppressNext = false;
+        }
+        this.buf.push(... S);
+    }
+    append(S: string) {
+        if(this.buf.length > 0)
+            this.buf[this.buf.length - 1] += S;
+        else
+            this.add(S);
+    }
+    suppressNextJoin() { this._suppressNext = true; }
     join(sep: string) { return this.buf.join(sep); }
 }
 
@@ -24,6 +42,7 @@ export type BlockHandlerList = Partial<{
 
 export interface LanguageRenderer {
     render(B: Block<"fenced">, I: Inserter): void;
+    useCustomEnvironment?: boolean; // If true the render method will provide the fenced content's surrounding block element instead of the default <pre><code>
 }
 
 
