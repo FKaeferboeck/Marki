@@ -31,10 +31,10 @@ export function doTest(idx: number | string, input: string, myParserResult?: str
         }
 
         await parser.processDocument(doc);
-        const my_result_commonMark = clearify(renderer.referenceRender(doc.blocks));
+        const my_result_commonMark = clearify(renderer.renderAsString(doc.blocks));
 
         await parser_withCommentLines.processDocument(doc);
-        const my_result_custom = clearify(renderer.referenceRender(doc.blocks));
+        const my_result_custom = clearify(renderer.renderAsString(doc.blocks));
 
         /*if(idx === "308a")
             console.log(linify(input, true));*/

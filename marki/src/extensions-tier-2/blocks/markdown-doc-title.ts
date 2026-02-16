@@ -1,6 +1,6 @@
 import { measureColOffset } from "../../linify.js";
 import { Block_Extension } from "../../markdown-types.js";
-import { Inserter, MarkdownRendererInstance } from "../../renderer/renderer.js";
+import { EasyInserter, Inserter, MarkdownRendererInstance } from "../../renderer/renderer.js";
 import { ExtensionBlockTraits, castExtensionBlock } from "../../traits.js";
 import { tier2_command_block_start } from "../traits.js";
 
@@ -50,6 +50,10 @@ export const markdown_doc_title_traits: ExtensionBlockTraits<MarkdownDocTitle> =
 
 export function ext_tier2_title_render(this: MarkdownRendererInstance, B: Block_Extension, I: Inserter) {
     if(!castExtensionBlock(B, markdown_doc_title_traits))    return;
-    if(this.isTheSingleton(B))
-        I.add(`<div class="document-title">${this.renderBlockContent(B, null, "trimmed")}</div>`);
+    if(this.isTheSingleton(B)) {
+        const I1 = new EasyInserter();
+        I1.add(`<div class="document-title">`);
+        this.renderBlockContent(B, I1, "trimmed").add(`</div>`);
+        I.appendInserter(I1);
+    }
 };

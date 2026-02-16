@@ -175,4 +175,4 @@ export function pairUpDelimiters(content: InlineContent) {
 
 
 export const reassembleContent = (C: InlineContent, ctx: ParsingContext) =>
-    renderInline(C, getInlineRenderer_reassemble(ctx));
+    renderInline(C, getInlineRenderer_reassemble(ctx)).join();

@@ -45,7 +45,7 @@ function doTest(idx: number | string, input: string, expectation: string) {
             localCtx: { }
         }
         await parser.processDocument(doc);
-        const my_result = clearify(renderer.referenceRender(doc.blocks));
+        const my_result = clearify(renderer.renderAsString(doc.blocks));
 
         expect(my_result).toEqual(expectation);
     });

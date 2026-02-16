@@ -2,7 +2,7 @@ import { sectionHeader_trimEndMarker } from "../../blocks/sectionHeader.js";
 import { measureColOffset, standardBlockStart } from "../../linify.js";
 import { BlockTraitsExtended, castExtensionBlock, ExtensionBlockTraits } from "../../traits.js";
 import { blockIterator, makeBlockContentIterator, sliceLL_to } from "../../util.js";
-import { MarkdownRendererInstance, Inserter } from "../../renderer/renderer.js";
+import { MarkdownRendererInstance, Inserter, EasyInserter } from "../../renderer/renderer.js";
 import { AnyBlock, Block_Extension, Block_Leaf } from "../../markdown-types.js";
 import { ParsingContext } from "../../block-parser.js";
 import { tier2_command_block_start } from "../traits.js";
@@ -254,17 +254,16 @@ export function sectionHeader_ext_render(this: MarkdownRendererInstance, B_: Blo
         throw new Error('Wrong rendering function for section header block extension');
     
     const H = makeSectionHeader_handle(B);
-    const buf = [];
+    const I1 = new EasyInserter();
     if(B.level === 0)
-        buf.push(`<h1 id="${H.anchor}" class="major-section-header${extra_classes ? ' ' + extra_classes : ''}">`);
+        I1.add(`<h1 id="${H.anchor}" class="major-section-header${extra_classes ? ' ' + extra_classes : ''}">`);
     else
-        buf.push(`<h${B.level} id="${H.anchor}"${extra_classes ? ' class="' + extra_classes + '"' : ''}>`);
+        I1.add(`<h${B.level} id="${H.anchor}"${extra_classes ? ' class="' + extra_classes + '"' : ''}>`);
 
     if(H.label)
-        buf.push(`<span class="sec-tag">${H.label}</span>`);
-    buf.push(this.renderBlockContent(B_, null));
-    buf.push(`</h${Math.max(B.level, 1)}>`)
-    I.add(buf.join(''));
+        I1.add(`<span class="sec-tag">${H.label}</span>`);
+    this.renderBlockContent(B_, I1).add(`</h${Math.max(B.level, 1)}>`)
+    I.appendInserter(I1);
 };
 
 
@@ -272,12 +271,18 @@ export function ext_tier2_table_of_contents_render(this: MarkdownRendererInstanc
     if(!castExtensionBlock(B, markdown_table_of_contents_traits))    return;
     const ctx = getTableOfContents_ctx(this.ctx);
     I.add('<fieldset class="table-of-content">');
-    I.add(`<legend>${B.inlineContent?.length ? this.renderBlockContent(B, null, "trimmed") : ctx.table_of_contents_title}</legend>`);
+    const I1 = (new EasyInserter()).add(`<legend>`);
+    if(B.inlineContent?.length)
+        this.renderBlockContent(B, I1, "trimmed");
+    else
+        I1.add(ctx.table_of_contents_title);
+    I.appendInserter(I1.add(`</legend>`));
     for(const B1 of ctx.section_headers) {
         if(B1.level > 2)
             continue;
         const H = makeSectionHeader_handle(B1);
-        I.add(`<div class="level-${B1.level}"><div>${H.label || ''}</div><div><a href="#${H.anchor}">${this.renderBlockContent(B1, null)}</a></div></div>`);
+        const I1 = (new EasyInserter()).add(`<div class="level-${B1.level}"><div>${H.label || ''}</div><div><a href="#${H.anchor}">`);
+        I.appendInserter(this.renderBlockContent(B1, I1).add(`</a></div></div>`));
     }
     I.add('</fieldset>');
 };

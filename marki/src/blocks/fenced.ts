@@ -36,8 +36,7 @@ export const fenced_traits = makeBlockTraits("fenced", {
             const context = makeInlineContext_minimal(this);
             context.inlineParseLoop(It_info, B.info_string);
 
-            //const info = reassembleContent(B.info_string, this);
-            const info = renderInline(B.info_string, getInlineRenderer_plain(this))
+            const info = renderInline(B.info_string, getInlineRenderer_plain(this)).join();
             B.language = /^\S+/.exec(info)?.[0] || undefined;
         }
 

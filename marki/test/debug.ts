@@ -35,7 +35,7 @@ try {
   await parser.processDocument(doc);
 
   const renderer = new MarkdownRendererInstance(parser);
-  const my_result = renderer.referenceRender(doc.blocks);
+  const my_result = renderer.renderAsString(doc.blocks);
   console.log(my_result);
 } catch (e) {
   console.error('Caught error:', e);

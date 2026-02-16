@@ -242,7 +242,7 @@ function printTableRow(renderer: MarkdownRendererInstance, R: MarkdownTabularRow
         I1.add(close);
     });
     I1.add('</tr>');
-    I.add(I1.join(''));
+    I.appendInserter(I1);
 }
 
 export function ext_tier1_tabular_render(this: MarkdownRendererInstance, B: Block_Extension, I: Inserter) {

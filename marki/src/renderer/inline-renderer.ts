@@ -52,7 +52,7 @@ export class InlineRenderer implements InlineRenderHandler {
                 break;
             }
         }
-        return I.join('');
+        return I;
     }
 
     renderDelimiter(I: Inserter, delim: Delimiter, data: InlineContent, i: number) {

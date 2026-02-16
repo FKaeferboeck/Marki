@@ -6,33 +6,54 @@ import { DelimRenderHandler, InlineHandlerList, InlineRenderer as InlineRenderer
 import { markdownRendererTraits_standard } from "./renderer-standard.js";
 import { actualizeTab, escapeXML } from "./util.js";
 
+export type RenderedItem = string | object;
+
 export interface Inserter {
-    add(... S: string[]): void;
-    append(S: string): void; // append to most recent inserted segment, without a joiner inbetween
-    suppressNextJoin(): void;
-    join(sep: string): string;
+    setMode(mode: "block" | "inline"): this; // default is "inline", which means no line breaks when joining
+    add(S: RenderedItem): this;
+    suppressNextSep(): void;
+    addFront(s: string): void
+    appendInserter(I: Inserter): void;
+    join(): string; // if all content is strings this is a trivial join, because line breaks were already put in through add() etc.
 }
 
 export class EasyInserter implements Inserter {
     buf: string[] = [];
     _suppressNext = false;
-    add(... S: string[]) {
-        if(this._suppressNext) {
-            const S0 = S.shift();
-            if(S0)
-                this.append(S0);
+    mode: "block" | "inline" = "inline";
+
+    setMode(mode: "block" | "inline") { this.mode = mode;    return this; }
+
+    add(S: string) {
+        if(this._suppressNext)
             this._suppressNext = false;
-        }
-        this.buf.push(... S);
+        else if(this.mode === "block" && this.buf.length > 0)
+            this.buf.push('\n');
+        this.buf.push(S);
+        return this;
     }
-    append(S: string) {
+    suppressNextSep() { this._suppressNext = true; }
+
+    addFront(s: string): void {
         if(this.buf.length > 0)
-            this.buf[this.buf.length - 1] += S;
+            this.buf.unshift(s + (this.mode === "block" ? '\n' : ''));
         else
-            this.add(S);
+            this.buf.push(s);
     }
-    suppressNextJoin() { this._suppressNext = true; }
-    join(sep: string) { return this.buf.join(sep); }
+
+    appendInserter(I: Inserter): void {
+        if((I as EasyInserter).buf.length === 0) {
+            this._suppressNext = false;
+            return;
+        }
+        if(this._suppressNext)
+            this._suppressNext = false;
+        else if(this.mode === "block" && this.buf.length > 0)
+            this.buf.push('\n');
+        this.buf.push(... (I as EasyInserter).buf); // TODO!! What if it's a different implementation?
+    }
+
+    join() { return this.buf.join(''); }
 }
 
 export type BlockHandlerList = Partial<{
@@ -71,13 +92,13 @@ export class MarkdownRendererInstance implements MarkdownRendererTraits {
         this.inlineRenderer = new InlineRendererInstance(this, ctx); // TODO!!
     }
 
-    referenceRender(content: AnyBlock[], verbose?: boolean, appendSpace: boolean = true) {
-        const I = new EasyInserter();
+    renderAsString(content: AnyBlock[], verbose?: boolean, appendSpace: boolean = true) {
+        const I = new EasyInserter().setMode("block");
         for(const B of blockIterator(content))
             this.renderBlock(B, I);
         if(verbose)
             console.log('rendered blocks:', I);
-        const S_joined = I.join('\n');
+        const S_joined = I.join();
         return (S_joined && appendSpace ? S_joined + '\n' : S_joined);
     }
 
@@ -92,11 +113,11 @@ export class MarkdownRendererInstance implements MarkdownRendererTraits {
         return (B.language ? `<code class="language-${B.language}">` : '<code>');
     }
 
-    renderBlockContent(B: AnyBlock, I: Inserter | null, mode?: "literal" | "tightListItem" | "blockquote" | "trimmed"): string {
+    renderBlockContent(B: AnyBlock, I: Inserter, mode?: "literal" | "tightListItem" | "blockquote" | "trimmed"): Inserter {
         if("blocks" in B) {
             const blocks = (B.blocks as AnyBlock[]);
+            const I1 = new EasyInserter().setMode("block");
             if(mode === "tightListItem") {
-                const I1 = new EasyInserter();
                 let type0: BlockType | undefined, type1: BlockType | undefined;
                 for(const b of blocks) {
                     if(b.type === "emptySpace")
@@ -108,42 +129,44 @@ export class MarkdownRendererInstance implements MarkdownRendererTraits {
                     else
                         this.renderBlock(b, I1);
                 }
-                return (!type0 || type0 === "paragraph" ? '' : '\n') + I1.join('\n') + (!type1 || type1 === "paragraph" ? '' : '\n');
+                if(type0 && type0 !== "paragraph")
+                    I1.addFront(''); // add leading line break
+                if(type1 && type1 !== "paragraph")
+                    I1.add(''); // add trailine line break
             }
-    
-            let s = this.referenceRender(blocks, false, false);
-            if(mode === "blockquote")
-                s = s.trim();
-            if(s)
-                I?.add(s);
-            return s;
+            else {
+                for(const B of blockIterator(blocks))
+                    this.renderBlock(B, I1);
+            }
+            I.appendInserter(I1);
+            return I;
         }
     
         let s = '';
         const arr: string[] = [];
         if(mode === "literal") {
+            const isHTML = (B.type === "htmlBlock");
             for(let LL: LogicalLine_with_cmt | undefined = B.content;  LL;  LL = LL.next) {
                 if(LL.type === "comment")
                     continue;
                 if(LL.prefix)
                     arr.push(actualizeTab(LL.prefix, shiftCol(LL)));
                 arr.push(lineContent(LL));
-                if(B.type !== "htmlBlock" || LL.next)
+                if(!isHTML || LL.next)
                     arr.push('\n');
             }
             s = arr.join('');
+            if(!isHTML)
+                s = escapeXML(s);
         } else if(B.inlineContent) {
-            const s1 = this.inlineRenderer.render(B.inlineContent, new EasyInserter(), mode === "trimmed");
-            I?.add(s1);
-            return s1;
+            I.appendInserter(this.inlineRenderer.render(B.inlineContent, new EasyInserter(), mode === "trimmed"));
+            return I;
         } else {
             for(let LL: LogicalLine_with_cmt | undefined = B.content;  LL;  LL = LL.next)
                 arr.push(lineContent(LL));
             s = arr.join('\n');
         }
-        const s1 = escapeXML(s);
-        I?.add(s);
-        return s1;
+        return I.add(s);
     }
 
     // a helper function

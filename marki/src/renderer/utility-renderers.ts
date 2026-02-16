@@ -8,18 +8,19 @@ import { escapeXML, renderHTML_entity } from "./util.js";
 
 const inlineHandler_plain: InlineRenderHandler = {
     elementHandlers: {
-        "escaped":    (elt, I) => I.add(escapeXML(elt.character)),
-        "codeSpan":   (elt, I) => I.add(`<code>${escapeXML(elt.content)}</code>`),
+        "escaped":    (elt, I) => { I.add(escapeXML(elt.character)); },
+        "codeSpan":   (elt, I) => { I.add(`<code>${escapeXML(elt.content)}</code>`); },
         "link":       (elt, I) => {
             const buf2: AnyInline[] = [];
             parseBackslashEscapes(elt.linkLabel, buf2);
-            I.add(... buf2.map(s => (typeof s === "string" ? s : s.type === "escaped" ? s.character : '??')));
+            for(const s of buf2)
+                I.add(typeof s === "string" ? s : s.type === "escaped" ? s.character : '??');
         },
-        "hardBreak":  (elt, I) => I.add(elt.nSpaces === 1 ? '\n' : '<br />\n'),
-        "htmlEntity": (elt, I) => I.add(escapeXML(renderHTML_entity(elt))),
+        "hardBreak":  (elt, I) => { I.add(elt.nSpaces === 1 ? '\n' : '<br />\n'); },
+        "htmlEntity": (elt, I) => { I.add(escapeXML(renderHTML_entity(elt))); },
         "image":      function(elt, I) { this.render(elt.linkLabelContents, I); },
-        "rawHTML":    (elt, I) => I.add(elt.tag),
-        "lineBreak":  (elt, I) => I.add('\n')
+        "rawHTML":    (elt, I) => { I.add(elt.tag); },
+        "lineBreak":  (elt, I) => { I.add('\n'); }
     },
     delimHandlers: { '*': () => {} }
 };
@@ -35,18 +36,19 @@ export function getInlineRenderer_plain(ctx: ParsingContext) {
 
 const inlineHandler_reassemble: InlineRenderHandler = {
     elementHandlers: {
-        "escaped":    (elt, I) => I.add('\\' + elt.character),
-        "codeSpan":   (elt, I) => I.add(`<code>${escapeXML(elt.content)}</code>`),
+        "escaped":    (elt, I) => { I.add('\\' + elt.character); },
+        "codeSpan":   (elt, I) => { I.add(`<code>${escapeXML(elt.content)}</code>`); },
         "link":       (elt, I) => {
             const buf2: AnyInline[] = [];
             parseBackslashEscapes(elt.linkLabel, buf2);
-            I.add(... buf2.map(s => (typeof s === "string" ? s : s.type === "escaped" ? s.character : '??')));
+            for(const s of buf2)
+                I.add(typeof s === "string" ? s : s.type === "escaped" ? s.character : '??');
         },
-        "hardBreak":  (elt, I) => I.add(typeof elt.nSpaces === "number" ? ' '.repeat(elt.nSpaces) + '\n' : '\\\n'),
-        "htmlEntity": (elt, I) => I.add(escapeXML(renderHTML_entity(elt))),
+        "hardBreak":  (elt, I) => { I.add(typeof elt.nSpaces === "number" ? ' '.repeat(elt.nSpaces) + '\n' : '\\\n'); },
+        "htmlEntity": (elt, I) => { I.add(escapeXML(renderHTML_entity(elt))); },
         "image":      () => { },
-        "rawHTML":    (elt, I) => I.add(elt.tag),
-        "lineBreak":  (elt, I) => I.add('\n')
+        "rawHTML":    (elt, I) => { I.add(elt.tag); },
+        "lineBreak":  (elt, I) => { I.add('\n'); }
     },
     delimHandlers: { }
 };
