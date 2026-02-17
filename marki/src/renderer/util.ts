@@ -1,5 +1,6 @@
 import { isAbsolute, posix } from "path";
-import { AnyInline, IncludeFileContext, InlineContent, InlineElement } from "../markdown-types.js";
+import { AnyBlock, AnyInline, IncludeFileContext, InlineContent, InlineElement } from "../markdown-types.js";
+import { MarkdownRendererInstance, Inserter, EasyInserter } from "./renderer.js";
 
 export function renderHTML_entity(elt: InlineElement<"htmlEntity">) {
     if(elt.codePoint === undefined)
@@ -85,4 +86,11 @@ export function inlineTrimRight(elts: InlineContent) {
         else
             elts.pop();
     }
+}
+
+
+
+export function quickRow(R: MarkdownRendererInstance, I: Inserter, prefix: string, B: AnyBlock, mode: "literal" | "tightListItem" | "blockquote" | "trimmed" | undefined, suffix: string) {
+    const I1 = new EasyInserter();
+    return I.appendInserter(R.renderBlockContent(B, I1.add(prefix), mode).add(suffix));
 }

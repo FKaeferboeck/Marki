@@ -18,13 +18,13 @@ export interface Inserter {
 }
 
 export class EasyInserter implements Inserter {
-    buf: string[] = [];
+    buf: RenderedItem[] = [];
     _suppressNext = false;
     mode: "block" | "inline" = "inline";
 
     setMode(mode: "block" | "inline") { this.mode = mode;    return this; }
 
-    add(S: string) {
+    add(S: RenderedItem) {
         if(this._suppressNext)
             this._suppressNext = false;
         else if(this.mode === "block" && this.buf.length > 0)
@@ -34,7 +34,7 @@ export class EasyInserter implements Inserter {
     }
     suppressNextSep() { this._suppressNext = true; }
 
-    addFront(s: string): void {
+    addFront(s: RenderedItem): void {
         if(this.buf.length > 0)
             this.buf.unshift(s + (this.mode === "block" ? '\n' : ''));
         else
@@ -100,6 +100,20 @@ export class MarkdownRendererInstance implements MarkdownRendererTraits {
             console.log('rendered blocks:', I);
         const S_joined = I.join();
         return (S_joined && appendSpace ? S_joined + '\n' : S_joined);
+    }
+
+    renderWithObjects(content: AnyBlock[]) {
+        const I = new EasyInserter().setMode("block");
+        for(const B of blockIterator(content))
+            this.renderBlock(B, I);
+        const arr: RenderedItem[] = [];
+        for(const item of I.buf) {
+            if(typeof item === "string" && arr.length > 0 && typeof arr[arr.length - 1] === "string")
+                arr[arr.length - 1] += item;
+            else
+                arr.push(item);
+        }
+        return arr;
     }
 
     renderBlock(B: AnyBlock, I: Inserter) {

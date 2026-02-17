@@ -1,8 +1,8 @@
 import { lineContent } from "../linify.js";
-import { AnyBlock, Block } from "../markdown-types.js";
+import { Block } from "../markdown-types.js";
 import { renderInline } from "./inline-renderer.js";
-import { EasyInserter, Inserter, MarkdownRendererInstance, MarkdownRendererTraits } from "./renderer.js";
-import { escapeXML, escapeXML_all, urlEncode, renderHTML_entity, actualizeLinkURL } from "./util.js";
+import { Inserter, MarkdownRendererTraits } from "./renderer.js";
+import { escapeXML, escapeXML_all, urlEncode, renderHTML_entity, actualizeLinkURL, quickRow } from "./util.js";
 import { getInlineRenderer_plain } from "./utility-renderers.js";
 import { startSnippet } from "../util.js";
 
@@ -22,12 +22,6 @@ export function emphasisTag(direction: "open" | "close", weight: number) {
 }
 
 const emph_renderer = (I: Inserter, direction: "open" | "close", _type: string, weight: number) => I.add(emphasisTag(direction, weight));
-
-
-function quickRow(R: MarkdownRendererInstance, I: Inserter, prefix: string, B: AnyBlock, mode: "literal" | "tightListItem" | "blockquote" | "trimmed" | undefined, suffix: string) {
-    const I1 = new EasyInserter();
-    return I.appendInserter(R.renderBlockContent(B, I1.add(prefix), mode).add(suffix));
-}
 
 
 export const markdownRendererTraits_standard: MarkdownRendererTraits = {
@@ -133,3 +127,11 @@ export const markdownRendererTraits_standard: MarkdownRendererTraits = {
 
     customLanguageRenderer: { }
 };
+
+
+export const cloneRendererTraits = (traits: MarkdownRendererTraits): MarkdownRendererTraits => ({
+    blockHandler:           { ... traits.blockHandler           },
+    elementHandlers:        { ... traits.elementHandlers        },
+    delimHandlers:          { ... traits.delimHandlers          },
+    customLanguageRenderer: { ... traits.customLanguageRenderer }
+});
