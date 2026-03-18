@@ -19,6 +19,7 @@ const halign_finder: Record<string, TabularHalign> = { '<': "left",  '>': "right
 
 export interface TabularColumnFormat {
     halign: TabularHalign;
+    hsep?: boolean; // vertical line at the right edge of the column
 }
 
 export interface MarkdownTabularRow {
@@ -43,12 +44,18 @@ export interface MarkdownTabular {
 function isFormatLine(LL: LogicalLine) {
     if(LL.type !== "text" || !LL.content.startsWith('|'))
         return false;
-    let rexres = /^\|((?:[\-<>]+\|)+)\s*$/.exec(LL.content);
+    let rexres = /^\|((?:[\-<>]+\|\|?)+)\s*$/.exec(LL.content);
     if(!rexres)
         return false;
     const colsFormats = rexres[1].slice(0, -1).split('|');
     const cols: TabularColumnFormat[] = [];
     for(const f of colsFormats) {
+        if(!f) { // inbetween || -> not a column, it marks a | to have a visible line
+            if(cols.length === 0)
+                return false; // impossible
+            cols[cols.length - 1].hsep = true;
+            continue;
+        }
         if(!(rexres = /^-*(<>?|><?)?-*$/.exec(f)))
             return false;
         const F: TabularColumnFormat = { halign: "left" };
@@ -156,9 +163,12 @@ export const markdown_tabular_traits: BlockTraits<ExtensionBlockType, MarkdownTa
             return (hadFormat ? "end" : "reject");
         if(!hadFormat) {
             const F = isFormatLine(LL);
-            if(F)    this.B.format = F;
-        } else
-            (hadFormat ? this.B.body : this.B.head).LLs.push({ ... LL });
+            if(F) {
+                this.B.format = F;
+                return 0;
+            }
+        }
+        (hadFormat ? this.B.body : this.B.head).LLs.push({ ... LL });
         return 0;
     },
 
@@ -206,24 +216,25 @@ export const markdown_tabular_traits: BlockTraits<ExtensionBlockType, MarkdownTa
 
 /* Rendering stuff */
 
-/*function printTabularColFormats(format: TabularColumnFormat[], I: Inserter) {
+function printTabularColFormats(format: TabularColumnFormat[], I: Inserter) {
     let lastRelevant = -1;
-    format.forEach((F, i) => { if(F.halign !== "left")    lastRelevant = i; });
+    format.forEach((F, i) => { if(F.hsep)    lastRelevant = i; });
     if(lastRelevant < 0) // all columns have default format
         return;
+
     I.add('<colgroup>');
     const Fs: (TabularColumnFormat & { n: number; })[] = [ { ... format[0],  n: 1 }];
     // collate identical column formats
     for(let i = 1;  i <= lastRelevant;  ++i) {
         const F0 = Fs[Fs.length - 1],  F = format[i];
-        if(F.halign === F0.halign)
+        if(F.hsep == F0.hsep)
             ++F0.n;
         else
             Fs.push({ ... F,  n: 1 });
     }
-    Fs.forEach(F => I.add(`  <col${F.n > 1 ? ` span="${F.n}"`:''} style="text-align:${F.halign}">`));
+    Fs.forEach(F => I.add(`  <col${F.n > 1 ? ` span="${F.n}"`:''}${F.hsep ? ' style="border-right: 1px solid black;"' : ''}>`));
     I.add('</colgroup>');
-}*/
+}
 
 function printTableRow(renderer: MarkdownRendererInstance, R: MarkdownTabularRow, Fs: TabularColumnFormat[] | null, I: Inserter, header: boolean) {
     const I1 = new EasyInserter();
@@ -248,7 +259,7 @@ function printTableRow(renderer: MarkdownRendererInstance, R: MarkdownTabularRow
 export function ext_tier1_tabular_render(this: MarkdownRendererInstance, B: Block_Extension, I: Inserter) {
     if(!castExtensionBlock(B, markdown_tabular_traits))    return;
     I.add(`<table>`);
-    //printTabularColFormats(B.format, I);
+    printTabularColFormats(B.format, I);
     if(B.head.rows.length > 0) {
         I.add('<thead>');
         for(const R of B.head.rows)
