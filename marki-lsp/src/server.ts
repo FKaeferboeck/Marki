@@ -108,9 +108,9 @@ export function startMarkiLSP(context: Record<string, any>, pluginModuleFiles: s
 			if(!plugin)
 				throw new Error(`Cannot read plugin source "${file}"`);
 			plugin.context = { ... context };
-			console.log(plugin)
 			plugin.registerMarkiExtension?.(MDPT);
 			plugin.registerTooltipProviders?.(inst.tooltip);
+			plugin.registerDiagnosticsProviders?.(inst.diagnostics);
 			console.log(`Finished loading plugin "${file}"`);
 		});
 
@@ -238,7 +238,7 @@ export function startMarkiLSP(context: Record<string, any>, pluginModuleFiles: s
 
 		return {
 			kind: DocumentDiagnosticReportKind.Full,
-			items: provideInlineDiagnostics(doc.markiDoc.blocks)
+			items: provideInlineDiagnostics(doc.markiDoc.blocks, getMarkiInstance().MDP)
 		} satisfies DocumentDiagnosticReport;
 	});
 	

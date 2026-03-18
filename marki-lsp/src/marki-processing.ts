@@ -1,7 +1,8 @@
-import { BlockType, global_MDPT, MarkdownParser, MarkdownParserTraits, MarkdownRendererTraits, markdownRendererTraits_standard, MarkiDocument } from "marki";
+import { BlockType, global_MDPT, MarkdownParser, MarkdownParserTraits, MarkdownRendererTraits, markdownRendererTraits_standard, MarkiDocument, ParsingContext } from "marki";
 import { doSectionNumbering, extendTier1, extendTier2 } from "marki/extensions";
 import { TooltipProvider, tooltipProviderInline, TooltipProviderInline, tooltipProviders } from "./provide-tooltip";
-import { InlineElementType } from "marki/inline";
+import { InlineElement, InlineElementTraits, InlineElementType } from "marki/inline";
+import { inlineDiagnosticProviders, InlineDiagnosticsProvider } from "./provide-diagnostics";
 
 
 export interface MarkiInstance {
@@ -12,8 +13,14 @@ export interface MarkiInstance {
     tooltip: {
         blocks: Partial<{ [K in BlockType]: TooltipProvider<K>; }>;
         inline: Partial<{ [K in InlineElementType]: TooltipProviderInline<K>; }>;
-    }
+        addInline: <T extends InlineElementType, Elt extends InlineElement<T>>(traits: InlineElementTraits<T, Elt>, fct: InlineDiagnosticsProvider<T, Elt>) => void;
+    };
+    diagnostics: {
+        inline: Partial<{ [K in InlineElementType]: InlineDiagnosticsProvider<K, any>; }>;
+        add: <T extends InlineElementType, Elt extends InlineElement<T>>(traits: InlineElementTraits<T, Elt>, fct: InlineDiagnosticsProvider<T, Elt>) => void;
+    };
 }
+
 
 const markiInstance: MarkiInstance = {
     MDPT: global_MDPT,
@@ -22,7 +29,16 @@ const markiInstance: MarkiInstance = {
     pluginFiles: [],
     tooltip: {
         blocks: tooltipProviders,
-        inline: tooltipProviderInline
+        inline: tooltipProviderInline,
+        addInline: function <T extends InlineElementType, Elt extends InlineElement<T>>(traits: InlineElementTraits<T, Elt>, fct: InlineDiagnosticsProvider<T, Elt>): void {
+            throw new Error("Function not implemented.");
+        }
+    },
+    diagnostics: {
+        inline: inlineDiagnosticProviders,
+        add: <T extends InlineElementType, Elt extends InlineElement<T>>(traits: InlineElementTraits<T, Elt>, fct: InlineDiagnosticsProvider<T, Elt>) => {
+            markiInstance.diagnostics.inline[traits.defaultElementInstance.type] = fct;
+        }
     }
 };
 
@@ -33,8 +49,9 @@ const markiInstance: MarkiInstance = {
 
 export interface Marki_LSP_plugin {
     context: Record<string, any>;
-    registerMarkiExtension?   (this: Marki_LSP_plugin, MDPt: MarkdownParserTraits): void;
-    registerTooltipProviders? (this: Marki_LSP_plugin, tt: MarkiInstance["tooltip"]): void;
+    registerMarkiExtension?      (this: Marki_LSP_plugin, MDPt:  MarkdownParserTraits): void;
+    registerTooltipProviders?    (this: Marki_LSP_plugin, tt:    MarkiInstance["tooltip"]): void;
+    registerDiagnosticsProviders?(this: Marki_LSP_plugin, diags: MarkiInstance["diagnostics"]): void;
 }
 
 
