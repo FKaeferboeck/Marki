@@ -25,11 +25,17 @@ export interface TabularColumnFormat {
 export interface MarkdownTabularRow {
     LL: LogicalLine_text;
     
-    cells: { content: InlineContent; }[];
+    cells: ({ content: InlineContent; } & MarkdownTabularCellStyle)[];
+    borderBottom?: MarkdownTabularBorderStyle[];
+}
+
+export type MarkdownTabularBorderStyle = 0 | 1 | 2; // none/single/double
+export interface MarkdownTabularCellStyle {
+    borderBottom?: MarkdownTabularBorderStyle[];
 }
 
 export interface MarkdownTabularSection {
-    LLs:  LogicalLine_text[];
+    LLs:  (LogicalLine_text & MarkdownTabularCellStyle)[];
     rows: MarkdownTabularRow[];
 }
 
@@ -66,11 +72,25 @@ function isFormatLine(LL: LogicalLine) {
     return cols;
 }
 
+function isRowBorderLine(LL: LogicalLine) {
+    if(LL.type !== "text" || !LL.content.startsWith('|'))
+        return false;
+    let rexres = /^\|((?:[-= \t]+\|\|?)+)\s*$/.exec(LL.content);
+    if(!rexres)
+        return false;
+    const bordersByCol = rexres[1].slice(0, -1).split(/\|\|?/g)
+        .map(f => /^-+$/.test(f) ? 1 : /^=+$/.test(f) ? 2 : /^\s+$/.test(f) ? 0 : -1);
+    if(bordersByCol.some(x => x < 0)) // inconsistent border format (must be all ----, all ====, or all empty = no border)
+        return false;
+    return bordersByCol as (0|1|2)[];
+}
+
 
 
 interface TabularCellbrMarker {
     type:          typeof tabular_cellbr_type;
     rowContinuing: boolean;
+    borderBottom?: MarkdownTabularBorderStyle[];
 }
 
 const isTabularCellBreak = (elt: InlineContentElement): elt is TabularCellbrMarker & InlineElementBase<typeof tabular_cellbr_type> =>
@@ -80,11 +100,14 @@ const isTabularCellBreak = (elt: InlineContentElement): elt is TabularCellbrMark
 export const tabular_cellbr_traits: InlineElementTraits<typeof tabular_cellbr_type, TabularCellbrMarker & InlineElementBase<typeof tabular_cellbr_type>> = {
     startChars: [ '|' ],
     parse(It, B) {
+        const borderBottom = (It.newPos().LL as (LogicalLine_text & MarkdownTabularCellStyle)).borderBottom;
         It.pop();
         B.rowContinuing = (It.peek() == '\\');
         if (B.rowContinuing)
             It.pop();
         It.skipNobrSpace();
+        if(borderBottom && !B.rowContinuing)
+            B.borderBottom = borderBottom;
         return true;
     },
     creator(ctx) { return new InlineParser_Standard<typeof tabular_cellbr_type>(ctx, this); },
@@ -101,38 +124,47 @@ function inlineProcessTabularSection(ctx: ParsingContext, IPP: InlineParserProvi
     const context = new InlineParsingContext(IPP, ctx);
     context.inlineParseLoop(It, buf);
     let i0 = 0,  i_row = 0,  i_cell = -1;
-    const flush = (i1: number) => {
+    let curBorderBottom: undefined | MarkdownTabularBorderStyle[];
+    const flush = (i1: number, elt: InlineContentElement) => {
         if(i_cell >= 0) { // flush contents to cell
             const row = (S.rows[i_row] ||= { LL: S.LLs[0],  cells: [] });
-            const C = (row.cells[i_cell] ||= { content: [] }).content;
+            const cell = (row.cells[i_cell] ||= { content: [] });
+            const C = cell.content;
             if (C.length > 0 && i1 > i0) {
                 inlineTrimRight(C);
                 C.push({ type: "lineBreak" } as InlineContentElement);
             }
             C.push(... buf.slice(i0, i1));
         }
+        else if(isTabularCellBreak(elt))
+            curBorderBottom = elt.borderBottom;
         i0 = i1 + 1;
         ++i_cell;
     };
 
+    
     buf.forEach((elt, i) => {
         if(typeof elt === "string")
             return;
+
         if(elt.type === "lineBreak") {
-            if(i > 0 && isTabularCellBreak(elt1 = buf[i - 1])) {
-                if(elt1.rowContinuing)
-                    --i_row;
-            }
+            let makeNewLine = true;
+            if(i > 0 && isTabularCellBreak(elt1 = buf[i - 1]))
+                makeNewLine = !elt1.rowContinuing;
             else
-                flush(i);
-            ++i_row;
+                flush(i, elt);
+            if(makeNewLine) {
+                if (curBorderBottom)
+                    S.rows[i_row].borderBottom = curBorderBottom;
+                ++i_row;
+            }
             i_cell = -1;
         }
         else if(isTabularCellBreak(elt))
-            flush(i);
+            flush(i, elt);
     });
     if(buf.length > 0 && !isTabularCellBreak(elt1 = buf[buf.length - 1]))
-        flush(buf.length);
+        flush(buf.length, elt1);
 
     for(const row of S.rows) {(row)
         for(const cell of row.cells)
@@ -168,7 +200,14 @@ export const markdown_tabular_traits: BlockTraits<ExtensionBlockType, MarkdownTa
                 return 0;
             }
         }
-        (hadFormat ? this.B.body : this.B.head).LLs.push({ ... LL });
+        const rowBlock = (hadFormat ? this.B.body : this.B.head);
+        const BL = isRowBorderLine(LL);
+        if (BL) {
+            if(rowBlock.LLs.length > 0)
+                rowBlock.LLs[rowBlock.LLs.length - 1].borderBottom = BL;
+            return 0;
+        }
+        rowBlock.LLs.push({ ... LL });
         return 0;
     },
 
@@ -236,15 +275,22 @@ function printTabularColFormats(format: TabularColumnFormat[], I: Inserter) {
     I.add('</colgroup>');
 }
 
+
+const bb_styles = [ undefined, 'bb1', 'bb2' ];
+
 function printTableRow(renderer: MarkdownRendererInstance, R: MarkdownTabularRow, Fs: TabularColumnFormat[] | null, I: Inserter, header: boolean) {
     const I1 = new EasyInserter();
     I1.add('  <tr>');
+    
     const open = (header ? '<th' : '<td'), close = (header ? '</th>' : '</td>');
     R.cells.forEach((C, i) => {
+        const bb_style = bb_styles[R.borderBottom?.[i] || 0];
         const F = Fs?.[i];
         const classes: string[] = [];
         if(F && F.halign != "left")
             classes.push(F.halign[0]);
+        if(bb_style)
+            classes.push(bb_style);
         I1.add(open);
         if(classes.length > 0)
             I1.add(` class="${classes.join(' ')}"`);
