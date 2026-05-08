@@ -1,3 +1,4 @@
+import { MarkdownParser, MarkdownParserTraits } from "../markdown-parser.js";
 import { BlockParser_Container } from "../block-parser.js";
 import { isSpaceLine, measureColOffset, standardBlockStart } from "../linify.js";
 import { Block_Container, AnyBlock, isContainer, Block } from "../markdown-types.js";
@@ -5,12 +6,25 @@ import { makeBlockContainerTraits } from "../traits.js";
 import { blockIterator, LLinfo } from "../util.js";
 
 
+export interface ListItem_ctx {
+    checkboxListItem_active: boolean;
+}
+
+/* Reasonable choices for the command char are things like $, #, %, !, or \ — whichever is most appropriate for your syntax style preference */
+export const set_checkboxListItem_active = (MDPT: MarkdownParserTraits, active: boolean) => {
+    (MDPT.globalCtx as ListItem_ctx).checkboxListItem_active = active;
+}
+
+export const checkboxListItem_active = (MDP: MarkdownParser) => ((MDP.globalCtx as ListItem_ctx).checkboxListItem_active || false);
+
+
 export interface ListItem {
-    marker:         "*" | "-" | "+" | "." | ")";
-    marker_number?: number;
-    indent:         number;
-    isLooseItem:    boolean;
-    parentList:     List | undefined;
+    marker:           "*" | "-" | "+" | "." | ")";
+    marker_number?:   number;
+    github_checkbox?: boolean; // if feature is active
+    indent:           number;
+    isLooseItem:      boolean;
+    parentList:       List | undefined;
 }
 
 export interface List {
@@ -20,17 +34,23 @@ export interface List {
     isLoose:   boolean;
 }
 
+const markerTypes: Record<ListItem["marker"], "unordered" | "ordered"> = {
+    "*": "unordered",  "-": "unordered",  "+": "unordered",
+    ".": "ordered",  ")": "ordered"
+};
+
 
 export const listItem_traits = makeBlockContainerTraits("listItem", {
     containerMode: "Container",
     startsHere(LL, B, interrupting?) {
         if(!standardBlockStart(LL))
             return -1;
-        const rexres = /^([\-+*]|\d{1,9}[).])([ \t]+|$)/.exec(LL.content);
+        let rexres = /^([\-+*]|\d{1,9}[).])([ \t]+|$)/.exec(LL.content);
         if(!rexres)
             return -1;
         B.marker = rexres[1].slice(-1) as ListItem["marker"];
-        if(B.marker === "." || B.marker === ")") {
+        const markerType = markerTypes[B.marker];
+        if(markerType === "ordered") {
             B.marker_number = +rexres[1].slice(0, -1);
             if(interrupting === "paragraph" && B.marker_number !== 1)
                 return -1; // orderedlist items may only interrupt a paragraph if they have the starting number 1 (CommonMark just-so rule)
@@ -45,7 +65,18 @@ export const listItem_traits = makeBlockContainerTraits("listItem", {
         } else if(space > 4)
             space = 1;
 
-        B.indent = LL.indent + rexres[1].length + space;
+        let offs = rexres[1].length + space;
+        if(markerType === "unordered" && checkboxListItem_active(this.MDP) &&
+           (rexres = /^.[ \t]+\[([ \tx]+)\]/.exec(LL.content)))
+        {
+            const checked = rexres[1].split('').reduce((p, c) => p + +(c === 'x'), 0);
+            if (checked <= 1) {
+                offs += 2 + rexres[1].length;
+                B.github_checkbox = Boolean(checked);
+            }
+        }
+
+        B.indent = LL.indent + offs;
         this.setCheckpoint(LL);
         return B.indent;
     },

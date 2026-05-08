@@ -1,5 +1,5 @@
 import { lineContent } from "../linify.js";
-import { Block } from "../markdown-types.js";
+import { Block, Block_Container } from "../markdown-types.js";
 import { renderInline } from "./inline-renderer.js";
 import { Inserter, MarkdownRendererTraits } from "./renderer.js";
 import { escapeXML, escapeXML_all, urlEncode, renderHTML_entity, actualizeLinkURL, quickRow } from "./util.js";
@@ -22,6 +22,9 @@ export function emphasisTag(direction: "open" | "close", weight: number) {
 }
 
 const emph_renderer = (I: Inserter, direction: "open" | "close", _type: string, weight: number) => I.add(emphasisTag(direction, weight));
+
+const listItemOpener = (B: Block_Container<"listItem">) =>
+    (typeof B.github_checkbox !== "boolean" ? '<li>' : `<li><input type="checkbox"${B.github_checkbox ? ' checked' : ''} disabled>`);
 
 
 export const markdownRendererTraits_standard: MarkdownRendererTraits = {
@@ -67,14 +70,14 @@ export const markdownRendererTraits_standard: MarkdownRendererTraits = {
 
             // render <li> element
             if(B.blocks.length === 1 && B.blocks[0].type === "emptySpace")
-                I.add(`<li></li>`);
+                I.add(`${listItemOpener(B)}</li>`);
             else if(L.isLoose) {
-                I.add(`<li>`);
+                I.add(listItemOpener(B));
                 for(const B1 of B.blocks)
                     this.renderBlock(B1, I);
                 I.add(`</li>`);
             } else
-                quickRow(this, I, `<li>`, B, "tightListItem", `</li>`);
+                quickRow(this, I, listItemOpener(B), B, "tightListItem", `</li>`);
 
             // render end of list
             if(pos.isLast)
