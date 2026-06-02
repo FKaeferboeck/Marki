@@ -5,6 +5,13 @@ import { AnyInline, Delimiter_nestable, InlineContent, InlineElement, InlineElem
 import { DelimFollowerTraits, DelimiterTraits } from "../traits.js";
 import { BlockContentIterator, contentSlice, removeDelimiter } from "../util.js";
 
+/*
+ * - inline link:              [link](/uri "title")
+ *                             [link](/uri)
+ * - full reference link       [foo][bar]
+ * - collapsed reference link: [foo][]
+ * - shortcut reference link:  [foo]
+ */
 
 export function acceptable<T extends "link" | "image">(MDP: MarkdownParser, B: InlineElement<T>) {
     switch(B.linkType) {

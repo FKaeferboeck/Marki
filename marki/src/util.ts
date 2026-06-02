@@ -1,5 +1,5 @@
 import { lineContent, LogicalLine, LogicalLine_comment, LogicalLine_text, LogicalLine_with_cmt, LogicalLineType, shiftCol, Slice, sliceLine_to } from "./linify.js";
-import { AnyBlock, hasSevereError, InlinePos, isBlockWrapper, isContainer, Pos } from "./markdown-types.js";
+import { AnyBlock, Block, hasSevereError, InlinePos, isBlockWrapper, isContainer, Pos } from "./markdown-types.js";
 
 const spaces: Record<string, boolean> = { ' ': true,  '\t': true,  '\n': true };
 
@@ -539,3 +539,14 @@ export function updateBlockRange(Bs: AnyBlock[], lineIdx_begin: number,  lineIdx
         --b0;
     return [b0, b1 + 1];
 }
+
+
+export const makeLinkDefinition = (linkType: string, label: string, linkLabel: string, destination: string, title: string): Block<"linkDef"> => ({
+    type: "linkDef",
+    lineIdx: -1,  logical_line_extent: 0,
+    linkType,
+    linkLabel:         label,  // list search key
+    linkLabelContents: (linkLabel ? [ linkLabel ] : [ ]),
+    destination:       [ destination ],
+    linkTitle:         (title ? [ title ] : [ ])
+});

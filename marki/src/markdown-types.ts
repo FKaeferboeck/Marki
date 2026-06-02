@@ -10,6 +10,7 @@ import { ListItem } from "./blocks/listItem.js";
 import { HTML_block } from "./blocks/html-block.js";
 import { LogicalLine, LogicalLine_with_cmt } from "./linify.js";
 import { KnowsEnd } from "./position-ops.js";
+import { MarkdownParser } from "./markdown-parser.js";
 
 export type ExtensionNamespace = string;
 
@@ -204,3 +205,6 @@ export type InlineContentElement = string | AnyInline | Delimiter;
 export type InlineContent        = InlineContentElement[];
 
 export const inlineContentCategory = (elt: InlineContentElement) => (typeof elt === "string" ? "text" : "delim" in elt ? "delim" : "anyI");
+
+export type LinkType = "inline" | "reference" | "collapsed" | "shortcut" | "autolink";
+export type LinkHandler = (MDP: MarkdownParser, url: string, type: LinkType) => Block<"linkDef"> | null;

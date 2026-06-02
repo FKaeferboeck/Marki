@@ -2,7 +2,7 @@ import { lineContent } from "../linify.js";
 import { Block, Block_Container } from "../markdown-types.js";
 import { renderInline } from "./inline-renderer.js";
 import { Inserter, MarkdownRendererTraits } from "./renderer.js";
-import { escapeXML, escapeXML_all, urlEncode, renderHTML_entity, actualizeLinkURL, quickRow } from "./util.js";
+import { escapeXML, escapeXML_all, urlEncode, renderHTML_entity, actualizeLinkURL, quickRow, urlRender } from "./util.js";
 import { getInlineRenderer_plain } from "./utility-renderers.js";
 import { startSnippet } from "../util.js";
 
@@ -95,8 +95,11 @@ export const markdownRendererTraits_standard: MarkdownRendererTraits = {
             const elt1 = (elt.reference || elt);
             const title = elt1.linkTitle;
             const title_s = (title && title.length > 0 ? escapeXML_all(title) : undefined);
-            const url = actualizeLinkURL(urlEncode(elt1.destination), elt1);
-            this.render(elt.linkLabelContents, I.add(`<a href="${url}"${title_s ? ` title="${title_s}"` : ''}>`)).add('</a>');
+            const url = actualizeLinkURL(urlRender(elt1.destination), elt1);
+            // With full reference links the provided link label takes precedence over one that results from custom link target resolution:
+            const llc = (elt.linkType !== "reference" ? elt.reference?.linkLabelContents || elt.linkLabelContents
+                                                      : elt.linkLabelContents.length > 0 ? elt.linkLabelContents : elt.reference?.linkLabelContents || [ ]);
+            this.render(llc, I.add(`<a href="${url}"${title_s ? ` title="${title_s}"` : ''}>`)).add('</a>');
         },
         "hardBreak":  (elt, I) => { I.add(elt.nSpaces === 1 ? '\n' : '<br />\n'); },
         "htmlEntity": (elt, I) => { I.add(escapeXML(renderHTML_entity(elt))); },
@@ -106,7 +109,7 @@ export const markdownRendererTraits_standard: MarkdownRendererTraits = {
             const title = elt.reference?.linkTitle   || elt.linkTitle;
             I.add(`<img src="${actualizeLinkURL(dest.join('+'), elt1)}"`);
             const inlineRenderer_plain = getInlineRenderer_plain(this.ctx);
-            I.add(` alt="${renderInline(elt.linkLabelContents, inlineRenderer_plain).join()}"`);
+            I.add(` alt="${renderInline(elt.reference?.linkLabelContents || elt.linkLabelContents, inlineRenderer_plain).join()}"`);
             if(title?.length)
                 I.add(` title="${renderInline(title, inlineRenderer_plain).join()}"`);
             I.add(' />');
@@ -116,7 +119,7 @@ export const markdownRendererTraits_standard: MarkdownRendererTraits = {
                 I.add(`<a href="mailto:${elt.email}">${elt.email}</a>`);
             else {
                 const URI = escapeXML(elt.URI);
-                I.add(`<a href="${elt.scheme}:${urlEncode([URI])}">${elt.scheme}:${URI}</a>`);
+                I.add(`<a href="${elt.scheme}:${urlRender([URI])}">${elt.scheme}:${URI}</a>`);
             }
         },
         "rawHTML":   (elt, I) => { I.add(elt.tag); },

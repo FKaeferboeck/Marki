@@ -2,15 +2,17 @@ import { BlockParser } from "../block-parser.js";
 import { makeInlineContext_minimal } from "../inline-parsing-context.js";
 import { takeLinkDestination } from "../inline/link.js";
 import { isSpaceLine, LogicalLine, standardBlockStart } from "../linify.js";
-import { AnyInline, IncludeFileContext } from "../markdown-types.js";
+import { AnyInline, IncludeFileContext, InlineContent } from "../markdown-types.js";
 import { BlockContinuationType, makeBlockTraits } from "../traits.js";
 import { BCI_TakeDelimited_IO, BlockContentIterator, makeBlockContentIterator } from "../util.js";
 
 
 export interface LinkDef {
+    linkType:            string; // for use by custom link handlers, otherwise it's "standard"
     linkLabel:           string;
+    linkLabelContents?:  InlineContent; // can be used by custom link handlers to provide the visible link label
     destination:         AnyInline[];
-    linkTitle:           AnyInline[];
+    linkTitle:           AnyInline[]; // for the HTML title attribute
     includeFileContext?: IncludeFileContext;
 }
 
@@ -148,6 +150,7 @@ export const linkDef_traits = makeBlockTraits("linkDef", {
     allowCommentLines: false,
     hasContent: false,
     defaultBlockInstance: {
+        linkType: 'standard',
         linkLabel: '',
         destination: [],
         linkTitle: []

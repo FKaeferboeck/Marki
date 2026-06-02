@@ -12,7 +12,7 @@ import { bang_bracket_traits, image_traits } from "./inline/image.js";
 import { bracket_traits, link_traits } from "./inline/link.js";
 import { rawHTML_traits } from "./inline/raw-html.js";
 import { IncrementalChange_LL, lineContent, linify, LogicalLine, LogicalLine_with_cmt } from "./linify.js";
-import { AnyBlock, Block, BlockBase, BlockType, BlockType_Container, IncludeFileContext, InlineElement, InlineElementType, isBlockWrapper, isContainer, MarkdownParserContext, MarkiDocument } from "./markdown-types.js";
+import { AnyBlock, Block, BlockBase, BlockType, BlockType_Container, IncludeFileContext, InlineElement, InlineElementType, isBlockWrapper, isContainer, LinkHandler, MarkdownParserContext, MarkiDocument } from "./markdown-types.js";
 import { AnyBlockTraits, BlockTraits, BlockTraits_Container, DelimiterTraits, InlineParserTraitsList } from "./traits.js";
 import { blockIterator, LLinfo, startSnippet } from "./util.js";
 
@@ -153,6 +153,7 @@ export class MarkdownParserTraits {
 	singletons: Partial<Record<BlockType, "first" | "last">> = { };
 	afterInlineSteps: InlineElementType[] = [];
 	globalCtx: MarkdownParserContext; // for caching of data which isn't restricted to a particular document
+	linkHandlers: LinkHandler[] = [];
 
 	addExtensionBlocks(traits: AnyBlockTraits, position: "first" | "last" | "silent"): void; // "silent" means the block doesn't go into the main block try order; it's probably meant for use in some custom try order
 	addExtensionBlocks(traits: AnyBlockTraits, position: "before" | "after", before_after: BlockType): void;
@@ -201,6 +202,11 @@ export class MarkdownParserTraits {
 
 	findLinkDef(MDP: MarkdownParser, label: string, B: InlineElement<"link"> | InlineElement<"image">): Block<"linkDef"> | undefined {
 		label = label.trim().replace(/[ \t\r\n]+/g, ' ').toLowerCase().toUpperCase();
+		for(const h of this.linkHandlers) {
+			const res = h(MDP, label, B.linkType);
+			if(res)
+				return MDP.registerLinkDef(res);
+		}
 		return MDP.localCtx.linkDefs[label];
 	}
 }
@@ -385,7 +391,7 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 		// Note: CommonMark prescribes "Unicode case fold", but the reference implementation just does this ".toLowerCase().toUpperCase()"
 		//       procedure, so apparently that's good enough.
 		const label = B.linkLabel.trim().replace(/[ \t\r\n]+/g, ' ').toLowerCase().toUpperCase();
-		this.localCtx.linkDefs[label] ||= B; // ||= because the first occurance of a link label takes precedence
+		return (this.localCtx.linkDefs[label] ||= B); // ||= because the first occurance of a link label takes precedence
 	}
 }; // class MarkdownParser
 

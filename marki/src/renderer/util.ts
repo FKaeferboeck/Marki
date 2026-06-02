@@ -33,30 +33,28 @@ export function escapeXML_all(C: AnyInline[]) {
 const digits = '0123456789ABCDEF';
 const hexByte = (n: number) => '%' + digits[(n >> 4) & 0x0F] + digits[n & 0x0F];
 
-export const urlEncode = (S: AnyInline[]) => {
-    const joined = S.map(s => {
-        if(typeof s === "string")
-            return s;
-        switch(s.type) {
-        case "escaped":     return s.character;
-        case "htmlEntity":  return renderHTML_entity(s);
-        default:            return '';
-        }
-    }).join('');
-    return joined.replace(/[^A-Za-z\d-._~!#$&'()*+,/:;=?@]/g, (c, i: number) => {
-    //return joined.replaceAll(/[^A-Za-z\d-._~!#$&'()*+,/:;=?@\[\]]/g, (c, i: number) => {
-        if(c === '%' && /^%[\dA-F]{2}/.test(joined.slice(i, i + 3)))
-            return c; // skip already present character code
-        const n = c.charCodeAt(0);
-        if (n <= 0x7F)
-            return hexByte(n);
-        if (n <= 0x7FF)
-            return hexByte(0xC0 | (n >> 6)) + hexByte(0x80 | (n & 0x3F));
-        if (n <= 0xFFFF)
-            return hexByte(0xE0 | (n >> 12)) + hexByte(0x80 | ((n >> 6) & 0x3F)) + hexByte(0x80 | (n & 0x3F));
-        return hexByte(0xF0 | (n >> 18)) + hexByte(0x80 | ((n >> 12) & 0x3F)) + hexByte(0x80 | ((n >> 6) & 0x3F)) + hexByte(0x80 | (n & 0x3F));
-    });
-}
+export const urlRender = (S: AnyInline[]) => urlEncode(S.map(s => {
+    if(typeof s === "string")
+        return s;
+    switch(s.type) {
+    case "escaped":     return s.character;
+    case "htmlEntity":  return renderHTML_entity(s);
+    default:            return '';
+    }
+}).join(''));
+
+export const urlEncode = (url: string) => url.replace(/[^A-Za-z\d-._~!#$&'()*+,/:;=?@]/g, (c, i: number) => {
+    if(c === '%' && /^%[\dA-F]{2}/.test(url.slice(i, i + 3)))
+        return c; // skip already present character code
+    const n = c.charCodeAt(0);
+    if (n <= 0x7F)
+        return hexByte(n);
+    if (n <= 0x7FF)
+        return hexByte(0xC0 | (n >> 6)) + hexByte(0x80 | (n & 0x3F));
+    if (n <= 0xFFFF)
+        return hexByte(0xE0 | (n >> 12)) + hexByte(0x80 | ((n >> 6) & 0x3F)) + hexByte(0x80 | (n & 0x3F));
+    return hexByte(0xF0 | (n >> 18)) + hexByte(0x80 | ((n >> 12) & 0x3F)) + hexByte(0x80 | ((n >> 6) & 0x3F)) + hexByte(0x80 | (n & 0x3F));
+});
 
 
 /* If given a string starting with a tab that doesn't equal exactly four spaces (because it starts at a column position not divisible by four)
