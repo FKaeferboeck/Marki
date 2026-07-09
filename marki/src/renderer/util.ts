@@ -89,6 +89,6 @@ export function inlineTrimRight(elts: InlineContent) {
 
 
 export function quickRow(R: MarkdownRendererInstance, I: Inserter, prefix: string, B: AnyBlock, mode: "literal" | "tightListItem" | "blockquote" | "trimmed" | undefined, suffix: string) {
-    const I1 = new EasyInserter();
+    const I1 = new EasyInserter(I);
     return I.appendInserter(R.renderBlockContent(B, I1.add(prefix), mode).add(suffix));
 }

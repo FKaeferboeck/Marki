@@ -279,7 +279,7 @@ function printTabularColFormats(format: TabularColumnFormat[], I: Inserter) {
 const bb_styles = [ undefined, 'bb1', 'bb2' ];
 
 function printTableRow(renderer: MarkdownRendererInstance, R: MarkdownTabularRow, Fs: TabularColumnFormat[] | null, I: Inserter, header: boolean) {
-    const I1 = new EasyInserter();
+    const I1 = new EasyInserter(I);
     I1.add('  <tr>');
     
     const open = (header ? '<th' : '<td'), close = (header ? '</th>' : '</td>');

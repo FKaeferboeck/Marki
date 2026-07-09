@@ -51,7 +51,7 @@ export const markdown_doc_title_traits: ExtensionBlockTraits<MarkdownDocTitle> =
 export function ext_tier2_title_render(this: MarkdownRendererInstance, B: Block_Extension, I: Inserter) {
     if(!castExtensionBlock(B, markdown_doc_title_traits))    return;
     if(this.isTheSingleton(B)) {
-        const I1 = new EasyInserter();
+        const I1 = new EasyInserter(I);
         I1.add(`<div class="document-title">`);
         this.renderBlockContent(B, I1, "trimmed").add(`</div>`);
         I.appendInserter(I1);

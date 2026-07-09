@@ -15,12 +15,19 @@ export interface Inserter {
     addFront(s: string): void
     appendInserter(I: Inserter): void;
     join(): string; // if all content is strings this is a trivial join, because line breaks were already put in through add() etc.
+    pushExtraData?: (data:any) => void;
 }
 
 export class EasyInserter implements Inserter {
     buf: RenderedItem[] = [];
     _suppressNext = false;
     mode: "block" | "inline" = "inline";
+    pushExtraData?: (data:any) => void;
+
+    constructor(I0?: Inserter) {
+        if(I0?.pushExtraData)
+            this.pushExtraData = I0.pushExtraData;
+    }
 
     setMode(mode: "block" | "inline") { this.mode = mode;    return this; }
 
@@ -82,6 +89,7 @@ export class MarkdownRendererInstance implements MarkdownRendererTraits {
 
     customLanguageRenderer: Record<string, LanguageRenderer>;
 
+
     constructor(ctx: ParsingContext, traits?: MarkdownRendererTraits) {
         this.ctx = ctx;
         traits ||= markdownRendererTraits_standard;
@@ -102,8 +110,10 @@ export class MarkdownRendererInstance implements MarkdownRendererTraits {
         return (S_joined && appendSpace ? S_joined + '\n' : S_joined);
     }
 
-    renderWithObjects(content: AnyBlock[]) {
+    renderWithObjects(content: AnyBlock[], pushExtraData?: (data:any) => void) {
         const I = new EasyInserter().setMode("block");
+        if(pushExtraData)
+            I.pushExtraData = pushExtraData;
         for(const B of blockIterator(content))
             this.renderBlock(B, I);
         const arr: RenderedItem[] = [];
@@ -130,7 +140,7 @@ export class MarkdownRendererInstance implements MarkdownRendererTraits {
     renderBlockContent(B: AnyBlock, I: Inserter, mode?: "literal" | "tightListItem" | "blockquote" | "trimmed"): Inserter {
         if("blocks" in B) {
             const blocks = (B.blocks as AnyBlock[]);
-            const I1 = new EasyInserter().setMode("block");
+            const I1 = new EasyInserter(I).setMode("block");
             if(mode === "tightListItem") {
                 let type0: BlockType | undefined, type1: BlockType | undefined;
                 for(const b of blocks) {
@@ -173,7 +183,7 @@ export class MarkdownRendererInstance implements MarkdownRendererTraits {
             if(!isHTML)
                 s = escapeXML(s);
         } else if(B.inlineContent) {
-            I.appendInserter(this.inlineRenderer.render(B.inlineContent, new EasyInserter(), mode === "trimmed"));
+            I.appendInserter(this.inlineRenderer.render(B.inlineContent, new EasyInserter(I), mode === "trimmed"));
             return I;
         } else {
             for(let LL: LogicalLine_with_cmt | undefined = B.content;  LL;  LL = LL.next)

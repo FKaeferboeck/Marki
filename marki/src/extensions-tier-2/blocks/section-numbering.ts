@@ -254,7 +254,7 @@ export function sectionHeader_ext_render(this: MarkdownRendererInstance, B_: Blo
         throw new Error('Wrong rendering function for section header block extension');
     
     const H = makeSectionHeader_handle(B);
-    const I1 = new EasyInserter();
+    const I1 = new EasyInserter(I);
     if(B.level === 0)
         I1.add(`<h1 id="${H.anchor}" class="major-section-header${extra_classes ? ' ' + extra_classes : ''}">`);
     else
@@ -271,7 +271,7 @@ export function ext_tier2_table_of_contents_render(this: MarkdownRendererInstanc
     if(!castExtensionBlock(B, markdown_table_of_contents_traits))    return;
     const ctx = getTableOfContents_ctx(this.ctx);
     I.add('<fieldset class="table-of-content">');
-    const I1 = (new EasyInserter()).add(`<legend>`);
+    const I1 = (new EasyInserter(I)).add(`<legend>`);
     if(B.inlineContent?.length)
         this.renderBlockContent(B, I1, "trimmed");
     else
@@ -281,7 +281,7 @@ export function ext_tier2_table_of_contents_render(this: MarkdownRendererInstanc
         if(B1.level > 2)
             continue;
         const H = makeSectionHeader_handle(B1);
-        const I1 = (new EasyInserter()).add(`<div class="level-${B1.level}"><div>${H.label || ''}</div><div><a href="#${H.anchor}">`);
+        const I1 = (new EasyInserter(I)).add(`<div class="level-${B1.level}"><div>${H.label || ''}</div><div><a href="#${H.anchor}">`);
         I.appendInserter(this.renderBlockContent(B1, I1).add(`</a></div></div>`));
     }
     I.add('</fieldset>');
