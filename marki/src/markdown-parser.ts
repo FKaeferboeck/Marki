@@ -25,7 +25,7 @@ type BlockParserProviderCache = {
 };
 
 export interface ParseState {
-	tryOrderName:       string | undefined;
+	tryOrderName:       string | ((B: BlockBase<BlockType>) => string | undefined) | undefined;
 	container:          BlockContainer;
 	curParser:          BlockParser | null;
 	generator:          Generator<BlockParser> | null;
@@ -401,7 +401,10 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 
 export function startBlock(this: MarkdownParser, ps: ParseState, LL: LogicalLine_with_cmt, interrupting?: BlockType): ParseState {
 	if(!ps.generator)
-		ps.generator = this.getBlockParserProvider(ps.tryOrderName).mainBlocks(ps.container);
+	{
+		const t_o_name  = (typeof ps.tryOrderName === "function" ? ps.tryOrderName.call(ps.curParser, ps.curParser!.B) : ps.tryOrderName);
+		ps.generator = this.getBlockParserProvider(t_o_name).mainBlocks(ps.container);
+	}
 
 	let I: IteratorResult<BlockParser, any> | undefined;
 	while(!(I = ps.generator.next()).done) {
@@ -468,7 +471,8 @@ export function processLine(this: MarkdownParser, PP: ParseState, LL: LogicalLin
 		return { tryOrderName,  container,  retry: curParser.getCheckpoint() || curParser.startLine!,  curParser: null,  generator,  includeFileContext };
 	case "soft": // it's a soft continuation, which means it's possible that the next block begins here, interrupting the current one
 		{
-			const generator = this.getBlockParserProvider(tryOrderName).interrupters(curParser)
+			const t_o_name  = (typeof tryOrderName === "function" ? tryOrderName.call(curParser, curParser.B) : tryOrderName);
+			const generator = this.getBlockParserProvider(t_o_name).interrupters(curParser);
 			const P1 = this.startBlock({ tryOrderName,  container,  curParser: null,  generator,  includeFileContext }, LL, curParser.type).curParser;
 			if(P1) {
 				curParser.finish();

@@ -7,7 +7,7 @@ import { paragraph_traits } from './blocks/paragraph.js';
 import { sectionHeader_traits } from './blocks/sectionHeader.js';
 import { sectionHeader_setext_traits } from './blocks/sectionHeader_setext.js';
 import { AnyBlock, Block, Block_Leaf, BlockBase, BlockType, BlockType_Container, BlockType_Leaf, IncludeFileContext, MarkdownParserContext } from './markdown-types.js';
-import { BlockContinuationType, BlockTraits, BlockTraits_Container } from './traits.js';
+import { BlockContinuationType, BlockTraits, BlockTraits_Container, BlockTraitsExtended } from './traits.js';
 import { LLinfo } from './util.js';
 import { listItem_traits } from './blocks/listItem.js';
 import { BlockParserProvider, blockStoper_doNothing as blockStopper_doNothing, MarkdownParser, ParseState } from './markdown-parser.js';
@@ -261,7 +261,7 @@ export class BlockParser_Container<K extends BlockType_Container = BlockType_Con
     constructor(PP: BlockParserProvider, type: K, traits: BlockTraits_Container<K>, useSoftContinuations: boolean = true) {
         super(PP, type, traits, useSoftContinuations);
 		this.contentParserTryOrder = traits.contentParserTryOrder;
-        this.curContentParser = { tryOrderName: this.contentParserTryOrder,  container: this,  curParser: null,  generator: null,  includeFileContext: this.includeFileCtx };
+        this.curContentParser = { tryOrderName: this.contentParserTryOrder as any,  container: this,  curParser: null,  generator: null,  includeFileContext: this.includeFileCtx };
     }
 
 	resetBlock() {
@@ -278,7 +278,7 @@ export class BlockParser_Container<K extends BlockType_Container = BlockType_Con
 		if(this.traits.acceptLineHook?.call(this, LL, "start") === false)
 			return n0;
 		const LLD_c = this.enqueueContentSlice(LL, n0);
-		const state = { tryOrderName: this.contentParserTryOrder,  container: this,  curParser: null,  generator: null,  includeFileContext: this.includeFileCtx };
+		const state: ParseState = { tryOrderName: this.contentParserTryOrder as any,  container: this,  curParser: null,  generator: null,  includeFileContext: this.includeFileCtx };
         this.curContentParser = this.MDP.processLine(state, LLD_c, blockStopper_doNothing);
         if(!this.curContentParser.curParser)
             throw new Error(`Content of container ${this.type} not recognized as any block type!`);
@@ -357,7 +357,7 @@ export class BlockParser_Container<K extends BlockType_Container = BlockType_Con
 	}
 
     private curContentParser: ParseState;
-	private contentParserTryOrder: string | undefined;
+	private contentParserTryOrder: string | ((this: BlockParser<K, BlockTraitsExtended<K>>, B: Block<K>) => string | undefined) | undefined;
 	blockContainerType = "containerBlock" as const;
 }
 

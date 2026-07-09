@@ -3,9 +3,10 @@ import { InlineContent, inlineContentCategory, Delimiter, InlineElement, InlineE
 import { EasyInserter, Inserter } from "./renderer.js";
 import { escapeXML } from "./util.js";
 
+export type InlineHandler<K extends InlineElementType> = (this: InlineRenderer, B: InlineElement<K>, ins: Inserter, data: InlineContent, i: number, closing?: boolean) => void | number;
 
 export type InlineHandlerList = Partial<{
-    [K in InlineElementType]: (this: InlineRenderer, B: InlineElement<K>, ins: Inserter, data: InlineContent, i: number, closing?: boolean) => void | number;
+    [K in InlineElementType]: InlineHandler<K>;
 }>;
 
 export type DelimRenderHandler =  (I: Inserter, direction: "open" | "close", type: string, weight: number) => void;

@@ -81,7 +81,7 @@ export interface BlockTraits_Container<T extends BlockType_Container | Extension
                                        Extra extends {} = {}> extends BlockTraits<T, B, Extra>
 {
     containerMode: "Container" | "Wrapper";
-    contentParserTryOrder?: string | undefined;
+    contentParserTryOrder?: string | ((this: BlockParser<T, BlockTraitsExtended<T, B, Extra>>, B: Block<T> & B) => string | undefined) | undefined;
     customChildParser?: (block: Block_Container_Extension<T> & B, i: number, ctx: ParsingContext) => InlineParserProvider | undefined;
     creator?: (PP: BlockParserProvider, type: T) => (T extends BlockType_Container ? BlockParser_Container<T> : never);
     defaultBlockInstance: B;
