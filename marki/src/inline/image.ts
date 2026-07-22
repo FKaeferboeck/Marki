@@ -1,5 +1,5 @@
-import { makeDelimiter, pairUpDelimiters, reassembleContent } from "../delimiter-processing.js";
-import { InlinePos, InlineElement, Delimiter_nestable } from "../markdown-types.js";
+import { makeDelimiter, pairUpDelimiters } from "../delimiter-processing.js";
+import { InlinePos, InlineElement, Delimiter_nestable, getDelimitedContentRaw } from "../markdown-types.js";
 import { DelimFollowerTraits, DelimiterTraits } from "../traits.js";
 import { BlockContentIterator } from "../util.js";
 import { acceptable, parseLinkDestination, referenceLinkExtra } from "./link.js";
@@ -33,7 +33,7 @@ export const image_traits: DelimFollowerTraits<"image"> = {
         };
 
         B.linkLabelContents  = this.getDelimitedContent(openingDelim);
-        B.linkLabel          = reassembleContent(B.linkLabelContents, this);
+        B.linkLabel          = getDelimitedContentRaw(openingDelim, It);
         B.includeFileContext = this.includeFileCtx;
         const cpt = It.newPos();
 

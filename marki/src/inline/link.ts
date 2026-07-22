@@ -1,7 +1,7 @@
-import { makeDelimiter, pairUpDelimiters, reassembleContent } from "../delimiter-processing.js";
+import { makeDelimiter, pairUpDelimiters } from "../delimiter-processing.js";
 import { parseBackslashEscapes } from "../inline-parser.js";
 import { MarkdownParser } from "../markdown-parser.js";
-import { AnyInline, Delimiter_nestable, InlineContent, InlineElement, InlineElementType } from "../markdown-types.js";
+import { AnyInline, Delimiter_nestable, getDelimitedContentRaw, InlineContent, InlineElement, InlineElementType } from "../markdown-types.js";
 import { DelimFollowerTraits, DelimiterTraits } from "../traits.js";
 import { BlockContentIterator, contentSlice, removeDelimiter } from "../util.js";
 
@@ -154,10 +154,9 @@ export const link_traits: DelimFollowerTraits<"link"> = {
             return true;
         };
 
-        B.linkLabelContents = this.getDelimitedContent(openingDelim);
         if(containsElement(B.linkLabelContents, "link"))
             return false;
-        B.linkLabel = reassembleContent(B.linkLabelContents, this);
+        B.linkLabel = getDelimitedContentRaw(openingDelim, It);
         B.includeFileContext = this.includeFileCtx;
         const cpt = It.newPos();
 

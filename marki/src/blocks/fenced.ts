@@ -1,10 +1,8 @@
-import { renderInline } from "../renderer/inline-renderer.js";
 import { makeInlineContext_minimal } from "../inline-parsing-context.js";
 import { isSpaceLine, sliceLine, standardBlockStart } from "../linify.js";
 import { AnyInline } from "../markdown-types.js";
 import { makeBlockTraits } from "../traits.js";
-import { makeBlockContentIterator } from "../util.js";
-import { getInlineRenderer_plain } from "../renderer/utility-renderers.js";
+import { firstWord, makeBlockContentIterator } from "../util.js";
 
 
 export interface FencedBlock {
@@ -36,8 +34,7 @@ export const fenced_traits = makeBlockTraits("fenced", {
             const context = makeInlineContext_minimal(this);
             context.inlineParseLoop(It_info, B.info_string);
 
-            const info = renderInline(B.info_string, getInlineRenderer_plain(this)).join();
-            B.language = /^\S+/.exec(info)?.[0] || undefined;
+            B.language = firstWord(B.info_string) || undefined;
         }
 
         B.indentation  = LL.indent; // space before the fence -> will be trimmed from content lines too

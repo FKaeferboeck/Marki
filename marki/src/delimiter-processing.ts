@@ -1,8 +1,5 @@
-import { ParsingContext } from "./block-parser.js";
 import { InlineParsingContext } from "./inline-parsing-context.js";
 import { Delimiter_emph, Delimiter, InlinePos, InlineContent, InlineContentElement, DelimiterSide, Delimiter_nestable, isNestableDelimiter } from "./markdown-types.js";
-import { renderInline } from "./renderer/inline-renderer.js";
-import { getInlineRenderer_reassemble } from "./renderer/utility-renderers.js";
 import { DelimiterTraits } from "./traits.js";
 import { BlockContentIterator } from "./util.js";
 
@@ -172,7 +169,3 @@ export function pairUpDelimiters(content: InlineContent) {
         D1.remaining -= isStrong;
     }
 }
-
-
-export const reassembleContent = (C: InlineContent, ctx: ParsingContext) =>
-    renderInline(C, getInlineRenderer_reassemble(ctx)).join();

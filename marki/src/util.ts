@@ -1,5 +1,5 @@
 import { lineContent, LogicalLine, LogicalLine_comment, LogicalLine_text, LogicalLine_with_cmt, LogicalLineType, shiftCol, Slice, sliceLine_to } from "./linify.js";
-import { AnyBlock, Block, hasSevereError, InlinePos, isBlockWrapper, isContainer, Pos } from "./markdown-types.js";
+import { AnyBlock, AnyInline, Block, hasSevereError, InlinePos, isBlockWrapper, isContainer, Pos } from "./markdown-types.js";
 
 const spaces: Record<string, boolean> = { ' ': true,  '\t': true,  '\n': true };
 
@@ -102,6 +102,7 @@ export interface BlockContentIterator {
 
     newPos(): InlinePos;
     relativePos(): Pos;
+    fromRelativePos(P: Pos): InlinePos;
 
     peek():           BlockContentChar;
     peekN(n: number): BlockContentChar;
@@ -274,6 +275,13 @@ export function makeBlockContentIterator(LL: LogicalLine, singleLine: boolean = 
             const LL = LLs[H.idx];
             return { line: LL.lineIdx - LLs[0].lineIdx,
                      character: (H.type.startsWith('EO') ? lineContent(LL).length : char_idx) };
+        },
+        fromRelativePos: (P: Pos): InlinePos => {
+            let idx = 0;
+            while(idx < LLs.length && LLs[idx].lineIdx - LLs[0].lineIdx < P.line)
+                ++idx;
+            const LL = LLs[idx];
+            return { LL, char_idx: P.character };
         },
 
         peek: () => curPart[char_idx],
@@ -550,3 +558,16 @@ export const makeLinkDefinition = (linkType: string, label: string, linkLabel: s
     destination:       [ destination ],
     linkTitle:         (title ? [ title ] : [ ])
 });
+
+
+export function firstWord(contents: AnyInline[]) {
+    if(contents.length === 0)
+        return '';
+    const C0 = contents[0];
+    if(typeof C0 === "string") {
+        const rexres = /^\s*(\S*)/.exec(C0);
+        return (rexres?.[1] || '');
+    }
+    // We don't handle markup here for the moment.
+    return '';
+}

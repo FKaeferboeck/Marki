@@ -1,6 +1,6 @@
 import { ParsingContext } from "../block-parser.js";
 import { InlineContent, inlineContentCategory, Delimiter, InlineElement, InlineElementType, isNestableDelimiter } from "../markdown-types.js";
-import { EasyInserter, Inserter } from "./renderer.js";
+import { EasyInserter, Inserter, MarkdownRendererInstance } from "./renderer.js";
 import { escapeXML } from "./util.js";
 
 export type InlineHandler<K extends InlineElementType> = (this: InlineRenderer, B: InlineElement<K>, ins: Inserter, data: InlineContent, i: number, closing?: boolean) => void | number;
@@ -11,20 +11,33 @@ export type InlineHandlerList = Partial<{
 
 export type DelimRenderHandler =  (I: Inserter, direction: "open" | "close", type: string, weight: number) => void;
 
+export type InlineRendererType = "normal" | "plain";
+
 export interface InlineRenderHandler {
-    elementHandlers: InlineHandlerList;
-    delimHandlers: Record<string, DelimRenderHandler>;
+    inlineRendererType: InlineRendererType;
+    elementHandlers:    InlineHandlerList;
+    delimHandlers:      Record<string, DelimRenderHandler>;
 }
+
+export const cloneInlineRenderHandler = (H: InlineRenderHandler): InlineRenderHandler => ({
+    inlineRendererType: H.inlineRendererType,
+    elementHandlers:    { ... H.elementHandlers },
+    delimHandlers:      { ... H.delimHandlers }
+});
 
 
 export class InlineRenderer implements InlineRenderHandler {
-    elementHandlers: InlineHandlerList;
-    delimHandlers: Record<string, DelimRenderHandler>
+    inlineRendererType: InlineRendererType;
+    elementHandlers:    InlineHandlerList;
+    delimHandlers:      Record<string, DelimRenderHandler>;
+    parent:             MarkdownRendererInstance;
     ctx: ParsingContext;
 
-    constructor(IRH: InlineRenderHandler, ctx: ParsingContext) {
-        this.elementHandlers = IRH.elementHandlers;
-        this.delimHandlers   = IRH.delimHandlers;
+    constructor(parent: MarkdownRendererInstance, IRH: InlineRenderHandler, ctx: ParsingContext) {
+        this.inlineRendererType = IRH.inlineRendererType;
+        this.elementHandlers    = IRH.elementHandlers;
+        this.delimHandlers      = IRH.delimHandlers;
+        this.parent             = parent;
         this.ctx = ctx;
     }
 

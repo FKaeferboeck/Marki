@@ -2,7 +2,7 @@ import { blockIterator } from "../util.js";
 import { ParsingContext } from "../block-parser.js";
 import { lineContent, LogicalLine_with_cmt, shiftCol } from "../linify.js";
 import { AnyBlock, Block, BlockType } from "../markdown-types.js";
-import { DelimRenderHandler, InlineHandlerList, InlineRenderer as InlineRendererInstance, InlineRenderHandler } from "./inline-renderer.js";
+import { DelimRenderHandler, InlineHandlerList, InlineRenderer as InlineRendererInstance, InlineRendererType, InlineRenderHandler } from "./inline-renderer.js";
 import { markdownRendererTraits_standard } from "./renderer-standard.js";
 import { actualizeTab, escapeXML } from "./util.js";
 
@@ -74,30 +74,28 @@ export interface LanguageRenderer {
 }
 
 
-export interface MarkdownRendererTraits extends InlineRenderHandler {
+export interface MarkdownRendererTraits {
     blockHandler:  BlockHandlerList;
     customLanguageRenderer: Record<string, LanguageRenderer>;
+    inlineHandlers: Record<InlineRendererType, InlineRenderHandler>;
 }
 
 
 export class MarkdownRendererInstance implements MarkdownRendererTraits {
-    inlineRenderer: InlineRendererInstance;
+    inlineRenderers: Record<InlineRendererType, InlineRendererInstance>;
     ctx: ParsingContext;
     blockHandler:  BlockHandlerList;
-    elementHandlers: InlineHandlerList;
-    delimHandlers: Record<string, DelimRenderHandler>;
-
     customLanguageRenderer: Record<string, LanguageRenderer>;
-
+    inlineHandlers: Record<InlineRendererType, InlineRenderHandler>;
 
     constructor(ctx: ParsingContext, traits?: MarkdownRendererTraits) {
         this.ctx = ctx;
         traits ||= markdownRendererTraits_standard;
         this.blockHandler           = traits.blockHandler;
-        this.elementHandlers        = traits.elementHandlers;
-        this.delimHandlers          = traits.delimHandlers;
+        this.inlineHandlers         = traits.inlineHandlers;
         this.customLanguageRenderer = traits.customLanguageRenderer;
-        this.inlineRenderer = new InlineRendererInstance(this, ctx); // TODO!!
+        this.inlineRenderers        = Object.fromEntries(Object.entries(traits.inlineHandlers).map(([k, H]) =>
+            [k, new InlineRendererInstance(this, H, ctx)])) as Record<InlineRendererType, InlineRendererInstance>;
     }
 
     renderAsString(content: AnyBlock[], verbose?: boolean, appendSpace: boolean = true) {
@@ -183,7 +181,7 @@ export class MarkdownRendererInstance implements MarkdownRendererTraits {
             if(!isHTML)
                 s = escapeXML(s);
         } else if(B.inlineContent) {
-            I.appendInserter(this.inlineRenderer.render(B.inlineContent, new EasyInserter(I), mode === "trimmed"));
+            I.appendInserter(this.inlineRenderers.normal.render(B.inlineContent, new EasyInserter(I), mode === "trimmed"));
             return I;
         } else {
             for(let LL: LogicalLine_with_cmt | undefined = B.content;  LL;  LL = LL.next)

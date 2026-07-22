@@ -1,9 +1,9 @@
 import { lineContent } from "../linify.js";
 import { Block, Block_Container } from "../markdown-types.js";
-import { renderInline } from "./inline-renderer.js";
+import { cloneInlineRenderHandler, InlineRenderHandler, renderInline } from "./inline-renderer.js";
 import { Inserter, MarkdownRendererTraits } from "./renderer.js";
-import { escapeXML, escapeXML_all, urlEncode, renderHTML_entity, actualizeLinkURL, quickRow, urlRender } from "./util.js";
-import { getInlineRenderer_plain } from "./utility-renderers.js";
+import { escapeXML, escapeXML_all, renderHTML_entity, actualizeLinkURL, quickRow, urlRender } from "./util.js";
+import { getInlineRenderer_plain, inlineHandler_plain } from "./utility-renderers.js";
 import { startSnippet } from "../util.js";
 
 
@@ -27,7 +27,59 @@ const listItemOpener = (B: Block_Container<"listItem">) =>
     (typeof B.github_checkbox !== "boolean" ? '<li>' : `<li><input type="checkbox"${B.github_checkbox ? ' checked' : ''} disabled>`);
 
 
+export const inlineHandler_normal: InlineRenderHandler = {
+    inlineRendererType: "normal",
+    elementHandlers: {
+        "escaped":    (elt, I) => { I.add(escapeXML(elt.character)); },
+        "codeSpan":   (elt, I) => { I.add(`<code>${escapeXML(elt.content)}</code>`); },
+        "link":       function(elt, I) {
+            const elt1 = (elt.reference || elt);
+            const title = elt1.linkTitle;
+            const title_s = (title && title.length > 0 ? escapeXML_all(title) : undefined);
+            const url = actualizeLinkURL(urlRender(elt1.destination), elt1);
+            // With full reference links the provided link label takes precedence over one that results from custom link target resolution:
+            const llc = (elt.linkType !== "reference" ? elt.reference?.linkLabelContents || elt.linkLabelContents
+                                                      : elt.linkLabelContents.length > 0 ? elt.linkLabelContents : elt.reference?.linkLabelContents || [ ]);
+            this.render(llc, I.add(`<a href="${url}"${title_s ? ` title="${title_s}"` : ''}>`)).add('</a>');
+        },
+        "hardBreak":  (elt, I) => { I.add(elt.nSpaces === 1 ? '\n' : '<br />\n'); },
+        "htmlEntity": (elt, I) => { I.add(escapeXML(renderHTML_entity(elt))); },
+        "image":      function(elt, I) {
+            const elt1 = (elt.reference || elt);
+            const dest  = elt.reference?.destination || elt.destination;
+            const title = elt.reference?.linkTitle   || elt.linkTitle;
+            I.add(`<img src="${actualizeLinkURL(dest.join('+'), elt1)}"`);
+            const inlineRenderer_plain = getInlineRenderer_plain(this);
+            I.add(` alt="${renderInline(elt.reference?.linkLabelContents || elt.linkLabelContents, inlineRenderer_plain).join()}"`);
+            if(title?.length)
+                I.add(` title="${renderInline(title, inlineRenderer_plain).join()}"`);
+            I.add(' />');
+        },
+        "autolink": (elt, I) => {
+            if(elt.email)
+                I.add(`<a href="mailto:${elt.email}">${elt.email}</a>`);
+            else {
+                const URI = escapeXML(elt.URI);
+                I.add(`<a href="${elt.scheme}:${urlRender([URI])}">${elt.scheme}:${URI}</a>`);
+            }
+        },
+        "rawHTML":   (elt, I) => { I.add(elt.tag); },
+        "lineBreak": (elt, I) => { I.add('\n'); }
+    },
+
+    delimHandlers: {
+        emph_asterisk:   emph_renderer,
+        emph_underscore: emph_renderer
+    }
+};
+
+
 export const markdownRendererTraits_standard: MarkdownRendererTraits = {
+    inlineHandlers: {
+        normal:     inlineHandler_normal,
+        plain:      inlineHandler_plain
+    },
+    
     blockHandler: {
         "thematicBreak" :       (_, I) => I.add(`<hr />`),
         "paragraph":            function (B, I) { quickRow(this, I, `<p>`, B, "trimmed", `</p>`); },
@@ -88,56 +140,14 @@ export const markdownRendererTraits_standard: MarkdownRendererTraits = {
         "htmlBlock":  function (B, I) { this.renderBlockContent(B, I, "literal"); }
     },
 
-    elementHandlers: {
-        "escaped":    (elt, I) => { I.add(escapeXML(elt.character)); },
-        "codeSpan":   (elt, I) => { I.add(`<code>${escapeXML(elt.content)}</code>`); },
-        "link":       function(elt, I) {
-            const elt1 = (elt.reference || elt);
-            const title = elt1.linkTitle;
-            const title_s = (title && title.length > 0 ? escapeXML_all(title) : undefined);
-            const url = actualizeLinkURL(urlRender(elt1.destination), elt1);
-            // With full reference links the provided link label takes precedence over one that results from custom link target resolution:
-            const llc = (elt.linkType !== "reference" ? elt.reference?.linkLabelContents || elt.linkLabelContents
-                                                      : elt.linkLabelContents.length > 0 ? elt.linkLabelContents : elt.reference?.linkLabelContents || [ ]);
-            this.render(llc, I.add(`<a href="${url}"${title_s ? ` title="${title_s}"` : ''}>`)).add('</a>');
-        },
-        "hardBreak":  (elt, I) => { I.add(elt.nSpaces === 1 ? '\n' : '<br />\n'); },
-        "htmlEntity": (elt, I) => { I.add(escapeXML(renderHTML_entity(elt))); },
-        "image":      function(elt, I) {
-            const elt1 = (elt.reference || elt);
-            const dest  = elt.reference?.destination || elt.destination;
-            const title = elt.reference?.linkTitle   || elt.linkTitle;
-            I.add(`<img src="${actualizeLinkURL(dest.join('+'), elt1)}"`);
-            const inlineRenderer_plain = getInlineRenderer_plain(this.ctx);
-            I.add(` alt="${renderInline(elt.reference?.linkLabelContents || elt.linkLabelContents, inlineRenderer_plain).join()}"`);
-            if(title?.length)
-                I.add(` title="${renderInline(title, inlineRenderer_plain).join()}"`);
-            I.add(' />');
-        },
-        "autolink": (elt, I) => {
-            if(elt.email)
-                I.add(`<a href="mailto:${elt.email}">${elt.email}</a>`);
-            else {
-                const URI = escapeXML(elt.URI);
-                I.add(`<a href="${elt.scheme}:${urlRender([URI])}">${elt.scheme}:${URI}</a>`);
-            }
-        },
-        "rawHTML":   (elt, I) => { I.add(elt.tag); },
-        "lineBreak": (elt, I) => { I.add('\n'); }
-    },
-
-    delimHandlers: {
-        emph_asterisk:   emph_renderer,
-        emph_underscore: emph_renderer
-    },
-
     customLanguageRenderer: { }
 };
 
 
 export const cloneRendererTraits = (traits: MarkdownRendererTraits): MarkdownRendererTraits => ({
+    // make deep copy of inline handlers:
+    inlineHandlers: Object.fromEntries(Object.entries(traits.inlineHandlers).map(([k, H]) =>
+        [k, cloneInlineRenderHandler(H)])) as MarkdownRendererTraits["inlineHandlers"],
     blockHandler:           { ... traits.blockHandler           },
-    elementHandlers:        { ... traits.elementHandlers        },
-    delimHandlers:          { ... traits.delimHandlers          },
     customLanguageRenderer: { ... traits.customLanguageRenderer }
 });

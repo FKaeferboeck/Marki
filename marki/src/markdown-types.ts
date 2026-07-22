@@ -11,6 +11,7 @@ import { HTML_block } from "./blocks/html-block.js";
 import { LogicalLine, LogicalLine_with_cmt } from "./linify.js";
 import { KnowsEnd } from "./position-ops.js";
 import { MarkdownParser } from "./markdown-parser.js";
+import { BlockContentIterator, contentSlice } from "./util.js";
 
 export type ExtensionNamespace = string;
 
@@ -153,6 +154,14 @@ export type Delimiter = Delimiter_nestable | Delimiter_emph;
 
 export const isNestableDelimiter = (elt: InlineElement<InlineElementType> | Delimiter): elt is Delimiter_nestable => ("isOpener" in elt);
 export const isDelimiter = (elt: InlineElement<InlineElementType> | Delimiter): elt is Delimiter => ("delim" in elt);
+
+export const getDelimitedContentRaw = (D: Delimiter_nestable, It: BlockContentIterator, includeDelimiter: boolean = false): string => {
+	if(!D.partnerDelim)
+		return "";
+	const P0 = It.fromRelativePos(includeDelimiter ? D.startPos : D.endPos);
+	const P1 = It.fromRelativePos(includeDelimiter ? D.partnerDelim.endPos : D.partnerDelim.startPos);
+	return contentSlice(P0, P1, false);
+}
 
 
 export interface InlineElementMap {

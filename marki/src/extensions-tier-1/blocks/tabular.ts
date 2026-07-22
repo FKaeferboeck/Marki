@@ -295,7 +295,7 @@ function printTableRow(renderer: MarkdownRendererInstance, R: MarkdownTabularRow
         if(classes.length > 0)
             I1.add(` class="${classes.join(' ')}"`);
         I1.add('>');
-        renderer.inlineRenderer.render(C.content, I1, true);
+        renderer.inlineRenderers.normal.render(C.content, I1, true);
         I1.add(close);
     });
     I1.add('</tr>');

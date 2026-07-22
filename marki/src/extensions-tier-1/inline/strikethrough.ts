@@ -30,5 +30,5 @@ export function register_strikethrough(MDPT: MarkdownParserTraits, MDR?: Markdow
     MDPT.inlineParser_standard.delims[strikethrough_delim_traits.name] = strikethrough_delim_traits;
 
     if(MDR)
-        MDR.delimHandlers[strikethrough_delim_traits.name] = (I, direction) => I.add(direction === "close" ? '</s>' : '<s>');
+        MDR.inlineHandlers.normal.delimHandlers[strikethrough_delim_traits.name] = (I, direction) => I.add(direction === "close" ? '</s>' : '<s>');
 }
