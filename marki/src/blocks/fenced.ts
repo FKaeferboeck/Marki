@@ -1,4 +1,5 @@
-import { makeInlineContext_minimal } from "../inline-parsing-context.js";
+import { MarkdownParserTraits } from "src/markdown-parser.js";
+import { InlineParserProvider, makeInlineContext_minimal } from "../inline-parsing-context.js";
 import { isSpaceLine, sliceLine, standardBlockStart } from "../linify.js";
 import { AnyInline } from "../markdown-types.js";
 import { makeBlockTraits } from "../traits.js";

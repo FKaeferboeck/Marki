@@ -98,6 +98,12 @@ export class MarkdownRendererInstance implements MarkdownRendererTraits {
             [k, new InlineRendererInstance(this, H, ctx)])) as Record<InlineRendererType, InlineRendererInstance>;
     }
 
+    // for convenience
+    get elementHandlers() { return this.inlineHandlers.normal.elementHandlers; }
+    get delimHandlers()   { return this.inlineHandlers.normal.delimHandlers;   }
+    get elementHandlers_plain() { return this.inlineHandlers.plain.elementHandlers; }
+    get delimHandlers_plain()   { return this.inlineHandlers.plain.delimHandlers;   }
+
     renderAsString(content: AnyBlock[], verbose?: boolean, appendSpace: boolean = true) {
         const I = new EasyInserter().setMode("block");
         for(const B of blockIterator(content))

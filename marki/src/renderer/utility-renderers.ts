@@ -1,8 +1,6 @@
-import { ParsingContext } from "../block-parser.js";
 import { parseBackslashEscapes } from "../inline-parser.js";
-import { AnyInline, Delimiter } from "../markdown-types.js";
+import { AnyInline } from "../markdown-types.js";
 import { InlineRenderer, InlineRenderHandler } from "./inline-renderer.js";
-import { Inserter, MarkdownRendererInstance } from "./renderer.js";
 import { escapeXML, renderHTML_entity } from "./util.js";
 
 export const inlineHandler_plain: InlineRenderHandler = {

@@ -154,6 +154,7 @@ export const link_traits: DelimFollowerTraits<"link"> = {
             return true;
         };
 
+        B.linkLabelContents = this.getDelimitedContent(openingDelim);
         if(containsElement(B.linkLabelContents, "link"))
             return false;
         B.linkLabel = getDelimitedContentRaw(openingDelim, It);
