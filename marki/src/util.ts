@@ -1,5 +1,6 @@
 import { lineContent, LogicalLine, LogicalLine_comment, LogicalLine_text, LogicalLine_with_cmt, LogicalLineType, shiftCol, Slice, sliceLine_to } from "./linify.js";
 import { AnyBlock, AnyInline, Block, hasSevereError, InlinePos, isBlockWrapper, isContainer, Pos } from "./markdown-types.js";
+import { escapeXML, renderHTML_entity } from "./renderer/util.js";
 
 const spaces: Record<string, boolean> = { ' ': true,  '\t': true,  '\n': true };
 
@@ -561,13 +562,25 @@ export const makeLinkDefinition = (linkType: string, label: string, linkLabel: s
 
 
 export function firstWord(contents: AnyInline[]) {
-    if(contents.length === 0)
-        return '';
-    const C0 = contents[0];
-    if(typeof C0 === "string") {
-        const rexres = /^\s*(\S*)/.exec(C0);
-        return (rexres?.[1] || '');
+    const res = [];
+    for(const elt of contents) {
+        if(typeof elt === "string") {
+            const rexres = /^(\s*\S*)/.exec(elt);
+            const s = (rexres?.[1] || '');
+            res.push(s);
+            if(s.length !== elt.length)
+                break;
+            else
+                continue;
+        }
+        if(elt.type === "htmlEntity") {
+            const s = renderHTML_entity(elt);
+            if(/\s/.test(s)) // e.g. &nbsp;
+                break;
+            res.push(escapeXML(s));
+        }
+        else if(elt.type === "escaped")
+            res.push(escapeXML(elt.character));
     }
-    // We don't handle markup here for the moment.
-    return '';
+    return res.join('').trimStart();
 }
