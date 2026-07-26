@@ -565,7 +565,7 @@ export function firstWord(contents: AnyInline[]) {
     const res = [];
     for(const elt of contents) {
         if(typeof elt === "string") {
-            const rexres = /^(\s*\S*)/.exec(elt);
+            const rexres = /^(\S*)/.exec(elt);
             const s = (rexres?.[1] || '');
             res.push(s);
             if(s.length !== elt.length)
