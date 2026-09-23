@@ -78,6 +78,12 @@ export interface MarkdownRendererTraits {
     blockHandler:  BlockHandlerList;
     customLanguageRenderer: Record<string, LanguageRenderer>;
     inlineHandlers: Record<InlineRendererType, InlineRenderHandler>;
+
+    // shortcuts into inlineHandlers
+    elementHandlers:       InlineHandlerList;
+    delimHandlers:         Record<string, DelimRenderHandler>;
+    elementHandlers_plain: InlineHandlerList;
+    delimHandlers_plain:   Record<string, DelimRenderHandler>;
 }
 
 
@@ -99,10 +105,11 @@ export class MarkdownRendererInstance implements MarkdownRendererTraits {
     }
 
     // for convenience
-    get elementHandlers() { return this.inlineHandlers.normal.elementHandlers; }
-    get delimHandlers()   { return this.inlineHandlers.normal.delimHandlers;   }
-    get elementHandlers_plain() { return this.inlineHandlers.plain.elementHandlers; }
-    get delimHandlers_plain()   { return this.inlineHandlers.plain.delimHandlers;   }
+    get elementHandlers(): InlineHandlerList                { return this.inlineHandlers.normal.elementHandlers; }
+    get delimHandlers(): Record<string, DelimRenderHandler> { return this.inlineHandlers.normal.delimHandlers;   }
+    get elementHandlers_plain(): InlineHandlerList                { return this.inlineHandlers.plain.elementHandlers; }
+    get delimHandlers_plain(): Record<string, DelimRenderHandler> { return this.inlineHandlers.plain.delimHandlers;   }
+    get inlineRenderer() { return this.inlineRenderers.normal; }
 
     renderAsString(content: AnyBlock[], verbose?: boolean, appendSpace: boolean = true) {
         const I = new EasyInserter().setMode("block");

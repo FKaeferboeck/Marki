@@ -79,6 +79,11 @@ export const markdownRendererTraits_standard: MarkdownRendererTraits = {
         normal:     inlineHandler_normal,
         plain:      inlineHandler_plain
     },
+
+    elementHandlers: inlineHandler_normal.elementHandlers,
+    delimHandlers:   inlineHandler_normal.delimHandlers,
+    elementHandlers_plain: inlineHandler_plain.elementHandlers,
+    delimHandlers_plain:   inlineHandler_plain.delimHandlers,
     
     blockHandler: {
         "thematicBreak" :       (_, I) => I.add(`<hr />`),
@@ -144,10 +149,17 @@ export const markdownRendererTraits_standard: MarkdownRendererTraits = {
 };
 
 
-export const cloneRendererTraits = (traits: MarkdownRendererTraits): MarkdownRendererTraits => ({
-    // make deep copy of inline handlers:
-    inlineHandlers: Object.fromEntries(Object.entries(traits.inlineHandlers).map(([k, H]) =>
-        [k, cloneInlineRenderHandler(H)])) as MarkdownRendererTraits["inlineHandlers"],
-    blockHandler:           { ... traits.blockHandler           },
-    customLanguageRenderer: { ... traits.customLanguageRenderer }
-});
+export const cloneRendererTraits = (traits: MarkdownRendererTraits): MarkdownRendererTraits => {
+    const T = {
+        // make deep copy of inline handlers:
+        inlineHandlers: Object.fromEntries(Object.entries(traits.inlineHandlers).map(([k, H]) =>
+            [k, cloneInlineRenderHandler(H)])) as MarkdownRendererTraits["inlineHandlers"],
+        blockHandler:           { ... traits.blockHandler           },
+        customLanguageRenderer: { ... traits.customLanguageRenderer }
+    } as MarkdownRendererTraits;
+    T.elementHandlers       = T.inlineHandlers.normal.elementHandlers;
+    T.delimHandlers         = T.inlineHandlers.normal.delimHandlers;
+    T.elementHandlers_plain = T.inlineHandlers.plain.elementHandlers;
+    T.delimHandlers_plain   = T.inlineHandlers.plain.delimHandlers;
+    return T;
+}
