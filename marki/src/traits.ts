@@ -84,6 +84,13 @@ export interface BlockTraits_Container<T extends BlockType_Container | Extension
     contentParserTryOrder?: string | ((this: BlockParser<T, BlockTraitsExtended<T, B, Extra>>, B: Block<T> & B) => string | undefined) | undefined;
     customChildParser?: (block: Block_Container_Extension<T> & B, i: number, ctx: ParsingContext) => InlineParserProvider | undefined;
     creator?: (PP: BlockParserProvider, type: T) => (T extends BlockType_Container ? BlockParser_Container<T> : never);
+
+    /* if provided this method will be used for inline processing of container contents.
+     * Return true to just perform additional steps (e.g. for contents outside the normal content block list) and do
+     * default processing afterwards.
+     */
+    contentProcessing?: (this: ParsingContext, block: B) => boolean;
+
     defaultBlockInstance: B;
 }
 
