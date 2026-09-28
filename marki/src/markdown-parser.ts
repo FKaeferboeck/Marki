@@ -13,7 +13,7 @@ import { bracket_traits, link_traits } from "./inline/link.js";
 import { rawHTML_traits } from "./inline/raw-html.js";
 import { IncrementalChange_LL, lineContent, linify, LogicalLine, LogicalLine_with_cmt } from "./linify.js";
 import { AnyBlock, Block, BlockBase, BlockType, BlockType_Container, IncludeFileContext, InlineElement, InlineElementType, isBlockWrapper, isContainer, LinkHandler, MarkdownParserContext, MarkiDocument } from "./markdown-types.js";
-import { AnyBlockTraits, BlockTraits, BlockTraits_Container, DelimiterTraits, InlineParserTraitsList } from "./traits.js";
+import { AnyBlockTraits, BlockTraits, BlockTraits_Container, DelimiterTraits, InlineParserTraitsList, ProcessingStepMode } from "./traits.js";
 import { blockIterator, LLinfo, startSnippet } from "./util.js";
 
 interface BlockParserProviderItem {
@@ -113,6 +113,12 @@ export class BlockParserProvider {
 }
 
 
+export type ProcessingStepHandler            = (this: ParsingContext, doc: MarkiDocument) => Promise<void>;
+export type AfterInlineProcessingStepHandler = (this: ParsingContext) => Promise<void>;
+
+export type ProcessingStep            = BlockType         | ProcessingStepHandler;
+export type AfterInlineProcessingStep = InlineElementType | AfterInlineProcessingStepHandler
+
 
 export class MarkdownParserTraits {
 	makeCommentLines: boolean;
@@ -146,14 +152,29 @@ export class MarkdownParserTraits {
 	customInlineParserProviders: Record<string, InlineParserProvider> = { };
 	customTryOrders: Record<string, BlockType[]> = { };
 	afterBlockParsingSteps: {
-		structural: BlockType[];
-		separate:   BlockType[];
-		parallel:   BlockType[];
-	} = { structural: [],  separate: [],  parallel: [ "listItem" ] };
+		structural:   ProcessingStep[];
+		separate:     ProcessingStep[];
+		parallel:     ProcessingStep[];
+		postParallel: ProcessingStep[];
+	} = { structural: [],  separate: [],  parallel: [ "listItem" ],  postParallel: [] };
 	singletons: Partial<Record<BlockType, "first" | "last">> = { };
-	afterInlineSteps: InlineElementType[] = [];
+	afterInlineSteps: AfterInlineProcessingStep[] = [];
 	globalCtx: MarkdownParserContext; // for caching of data which isn't restricted to a particular document
 	linkHandlers: LinkHandler[] = [];
+
+	addProcessingStep(mode: ProcessingStepMode, handler: ProcessingStep) {
+		if(!this.afterBlockParsingSteps[mode].some(t => t === handler))
+			this.afterBlockParsingSteps[mode].push(handler);
+	}
+
+	/* 1. as InlineElementType => using processingStep() and processingStepMode from the respective traits object
+	 * 2. as AfterInlineProcessingStepHandler => using that callback; independent of an inline element type; always executed as mode "postParallel"
+	 */
+	addAfterInlineStep(val: AfterInlineProcessingStep)
+	{
+		if(!this.afterInlineSteps.some(x => x === val))
+			this.afterInlineSteps.push(val);
+	}
 
 	addExtensionBlocks(traits: AnyBlockTraits, position: "first" | "last" | "silent"): void; // "silent" means the block doesn't go into the main block try order; it's probably meant for use in some custom try order
 	addExtensionBlocks(traits: AnyBlockTraits, position: "before" | "after", before_after: BlockType): void;
@@ -162,11 +183,8 @@ export class MarkdownParserTraits {
 		if((position === "first" || position === "last" || position === "silent") != !before_after)
 			throw new Error('Wrong input for addExtensionBlocks');
 
-		if(traits.processingStep) {
-			const mode = traits.processingStepMode || "parallel";
-			if(!this.afterBlockParsingSteps[mode].some(t => t === type))
-				this.afterBlockParsingSteps[mode].push(type);
-		}
+		if(traits.processingStep)
+			this.addProcessingStep(traits.processingStepMode || "parallel", type);
 		if(traits.isSingleton)
 			this.singletons[type] = traits.isSingleton;
 		if(this.blockTraitsList[type]) {
@@ -314,7 +332,7 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 		let prom = Promise.resolve();
 		// (I) structural processing steps
 		for(const k of this.MDPT.afterBlockParsingSteps.structural) {
-			const step = this.MDPT.blockTraitsList[k]?.processingStep;
+			const step = (typeof k === "string" ? this.MDPT.blockTraitsList[k]?.processingStep : k);
 			if(step)
 				prom = prom.then(() => step.call(this, doc));
 		}
@@ -325,13 +343,21 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 		});
 		// (III) separate processing steps
 		for(const k of this.MDPT.afterBlockParsingSteps.separate) {
-			const step = this.MDPT.blockTraitsList[k]?.processingStep;
+			const step = (typeof k === "string" ? this.MDPT.blockTraitsList[k]?.processingStep : k);
 			if(step)
 				prom = prom.then(() => step.call(this, doc));
 		}
 		// (IV) parallel processing steps
-		return prom.then(() => Promise.all(this.MDPT.afterBlockParsingSteps.parallel
-			.map(k => (this.MDPT.blockTraitsList[k]?.processingStep)?.call(this, doc))).then(() => { }));
+		prom = prom.then(() => Promise.all(this.MDPT.afterBlockParsingSteps.parallel
+			.map(k => (typeof k === "string" ? this.MDPT.blockTraitsList[k]?.processingStep : k)?.call(this, doc))).then(() => { }));
+		
+		// (V) after parallel processing steps
+		for(const k of this.MDPT.afterBlockParsingSteps.postParallel) {
+			const step = (typeof k === "string" ? this.MDPT.blockTraitsList[k]?.processingStep : k);
+			if(step)
+				prom = prom.then(() => step.call(this, doc));
+		}
+		return prom;
 	}
 
 	locateSingletons(doc: MarkiDocument) {
@@ -349,10 +375,27 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 	}
 
 	processAfterInlineStep() {
-		return Promise.all(this.MDPT.afterInlineSteps.map(k => {
-			const fct = this.MDPT.inlineParser_standard.traits[k]?.processingStep;
-			return (fct ? fct.call(this) : Promise.resolve());
-		})).then(() => {});
+		const afterInlineSteps: {
+			parallel:     AfterInlineProcessingStepHandler[];
+			postParallel: AfterInlineProcessingStepHandler[];
+		} = { parallel: [],  postParallel: [] };
+		this.MDPT.afterInlineSteps.forEach(step => {
+			if(typeof step === "function")
+				afterInlineSteps.postParallel.push(step);
+			else {
+				const s = this.MDPT.inlineParser_standard.traits[step];
+				if(!s?.processingStep)
+					return;
+				afterInlineSteps[s.processingStepMode || "parallel"].push(s.processingStep);
+			}
+		});
+
+		let prom = Promise.all(afterInlineSteps.parallel.map(fct => fct.call(this))).then(() => {});
+		for(const fct of afterInlineSteps.postParallel)
+		{
+			prom = prom.then(() => fct.call(this));
+		}
+		return prom;
 	}
 
 	isContainerType(type: BlockType): type is BlockType_Container {

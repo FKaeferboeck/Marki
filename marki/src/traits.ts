@@ -14,6 +14,11 @@ export type BlockContinuationType = number     // block definitely continues in 
                                   | "last"     // block ends after this line, this is the last line of the block
                                   | "reject";  // we've reached a line that's incompatible with the current block, so we reject the block and try a different block type
 
+export type ProcessingStepMode = "structural"    // step adds material to the document and must therefore be performed before singleton gathering
+                               | "separate"      // step makes changes / produces data that other steps depend on -> must be performed before them
+                               | "parallel"      // the processing step can be performed simultaneously with other processing steps == DEFAULT
+                               | "postParallel"; // steps that should happen after all parallel steps have finished
+
 
 export interface BlockTraits<T extends BlockType = ExtensionBlockType, B extends BlockIndividualData<T> = BlockIndividualData<T>, Extra extends {} = {}> {
     blockType: T;
@@ -40,9 +45,7 @@ export interface BlockTraits<T extends BlockType = ExtensionBlockType, B extends
     // It's called a single time and should hande all instances of this block type together.
     // CommonMark doesn't use this feature, it's for extensions.
     processingStep?(this: ParsingContext, doc: MarkiDocument): Promise<void>;
-    processingStepMode?: "structural" // step adds material to the document and must therefore be performed before singleton gathering
-                       | "separate" // step makes changes / produces data that other steps depend on -> must be performed before them
-                       | "parallel" // the processing step can be performed simultaneously with other processing steps == DEFAULT
+    processingStepMode?: ProcessingStepMode;
 
     continuationPrefix?: RegExp| ((LL: LogicalLine, B: Block<T>) => number);
     
@@ -128,6 +131,8 @@ export type AnyBlockTraits = BlockType extends infer K ? K extends BlockType ? B
 
 type InlineElementCustomData<T extends InlineElementType, B extends InlineElement<T>> = Omit<B, Exclude<keyof InlineElementBase<T>, "type">>;
 
+type AfterInlineProcessingStepMode = "parallel" | "postParallel";
+
 
 export interface InlineElementTraits<T extends InlineElementType = ExtensionInlineElementType,
                                      B extends InlineElement<T> = InlineElement<T>>
@@ -145,6 +150,7 @@ export interface InlineElementTraits<T extends InlineElementType = ExtensionInli
     // It's called a single time and should hande all instances of this inline element type together.
     // CommonMark doesn't use this feature, it's for extensions.
     processingStep?(this: ParsingContext): Promise<void>;
+    processingStepMode?: AfterInlineProcessingStepMode; // default "parallel"
 
     creator?: (ctx: ParsingContext) => InlineParser<T>;
     defaultElementInstance: InlineElementCustomData<T, B>;
@@ -177,6 +183,7 @@ export interface DelimFollowerTraits<T extends InlineElementType = ExtensionInli
           It: BlockContentIterator, startPos: InlinePos): boolean;
 
     processingStep?(this: ParsingContext): Promise<void>;
+    processingStepMode?: AfterInlineProcessingStepMode; // default "parallel"
 
     creator?: (ctx: ParsingContext) => InlineParser<T>;
     defaultElementInstance: InlineElementCustomData<T, B>;
