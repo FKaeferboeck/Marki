@@ -1,6 +1,7 @@
 import { set_checkboxListItem_active } from "../blocks/listItem.js";
 import { MarkdownParserTraits } from "../markdown-parser.js";
 import { MarkdownRendererTraits } from "../renderer/renderer.js";
+import { register_gfm_autolink } from "./gfm-autolink.js";
 import { register_strikethrough } from "./strikethrough.js";
 
 /* GitHub Flavored Markdown (GFM)
@@ -15,7 +16,8 @@ import { register_strikethrough } from "./strikethrough.js";
  * - 6.11 tagfilter
  */
 
-export function extendGFM(MDPT: MarkdownParserTraits, renderer? : MarkdownRendererTraits) {
+export function extendGFM(MDPT: MarkdownParserTraits, MDRT? : MarkdownRendererTraits) {
     set_checkboxListItem_active(MDPT, true);
-    register_strikethrough(MDPT, renderer);
+    register_strikethrough(MDPT, MDRT);
+    register_gfm_autolink (MDPT, MDRT)
 }
