@@ -1,8 +1,8 @@
-import { MarkdownParserTraits } from "../../markdown-parser.js";
-import { makeDelimiter } from "../../delimiter-processing.js";
-import { DelimiterTraits } from "../../traits.js";
-import { BlockContentIterator } from "../../util.js";
-import { MarkdownRendererTraits } from "../../renderer/renderer.js";
+import { MarkdownParserTraits } from "../markdown-parser.js";
+import { makeDelimiter } from "../delimiter-processing.js";
+import { DelimiterTraits } from "../traits.js";
+import { BlockContentIterator } from "../util.js";
+import { MarkdownRendererTraits } from "../renderer/renderer.js";
 
 
 function parseDelimiter(It: BlockContentIterator) {
@@ -11,14 +11,16 @@ function parseDelimiter(It: BlockContentIterator) {
         return false;
     if(!delim_char) // impossible, we checked the startChar right before this
         return false;
-    if(It.pop() != '~') // second char of ~~
+    if(It.pop() != delim_char) // second char of ~~
+        return false;
+    if(It.peek() == delim_char) // ~~~ isn't allowed
         return false;
     return makeDelimiter(It, '~~', 2);
 }
 
 
 const strikethrough_delim_traits: DelimiterTraits = {
-    name: "ext_tier1_strikethrough",
+    name: "ext_gfm_strikethrough",
     startChars: ['~'],
     category: "emphStrict",
     parseDelimiter
