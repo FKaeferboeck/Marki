@@ -26,15 +26,15 @@ function resultMaker(input: ResultMakerItem[], i: number = 0) {
 }
 
 
-const ignored_props = { type: true,  logical_line_start: true,  logical_line_extent: true,  contents: true };
+const ignored_props: Record<string, boolean> = { type: true,  logical_line_start: true,  logical_line_extent: true,  contents: true };
 
 function blocks_check(blocks: AnyBlock[]) {
-    return blocks.map(B => {
-        const X = { type: B.type,  range: [ B.lineIdx, B.logical_line_extent ] };
+    return blocks.map((B) => {
+        const X: Record<string, any> = { type: B.type,  range: [ B.lineIdx, B.logical_line_extent ] };
         for(const k of Object.keys(B).filter(k => !ignored_props[k]))
-            X[k] = B[k];
+            X[k] = (B as Record<string, any>)[k];
         if(isContainer(B) && B.blocks.length > 0)
-            (X as any).blocks = blocks_check(B.blocks);
+            X.blocks = blocks_check(B.blocks);
         return X;
     });
 }

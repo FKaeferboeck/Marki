@@ -3,7 +3,6 @@ import * as commonmark from 'commonmark';
 import { MarkdownParser, MarkdownParserTraits } from '../src/markdown-parser';
 import { MarkdownRendererInstance } from '../src/renderer/renderer';
 import { MarkiDocument } from '../src/markdown-types';
-import { linify } from '../src/linify';
 
 // comment lines are an extension feature, but there's no harm in running it through a few CommonMark tests as well to highlight the difference
 const test_MDPT = new MarkdownParserTraits();

@@ -117,6 +117,7 @@ export interface BlockContentIterator {
     skipXMLspace(): boolean; // returns if anything was skipped
 
     peekSnippet(): string;
+    snippetBefore(): string | readonly [false]; // part of the current snippet up to the current position (for backtracing)
     startsWith(str: string, advance_if_match?: boolean): boolean;
     regexInLine(rexes: RegExp): false | RegExpMatchArray;
     regexInLine(...rexes: (RegExp | boolean)[]): false | (RegExpMatchArray | boolean)[];
@@ -342,6 +343,13 @@ export function makeBlockContentIterator(LL: LogicalLine, singleLine: boolean = 
         },
 
         peekSnippet: () => (typeof curPart === "string" ? curPart.slice(char_idx) : ''),
+        snippetBefore: () => {
+            if(typeof curPart === "string")
+                return curPart.slice(0, char_idx);
+            const H1 = { ... H };
+            prevLine(LLs, H1, skip_cmt_lines);
+            return getPart(LLs, H1, line_break_char);
+        },
 
         startsWith: (str: string, advance_if_match?: boolean) => {
             if(typeof curPart !== "string")
