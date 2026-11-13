@@ -5,6 +5,8 @@ import { MarkdownRendererInstance, Inserter, EasyInserter } from "./renderer.js"
 export function renderHTML_entity(elt: InlineElement<"htmlEntity">) {
     if(elt.codePoint === undefined)
         return `&${elt.code};`;
+    if(typeof elt.codePoint === "string")
+        return elt.codePoint;
     return (typeof elt.codePoint === "number" ? String.fromCodePoint(elt.codePoint)
                                               : String.fromCodePoint(... elt.codePoint));
 }

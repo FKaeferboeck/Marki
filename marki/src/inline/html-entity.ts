@@ -2,14 +2,15 @@ import { PositionOps } from "../position-ops.js";
 import { AnyInline, InlineElement } from "../markdown-types.js";
 import { InlineElementTraits } from "../traits.js";
 import entityList from '../htmlEntities.js'
+import { ParsingContext } from "src/block-parser.js";
 
 
 const rex = /^&(?:#\d{1,7};|#[xX][\dA-Fa-f]{1,6};|[A-Za-z][A-Za-z\d]{0,32};)/; // 32 is the length of the longest existing HTML entity
 
-function processHTML_entity(entity: RegExpMatchArray, B: InlineElement<"htmlEntity">) {
+function processHTML_entity(entity: RegExpMatchArray, B: InlineElement<"htmlEntity">, customEntityList?: Record<string, string>) {
     B.code = entity[0].slice(1, -1);
     if(!B.code.startsWith('#'))
-        B.codePoint = (entityList as Record<string, number | number[]>)[B.code];
+        B.codePoint = customEntityList?.[B.code] || (entityList as Record<string, number | number[]>)[B.code];
     else {
         const c = B.code.charAt(1);
         const n = (c === 'x' || c === 'X' ? Number.parseInt(B.code.slice(2), 16)
@@ -20,6 +21,13 @@ function processHTML_entity(entity: RegExpMatchArray, B: InlineElement<"htmlEnti
 }
 
 
+/* Perhaps your Markdown dialect wants to add some custom HTML entities.
+ * This could easily be done with an additional inline element type using the same starting char (&),
+ * but adding it as a built-in feature in "htmlEntity" doesn't hurt and is perhaps more convenient.
+ */
+export const customHTMLEntitiesList = (PC: ParsingContext) => ((PC.globalCtx as { customEntityList: Record<string, string>; }).customEntityList ||= {});
+
+
 export const htmlEntity_traits: InlineElementTraits<"htmlEntity"> = {
     startChars: [ '&' ],
 
@@ -27,7 +35,7 @@ export const htmlEntity_traits: InlineElementTraits<"htmlEntity"> = {
         const entity = It.regexInLine(rex); // advances content iterator if positive match
         if(!entity)
             return false;
-        processHTML_entity(entity as RegExpMatchArray, B);
+        processHTML_entity(entity as RegExpMatchArray, B, customHTMLEntitiesList(this));
         return true;
     },
 

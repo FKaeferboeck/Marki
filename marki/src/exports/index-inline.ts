@@ -5,3 +5,4 @@ export { InlineElementTraits, DelimiterTraits, DelimFollowerTraits, isDelimFollo
 export { pairUpDelimiters } from "../delimiter-processing.js"
 export * from "../renderer/inline-renderer.js"
 export { backslashEscapeds } from "../inline/backslash-escape.js"
+export { customHTMLEntitiesList } from "../inline/html-entity.js"

@@ -166,7 +166,7 @@ export const getDelimitedContentRaw = (D: Delimiter_nestable, It: BlockContentIt
 
 export interface InlineElementMap {
 	escaped:    { character: string; };
-	htmlEntity: { code: string;  codePoint: number | number[] | undefined; /* undefined describes an illegal entity code */
+	htmlEntity: { code: string;  codePoint: number | number[] | string | undefined; /* undefined describes an illegal entity code */
                   valid: boolean; };
 	codeSpan:   { content: string; };
 	link:       { linkType:           "inline" | "reference" | "collapsed" | "shortcut";
