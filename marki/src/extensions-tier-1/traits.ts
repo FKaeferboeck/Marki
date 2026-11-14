@@ -2,6 +2,7 @@ import { MarkdownParserTraits } from "../markdown-parser.js";
 import { MarkdownRendererTraits } from "../renderer/renderer.js";
 import { sourceInclude_render, sourceInclude_traits } from "./blocks/source-include.js";
 import { ext_tier1_tabular_render, extend_tier1_tabular, markdown_tabular_traits, tabular_type } from "./blocks/tabular.js";
+import { register_hardEmphasis } from "./inline/hard-emphasis.js";
 
 
 export function extendTier1(MDPT: MarkdownParserTraits, MDRT? : MarkdownRendererTraits) {
@@ -17,4 +18,6 @@ export function extendTier1(MDPT: MarkdownParserTraits, MDRT? : MarkdownRenderer
         MDRT.blockHandler[sourceInclude_traits.blockType] = sourceInclude_render;
         MDRT.blockHandler[tabular_type] = ext_tier1_tabular_render;
     }
+
+    register_hardEmphasis(MDPT, MDRT);
 }

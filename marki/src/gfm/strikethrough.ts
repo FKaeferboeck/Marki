@@ -5,7 +5,7 @@ import { BlockContentIterator } from "../util.js";
 import { MarkdownRendererTraits } from "../renderer/renderer.js";
 
 
-function parseDelimiter(It: BlockContentIterator) {
+export function parseDelimiter2(It: BlockContentIterator) {
     const delim_char = It.pop();
     if(It.peekN(-2) === delim_char)
         return false;
@@ -15,7 +15,7 @@ function parseDelimiter(It: BlockContentIterator) {
         return false;
     if(It.peek() == delim_char) // ~~~ isn't allowed
         return false;
-    return makeDelimiter(It, '~~', 2);
+    return makeDelimiter(It, delim_char.repeat(2), 2);
 }
 
 
@@ -23,7 +23,7 @@ const strikethrough_delim_traits: DelimiterTraits = {
     name: "ext_gfm_strikethrough",
     startChars: ['~'],
     category: "emphStrict",
-    parseDelimiter
+    parseDelimiter: parseDelimiter2
 };
 
 
