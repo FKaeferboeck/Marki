@@ -4,7 +4,7 @@ import { InlineParser_Standard } from "../../inline-parser.js";
 import { InlineParserProvider, InlineParsingContext } from "../../inline-parsing-context.js";
 import { LogicalLine, LogicalLine_text, standardBlockStart } from "../../linify.js";
 import { MarkdownParserTraits } from "../../markdown-parser.js";
-import { Block_Extension, ExtensionBlockType, InlineContent, InlineContentElement, InlineElementBase } from "../../markdown-types.js";
+import { Block_Extension, ExtensionBlockType, ExtensionInlineElementType, InlineContent, InlineContentElement, InlineElementBase } from "../../markdown-types.js";
 import { Inserter, EasyInserter, MarkdownRendererInstance, MarkdownRendererTraits } from "../../renderer/renderer.js";
 import { BlockTraits, InlineEltTraits, castExtensionBlock } from "../../traits.js";
 import { makeBlockContentIterator } from "../../util.js";
@@ -97,7 +97,7 @@ const isTabularCellBreak = (elt: InlineContentElement): elt is TabularCellbrMark
     (typeof elt !== "string" && elt.type == tabular_cellbr_type);
 
 
-export const tabular_cellbr_traits: InlineEltTraits<typeof tabular_cellbr_type, TabularCellbrMarker & InlineElementBase<typeof tabular_cellbr_type>> = {
+export const tabular_cellbr_traits: InlineEltTraits<ExtensionInlineElementType, TabularCellbrMarker & InlineElementBase<ExtensionInlineElementType>> = {
     startChars: [ '|' ],
     parse(It, B) {
         const borderBottom = (It.newPos().LL as (LogicalLine_text & MarkdownTabularCellStyle)).borderBottom;
@@ -110,7 +110,7 @@ export const tabular_cellbr_traits: InlineEltTraits<typeof tabular_cellbr_type, 
             B.borderBottom = borderBottom;
         return true;
     },
-    creator(ctx) { return new InlineParser_Standard<typeof tabular_cellbr_type>(ctx, this); },
+    creator(ctx) { return new InlineParser_Standard<ExtensionInlineElementType, TabularCellbrMarker & InlineElementBase<ExtensionInlineElementType>>(ctx, this); },
     defaultElementInstance: { type: tabular_cellbr_type,  rowContinuing: false }
 };
 

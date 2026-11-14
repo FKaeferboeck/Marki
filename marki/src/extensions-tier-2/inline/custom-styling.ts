@@ -1,13 +1,12 @@
 import { makeDelimiter } from "../../delimiter-processing.js";
 import { MarkdownParserTraits } from "../../markdown-parser.js";
-import { InlineElement } from "../../markdown-types.js";
+import { ExtensionInlineElementType, InlineElement } from "../../markdown-types.js";
 import { Inserter, MarkdownRendererTraits } from "../../renderer/renderer.js";
 import { DelimFollowerTraits, DelimiterTraits } from "../../traits.js";
 import { BlockContentIterator } from "../../util.js";
 
 
 interface CustomStyling {
-    type:       "ext_tier2_custom_styling";
     styleClass: string;
 }
 
@@ -30,7 +29,7 @@ export const ext_tier2_custom_styling_delim: DelimiterTraits = {
 };
 
 
-export const ext_tier2_custom_styling_traits: DelimFollowerTraits<"ext_tier2_custom_styling", InlineElement<"ext_tier2_custom_styling"> & CustomStyling> = {
+export const ext_tier2_custom_styling_traits: DelimFollowerTraits<ExtensionInlineElementType, InlineElement<ExtensionInlineElementType> & CustomStyling> = {
     startDelims: [ ext_tier2_custom_styling_delim.name ],
     contentOwner: false,
 

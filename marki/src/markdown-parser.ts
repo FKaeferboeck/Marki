@@ -13,7 +13,7 @@ import { bracket_traits, link_traits } from "./inline/link.js";
 import { rawHTML_traits } from "./inline/raw-html.js";
 import { IncrementalChange_LL, lineContent, linify, LogicalLine, LogicalLine_with_cmt } from "./linify.js";
 import { AnyBlock, Block, BlockBase, BlockType, BlockType_Container, IncludeFileContext, InlineElement, InlineElementType, isBlockWrapper, isContainer, LinkHandler, MarkdownParserContext, MarkiDocument } from "./markdown-types.js";
-import { AnyBlockTraits, BlockTraits_, BlockContainerTraits, DelimiterTraits, InlineParserTraitsList, ProcessingStepMode } from "./traits.js";
+import { AnyBlockTraits, BlockTraits_, BlockContainerTraits, DelimiterTraits, InlineParserTraitsList, ProcessingStepMode, InlineEltTraits_ } from "./traits.js";
 import { blockIterator, LLinfo, startSnippet } from "./util.js";
 
 interface BlockParserProviderItem {

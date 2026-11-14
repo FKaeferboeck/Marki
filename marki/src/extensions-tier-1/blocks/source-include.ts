@@ -1,7 +1,7 @@
 import { BlockParser, MarkdownLocalContext, ParsingContext } from "../../block-parser.js";
 import { LogicalLine, standardBlockStart } from "../../linify.js";
 import { AnyBlock, Block_Extension, Block_SevereErrorHolder, BlockBase_Container_additions, ExtensionBlockType, IncludeFileContext, Marki_SevereError } from "../../markdown-types.js";
-import { BlockTraitsExtended, castExtensionBlock, ExtensionBlockTraits } from "../../traits.js";
+import { BlockTraits, castExtensionBlock, ExtensionBlockTraits } from "../../traits.js";
 import { access, readFile, constants } from 'fs';
 import { Inserter, MarkdownRendererInstance } from "../../renderer/renderer.js";
 import { blockSteps } from "../../markdown-parser.js";
@@ -40,7 +40,7 @@ export interface SourceIncludeTraits_extra {
     sourceIncludeResolve_II: (ctx_: ParsingContext, B_caller: SourceInclude) => Promise<boolean|string>;
 }
 
-type SourceIncludeBlockParser = BlockParser<ExtensionBlockType, BlockTraitsExtended<ExtensionBlockType, SourceInclude, SourceIncludeTraits_extra>>;
+type SourceIncludeBlockParser = BlockParser<ExtensionBlockType, BlockTraits<ExtensionBlockType, SourceInclude, SourceIncludeTraits_extra>>;
 
 
 export function circularIncludeGuard(ctx_: ParsingContext, B_caller: SourceInclude) {

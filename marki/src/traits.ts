@@ -155,7 +155,8 @@ export interface InlineEltTraits_<T     extends InlineElementType = ExtensionInl
     processingStep?(this: ParsingContext): Promise<void>;
     processingStepMode?: AfterInlineProcessingStepMode; // default "parallel"
 
-    creator?: (ctx: ParsingContext) => InlineParser<T>;
+    creator?: (ctx: ParsingContext) => InlineParser<T, Elt, Extra>;
+    clone?: (this: InlineEltTraits<T, Elt, Extra>) => InlineEltTraits<T, Elt, Extra>;
     defaultElementInstance: InlineElementCustomData<T, Elt>;
 }
 
@@ -195,6 +196,7 @@ export interface DelimFollowerTraits_<T     extends InlineElementType = Extensio
     processingStepMode?: AfterInlineProcessingStepMode; // default "parallel"
 
     creator?: (ctx: ParsingContext) => InlineParser<T>;
+    clone?: (this: DelimFollowerTraits<T, Elt, Extra>) => DelimFollowerTraits<T, Elt, Extra>;
     defaultElementInstance: InlineElementCustomData<T, Elt>;
 }
 
@@ -205,7 +207,8 @@ export type DelimFollowerTraits<T     extends InlineElementType = ExtensionInlin
 
 
 export type InlineParserTraitsList = Partial<{
-    [K in InlineElementType]:  (InlineEltTraits_<K> | DelimFollowerTraits_<K>);
+    [K in InlineElementType]:  (InlineEltTraits_    <K, InlineElement<K>, any> |
+                                DelimFollowerTraits_<K, InlineElement<K>, any>);
 }>;
 
 export const isDelimFollowerTraits = <K extends InlineElementType>(t: InlineEltTraits_<K> | DelimFollowerTraits_<K>): t is DelimFollowerTraits_<K> =>
