@@ -1,6 +1,6 @@
 import { PositionOps } from "../position-ops.js";
 import { AnyInline, InlineElement } from "../markdown-types.js";
-import { InlineElementTraits } from "../traits.js";
+import { InlineEltTraits } from "../traits.js";
 import entityList from '../htmlEntities.js'
 import { ParsingContext } from "src/block-parser.js";
 
@@ -21,23 +21,27 @@ function processHTML_entity(entity: RegExpMatchArray, B: InlineElement<"htmlEnti
 }
 
 
-/* Perhaps your Markdown dialect wants to add some custom HTML entities.
- * This could easily be done with an additional inline element type using the same starting char (&),
- * but adding it as a built-in feature in "htmlEntity" doesn't hurt and is perhaps more convenient.
- */
-export const customHTMLEntitiesList = (PC: ParsingContext) => ((PC.globalCtx as { customEntityList: Record<string, string>; }).customEntityList ||= {});
 
+interface HTMLEntity_Traits_Extra {
+    /* Perhaps your Markdown dialect wants to add some custom HTML entities.
+     * This could easily be done with an additional inline element type using the same starting char (&),
+     * but adding it as a built-in feature in "htmlEntity" doesn't hurt and is perhaps more convenient.
+     */
+    customHTMLEntitiesList: Record<string, string>;
+}
 
-export const htmlEntity_traits: InlineElementTraits<"htmlEntity"> = {
+export const htmlEntity_traits: InlineEltTraits<"htmlEntity", InlineElement<"htmlEntity">, HTMLEntity_Traits_Extra> = {
     startChars: [ '&' ],
 
     parse(It, B) {
         const entity = It.regexInLine(rex); // advances content iterator if positive match
         if(!entity)
             return false;
-        processHTML_entity(entity as RegExpMatchArray, B, customHTMLEntitiesList(this));
+        processHTML_entity(entity as RegExpMatchArray, B, this.traits.customHTMLEntitiesList);
         return true;
     },
+
+    customHTMLEntitiesList: { },
 
     defaultElementInstance: {
         type:      "htmlEntity",
