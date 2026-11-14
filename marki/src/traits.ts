@@ -20,7 +20,9 @@ export type ProcessingStepMode = "structural"    // step adds material to the do
                                | "postParallel"; // steps that should happen after all parallel steps have finished
 
 
-export interface BlockTraits<T extends BlockType = ExtensionBlockType, B extends BlockIndividualData<T> = BlockIndividualData<T>, Extra extends {} = {}>
+export interface BlockTraits_<T     extends BlockType = ExtensionBlockType,
+                              B     extends BlockIndividualData<T> = BlockIndividualData<T>,
+                              Extra extends {} = {}>
 {
     blockType: T;
 
@@ -28,18 +30,18 @@ export interface BlockTraits<T extends BlockType = ExtensionBlockType, B extends
        If it can begin here it shoudl return a number describing the offset where the actual content of the block (after a prefix) starts,
        e.g. 2 for a blockquote starting after "> ".
        If the prefix contains additional data (e.g. the level of an atx header) the method can parse that data into the provided block object. */
-    startsHere(this: BlockParser<T, BlockTraitsExtended<T, B, Extra>>, LL: LogicalLine, B: Block<T> & B, interrupting?: BlockType | undefined): number;
+    startsHere(this: BlockParser<T, BlockTraits<T, B, Extra>>, LL: LogicalLine, B: Block<T> & B, interrupting?: BlockType | undefined): number;
 
     /* returning undefined means the function doesn't make a decision whether to continue the block here,
      * and leaves it to the subsequent standard algorithm instead.
      */
-    continuesHere?(this: BlockParser<T, BlockTraitsExtended<T, B, Extra>>, LL: LogicalLine, isSoftContainerContinuation?: boolean): BlockContinuationType | undefined;
+    continuesHere?(this: BlockParser<T, BlockTraits<T, B, Extra>>, LL: LogicalLine, isSoftContainerContinuation?: boolean): BlockContinuationType | undefined;
 
     acceptLineHook?(this: BlockParser<T>, LL: LogicalLine, bct: BlockContinuationType | "start") : boolean;
-    finalizeBlockHook?(this: BlockParser<T, BlockTraitsExtended<T, B, Extra>>): void;
+    finalizeBlockHook?(this: BlockParser<T, BlockTraits<T, B, Extra>>): void;
 
     /* in case content lines need to be transformed in some way when adding them to the block content */
-    postprocessContentLine?(this: BlockParser<T, BlockTraitsExtended<T, B, Extra>>, LL: LogicalLine, bct: BlockContinuationType | "start") : LogicalLine_with_cmt;
+    postprocessContentLine?(this: BlockParser<T, BlockTraits<T, B, Extra>>, LL: LogicalLine, bct: BlockContinuationType | "start") : LogicalLine_with_cmt;
 
     // Optionally a processing step that is performed after block parsing but before inline parsing.
     // It is meant for running DB queries and similar for data stored into the ParsingContext object during parsing.
@@ -60,18 +62,18 @@ export interface BlockTraits<T extends BlockType = ExtensionBlockType, B extends
     lastIsContent?: boolean; // if a line is continuation type "last" it will still be added to the block content - default false
     canSelfInterrupt?: boolean; // list items do that
     creator?: (PP: BlockParserProvider, type: T) => BlockParser<T>;
-    clone?: () => BlockTraitsExtended<T, B, Extra>;
+    clone?: () => BlockTraits<T, B, Extra>;
     defaultBlockInstance: B;
 }
 
-export type BlockTraitsExtended<T     extends BlockType = ExtensionBlockType,
-                                B     extends BlockIndividualData<T> = BlockIndividualData<T>,
-                                Extra extends {} = {}>
-    = BlockTraits<T, B, Extra> & Extra;
+export type BlockTraits<T     extends BlockType = ExtensionBlockType,
+                        B     extends BlockIndividualData<T> = BlockIndividualData<T>,
+                        Extra extends {} = {}>
+    = BlockTraits_<T, B, Extra> & Extra;
 
 
 export type ExtensionBlockTraits<B extends BlockIndividualData = BlockIndividualData, Extra extends {} = {}>
-    = BlockTraitsExtended<ExtensionBlockType, B, Extra>;
+    = BlockTraits<ExtensionBlockType, B, Extra>;
 
 export function castExtensionBlock<B extends BlockIndividualData>
     (block: AnyBlock | undefined, traits: ExtensionBlockTraits<B>): block is Block_Extension & B
@@ -79,12 +81,12 @@ export function castExtensionBlock<B extends BlockIndividualData>
     return (block?.type === traits.blockType)
 }
 
-export interface BlockTraits_Container<T extends BlockType_Container | ExtensionBlockType,
+export interface BlockContainerTraits_<T     extends BlockType_Container | ExtensionBlockType,
                                        B     extends BlockIndividualData<T> = BlockIndividualData<T>,
-                                       Extra extends {} = {}> extends BlockTraits<T, B, Extra>
+                                       Extra extends {} = {}> extends BlockTraits_<T, B, Extra>
 {
     containerMode: "Container" | "Wrapper";
-    contentParserTryOrder?: string | ((this: BlockParser<T, BlockTraitsExtended<T, B, Extra>>, B: Block<T> & B) => string | undefined) | undefined;
+    contentParserTryOrder?: string | ((this: BlockParser<T, BlockTraits<T, B, Extra>>, B: Block<T> & B) => string | undefined) | undefined;
     customChildParser?: (block: Block_Container_Extension<T> & B, i: number, ctx: ParsingContext) => InlineParserProvider | undefined;
     creator?: (PP: BlockParserProvider, type: T) => (T extends BlockType_Container ? BlockParser_Container<T> : never);
 
@@ -98,24 +100,24 @@ export interface BlockTraits_Container<T extends BlockType_Container | Extension
 }
 
 
-export function makeBlockTraits<bt extends BlockType, T extends Omit<BlockTraits<bt>, "blockType">>(type: bt, traits_: T): BlockTraits<bt> {
-    const traits = traits_ as unknown as BlockTraits<bt>;
+export function makeBlockTraits<bt extends BlockType, T extends Omit<BlockTraits_<bt>, "blockType">>(type: bt, traits_: T): BlockTraits_<bt> {
+    const traits = traits_ as unknown as BlockTraits_<bt>;
     traits.blockType = type;
     return traits;
 }
-export function makeBlockContainerTraits<bt extends BlockType_Container, T extends Omit<BlockTraits_Container<bt>, "blockType">>(type: bt, traits_: T): BlockTraits_Container<bt> {
-    const traits = traits_ as unknown as BlockTraits_Container<bt>;
+export function makeBlockContainerTraits<bt extends BlockType_Container, T extends Omit<BlockContainerTraits_<bt>, "blockType">>(type: bt, traits_: T): BlockContainerTraits_<bt> {
+    const traits = traits_ as unknown as BlockContainerTraits_<bt>;
     traits.blockType = type;
     return traits;
 }
 
-export type BlockContainerTraitsExtended<T     extends BlockType_Container | ExtensionBlockType = ExtensionBlockType,
-                                         B     extends BlockIndividualData<T> = BlockIndividualData<T>,
-                                         Extra extends {} = {}>
-    = BlockTraits_Container<T, B, Extra> & Extra;
+export type BlockContainerTraits<T     extends BlockType_Container | ExtensionBlockType = ExtensionBlockType,
+                                 B     extends BlockIndividualData<T> = BlockIndividualData<T>,
+                                 Extra extends {} = {}>
+    = BlockContainerTraits_<T, B, Extra> & Extra;
 
 export type ExtensionBlockContainerTraits<B extends BlockIndividualData = BlockIndividualData, Extra extends {} = {}>
-    = BlockContainerTraitsExtended<ExtensionBlockType, B, Extra>;
+    = BlockContainerTraits<ExtensionBlockType, B, Extra>;
 
 export function castExtensionBlockContainer<B extends BlockIndividualData>
     (block: AnyBlock, traits: ExtensionBlockContainerTraits<B>): block is Block_Container_Extension<ExtensionBlockType> & B
@@ -123,7 +125,7 @@ export function castExtensionBlockContainer<B extends BlockIndividualData>
 
 
 
-export type AnyBlockTraits = BlockType extends infer K ? K extends BlockType ? BlockTraits<K> : never : never;
+export type AnyBlockTraits = BlockType extends infer K ? K extends BlockType ? BlockTraits_<K> : never : never;
 
 
 
@@ -134,9 +136,9 @@ type InlineElementCustomData<T extends InlineElementType, B extends InlineElemen
 type AfterInlineProcessingStepMode = "parallel" | "postParallel";
 
 
-export interface InlineElementTraits<T     extends InlineElementType = ExtensionInlineElementType,
-                                     Elt   extends InlineElement<T> = InlineElement<T>,
-                                     Extra extends {} = {}>
+export interface InlineEltTraits_<T     extends InlineElementType = ExtensionInlineElementType,
+                                  Elt   extends InlineElement<T> = InlineElement<T>,
+                                  Extra extends {} = {}>
 {
     startChars: string[] | ((this: MarkdownParserTraits) => string[]); // characters where inline element can possibly start — doesn't have to be a sufficient condition
                                                                        // They can be dynamically defined (callback)
@@ -157,10 +159,10 @@ export interface InlineElementTraits<T     extends InlineElementType = Extension
     defaultElementInstance: InlineElementCustomData<T, Elt>;
 }
 
-export type InlineElementTraitsExtended<T     extends InlineElementType = ExtensionInlineElementType,
-                                        Elt   extends InlineElement<T> = InlineElement<T>,
-                                        Extra extends {} = {}>
-    = InlineElementTraits<T, Elt, Extra> & Extra;
+export type InlineEltTraits<T     extends InlineElementType = ExtensionInlineElementType,
+                            Elt   extends InlineElement<T> = InlineElement<T>,
+                            Extra extends {} = {}>
+    = InlineEltTraits_<T, Elt, Extra> & Extra;
 
 
 type DelimiterCategory = "emphLoose" | "emphStrict" | "paired";
@@ -178,9 +180,9 @@ export interface DelimiterTraits {
     parseCloser?(It: BlockContentIterator, startPos: InlinePos): string | false;
 }
 
-export interface DelimFollowerTraits<T     extends InlineElementType = ExtensionInlineElementType,
-                                     Elt   extends InlineElement<T>  = InlineElement<T>,
-                                     Extra extends {} = {}> {
+export interface DelimFollowerTraits_<T     extends InlineElementType = ExtensionInlineElementType,
+                                      Elt   extends InlineElement<T>  = InlineElement<T>,
+                                      Extra extends {} = {}> {
     startDelims: string[]; // list of delimiter names; a closing delimiter of this type serves as a start char for this type of inline element
     contentOwner: boolean; // does this delim follower manage the delimited content itself?
 
@@ -196,15 +198,15 @@ export interface DelimFollowerTraits<T     extends InlineElementType = Extension
     defaultElementInstance: InlineElementCustomData<T, Elt>;
 }
 
-export type DelimFollowerTraitsExtended<T     extends InlineElementType = ExtensionInlineElementType,
-                                        Elt   extends InlineElement<T> = InlineElement<T>,
-                                        Extra extends {} = {}>
-    = DelimFollowerTraits<T, Elt, Extra> & Extra;
+export type DelimFollowerTraits<T     extends InlineElementType = ExtensionInlineElementType,
+                                Elt   extends InlineElement<T> = InlineElement<T>,
+                                Extra extends {} = {}>
+    = DelimFollowerTraits_<T, Elt, Extra> & Extra;
 
 
 export type InlineParserTraitsList = Partial<{
-    [K in InlineElementType]:  (InlineElementTraits<K> | DelimFollowerTraits<K>);
+    [K in InlineElementType]:  (InlineEltTraits_<K> | DelimFollowerTraits_<K>);
 }>;
 
-export const isDelimFollowerTraits = <K extends InlineElementType>(t: InlineElementTraits<K> | DelimFollowerTraits<K>): t is DelimFollowerTraits<K> =>
+export const isDelimFollowerTraits = <K extends InlineElementType>(t: InlineEltTraits_<K> | DelimFollowerTraits_<K>): t is DelimFollowerTraits_<K> =>
     ("startDelims" in t);

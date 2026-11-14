@@ -1,6 +1,6 @@
 import { sectionHeader_trimEndMarker } from "../../blocks/sectionHeader.js";
 import { measureColOffset, standardBlockStart } from "../../linify.js";
-import { BlockTraitsExtended, castExtensionBlock, ExtensionBlockTraits } from "../../traits.js";
+import { BlockTraits, castExtensionBlock, ExtensionBlockTraits } from "../../traits.js";
 import { blockIterator, makeBlockContentIterator, sliceLL_to } from "../../util.js";
 import { MarkdownRendererInstance, Inserter, EasyInserter } from "../../renderer/renderer.js";
 import { AnyBlock, Block_Extension, Block_Leaf } from "../../markdown-types.js";
@@ -35,7 +35,7 @@ export function getTableOfContents_ctx(ctx: ParsingContext | MarkdownParserTrait
 const markdown_major_section_type = "ext_tier2_major_section" as const;
 
 
-export const sectionHeader_ext_traits: BlockTraitsExtended<"sectionHeader", SectionHeader_ext> = {
+export const sectionHeader_ext_traits: BlockTraits<"sectionHeader", SectionHeader_ext> = {
     blockType: "sectionHeader",
 
     startsHere(LL, B) {

@@ -1,7 +1,7 @@
 import { MarkdownParserTraits } from "../../markdown-parser.js";
 import { ExtensionInlineElementType, InlineElement } from "../../markdown-types.js";
 import { MarkdownRendererTraits } from "../../renderer/renderer.js";
-import { InlineElementTraits } from "../../traits.js";
+import { InlineEltTraits } from "../../traits.js";
 
 
 const name = "ext_tier2_special_symbol" as ExtensionInlineElementType;
@@ -53,7 +53,7 @@ const specialSymbols: SpecialSymbol_ctx["specialSymbols"] = {
 }
 
 
-const ext_tier2_special_symbol_traits: InlineElementTraits<name_t, SpecialSymbol & InlineElement<name_t>> = {
+const ext_tier2_special_symbol_traits: InlineEltTraits<name_t, SpecialSymbol & InlineElement<name_t>> = {
     startChars: function() { return Object.keys((this.globalCtx as SpecialSymbol_ctx).specialSymbols || {}); },
 
     parse(It, B) {

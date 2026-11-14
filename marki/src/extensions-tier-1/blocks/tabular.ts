@@ -6,7 +6,7 @@ import { LogicalLine, LogicalLine_text, standardBlockStart } from "../../linify.
 import { MarkdownParserTraits } from "../../markdown-parser.js";
 import { Block_Extension, ExtensionBlockType, InlineContent, InlineContentElement, InlineElementBase } from "../../markdown-types.js";
 import { Inserter, EasyInserter, MarkdownRendererInstance, MarkdownRendererTraits } from "../../renderer/renderer.js";
-import { BlockTraits, InlineElementTraits, castExtensionBlock } from "../../traits.js";
+import { BlockTraits, InlineEltTraits, castExtensionBlock } from "../../traits.js";
 import { makeBlockContentIterator } from "../../util.js";
 import { pairUpDelimiters } from "../../delimiter-processing.js";
 import { inlineTrimRight } from "../../renderer/util.js";
@@ -14,7 +14,7 @@ import { inlineTrimRight } from "../../renderer/util.js";
 export const tabular_type = "ext_tier1_tabular" as const;
 const tabular_cellbr_type = "ext_tier1_tabular_cellbr" as const;
 
-export type TabularHalign = "left" | "right" | "center" | "justify";
+export type TabularHalign = null | "left" | "right" | "center" | "justify";
 const halign_finder: Record<string, TabularHalign> = { '<': "left",  '>': "right",  '><': "center",  '<>': "justify" };
 
 export interface TabularColumnFormat {
@@ -64,7 +64,7 @@ function isFormatLine(LL: LogicalLine) {
         }
         if(!(rexres = /^-*(<>?|><?)?-*$/.exec(f)))
             return false;
-        const F: TabularColumnFormat = { halign: "left" };
+        const F: TabularColumnFormat = { halign: null };
         if(rexres[1])
             F.halign = halign_finder[rexres[1]];
         cols.push(F);
@@ -97,7 +97,7 @@ const isTabularCellBreak = (elt: InlineContentElement): elt is TabularCellbrMark
     (typeof elt !== "string" && elt.type == tabular_cellbr_type);
 
 
-export const tabular_cellbr_traits: InlineElementTraits<typeof tabular_cellbr_type, TabularCellbrMarker & InlineElementBase<typeof tabular_cellbr_type>> = {
+export const tabular_cellbr_traits: InlineEltTraits<typeof tabular_cellbr_type, TabularCellbrMarker & InlineElementBase<typeof tabular_cellbr_type>> = {
     startChars: [ '|' ],
     parse(It, B) {
         const borderBottom = (It.newPos().LL as (LogicalLine_text & MarkdownTabularCellStyle)).borderBottom;
@@ -228,7 +228,7 @@ export const markdown_tabular_traits: BlockTraits<ExtensionBlockType, MarkdownTa
         const nCols = Math.max(B.head.rows.reduce((max, F) => Math.max(max, F.cells.length), B.format.length),
                                B.body.rows.reduce((max, F) => Math.max(max, F.cells.length), B.format.length));
         for(let i = B.format.length;  i < nCols;  ++i)
-            B.format.push({ halign: "left" });
+            B.format.push({ halign: null });
     },
 
     allowSoftContinuations: false,
@@ -287,7 +287,7 @@ function printTableRow(renderer: MarkdownRendererInstance, R: MarkdownTabularRow
         const bb_style = bb_styles[R.borderBottom?.[i] || 0];
         const F = Fs?.[i];
         const classes: string[] = [];
-        if(F && F.halign != "left")
+        if(F && F.halign != "left" && F.halign)
             classes.push(F.halign[0]);
         if(bb_style)
             classes.push(bb_style);

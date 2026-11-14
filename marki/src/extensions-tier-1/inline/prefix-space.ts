@@ -1,5 +1,5 @@
 import { ExtensionInlineElementType, InlineElement } from "../../markdown-types.js";
-import { InlineElementTraits } from "../../traits.js";
+import { InlineEltTraits } from "../../traits.js";
 
 export const name_linePrefixSpace = "ext_tier1_prefix_space" as ExtensionInlineElementType;
 
@@ -7,7 +7,7 @@ export type LinePrefixSpace = {
     content: string;
 }
 
-export const ext_tier1_prefix_space_traits: InlineElementTraits<typeof name_linePrefixSpace, LinePrefixSpace & InlineElement<typeof name_linePrefixSpace>> = {
+export const ext_tier1_prefix_space_traits: InlineEltTraits<typeof name_linePrefixSpace, LinePrefixSpace & InlineElement<typeof name_linePrefixSpace>> = {
     startChars: [ '\n' ],
 
     parse(It, B) {

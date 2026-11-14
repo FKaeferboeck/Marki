@@ -7,7 +7,7 @@ import { paragraph_traits } from './blocks/paragraph.js';
 import { sectionHeader_traits } from './blocks/sectionHeader.js';
 import { sectionHeader_setext_traits } from './blocks/sectionHeader_setext.js';
 import { AnyBlock, Block, Block_Leaf, BlockBase, BlockType, BlockType_Container, BlockType_Leaf, IncludeFileContext, MarkdownParserContext } from './markdown-types.js';
-import { BlockContinuationType, BlockTraits, BlockTraits_Container, BlockTraitsExtended } from './traits.js';
+import { BlockContinuationType, BlockTraits_, BlockContainerTraits_, BlockTraits } from './traits.js';
 import { LLinfo } from './util.js';
 import { listItem_traits } from './blocks/listItem.js';
 import { BlockParserProvider, blockStoper_doNothing as blockStopper_doNothing, MarkdownParser, ParseState } from './markdown-parser.js';
@@ -56,7 +56,7 @@ export interface BlockParserBase {
 }
 
 export interface BlockParser<K      extends BlockType = BlockType,
-                             Traits extends BlockTraits<K> = BlockTraits<K>>
+                             Traits extends BlockTraits_<K> = BlockTraits_<K>>
 	extends BlockParserBase, ParsingContext
 {
 	// Does a block of this type begin in that logical line, and can it interrupt the given currently open block?
@@ -82,7 +82,7 @@ export interface BlockParser<K      extends BlockType = BlockType,
 }
 
 
-export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits extends BlockTraits<K> = BlockTraits<K>> implements BlockParser<K, Traits> {
+export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits extends BlockTraits_<K> = BlockTraits_<K>> implements BlockParser<K, Traits> {
 	type: K;
 
 	constructor(PP: BlockParserProvider, type: K, traits: Traits, useSoftContinuations: boolean = true) {
@@ -245,10 +245,10 @@ export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits e
 
 
 export class BlockParser_Container<K extends BlockType_Container = BlockType_Container>
-    extends BlockParser_Standard<K, BlockTraits_Container<K>>
+    extends BlockParser_Standard<K, BlockContainerTraits_<K>>
     implements BlockContainer
 {
-    constructor(PP: BlockParserProvider, type: K, traits: BlockTraits_Container<K>, useSoftContinuations: boolean = true) {
+    constructor(PP: BlockParserProvider, type: K, traits: BlockContainerTraits_<K>, useSoftContinuations: boolean = true) {
         super(PP, type, traits, useSoftContinuations);
 		this.contentParserTryOrder = traits.contentParserTryOrder;
         this.curContentParser = { tryOrderName: this.contentParserTryOrder as any,  container: this,  curParser: null,  generator: null,  includeFileContext: this.includeFileCtx };
@@ -347,13 +347,13 @@ export class BlockParser_Container<K extends BlockType_Container = BlockType_Con
 	}
 
     private curContentParser: ParseState;
-	private contentParserTryOrder: string | ((this: BlockParser<K, BlockTraitsExtended<K>>, B: Block<K>) => string | undefined) | undefined;
+	private contentParserTryOrder: string | ((this: BlockParser<K, BlockTraits<K>>, B: Block<K>) => string | undefined) | undefined;
 	blockContainerType = "containerBlock" as const;
 }
 
 
 export class BlockParser_EmptySpace extends BlockParser_Standard<"emptySpace"> {
-    constructor(PP: BlockParserProvider, type: "emptySpace", traits: BlockTraits<"emptySpace">, useSoftContinuations: boolean = true) {
+    constructor(PP: BlockParserProvider, type: "emptySpace", traits: BlockTraits_<"emptySpace">, useSoftContinuations: boolean = true) {
         super(PP, type, traits, useSoftContinuations);
 	}
 

@@ -1,5 +1,5 @@
 import { InlineElement, InlinePos } from "../markdown-types.js";
-import { InlineElementTraits } from "../traits.js";
+import { InlineEltTraits } from "../traits.js";
 import { BlockContentIterator, contentSlice } from "../util.js";
 
 const rex_tagname    = /^<\/?[A-Za-z][A-Za-z\d\-]*(?=$|[ \t\r\n\/>])/;
@@ -37,7 +37,7 @@ function parseXML_element(It: BlockContentIterator, P0: InlinePos, B: InlineElem
 
 
 
-export const rawHTML_traits: InlineElementTraits<"rawHTML"> = {
+export const rawHTML_traits: InlineEltTraits<"rawHTML"> = {
     startChars: [ '<' ],
 
     parse(It, B, P0) {

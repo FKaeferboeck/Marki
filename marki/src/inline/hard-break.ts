@@ -1,10 +1,10 @@
-import { InlineElementTraits } from "../traits.js";
+import { InlineEltTraits } from "../traits.js";
 
 /* For performance we want to avoid having to check for end-of-line spaces at each space (which usually isn't at the end of a line)
  * Therefore we trigger hard break detection at line breaks and backtrack whitespace from there
  */
 
-export const hardBreak_traits: InlineElementTraits<"hardBreak"> = {
+export const hardBreak_traits: InlineEltTraits<"hardBreak"> = {
     startChars: [ '\n' ],
 
     parse(It, B, pos0) {
@@ -37,7 +37,7 @@ export const hardBreak_traits: InlineElementTraits<"hardBreak"> = {
 /* Normally line breaks are not parsed as inline elements unless they are deliberate hard breaks.
  * However we may need them for extensions, e.g. for tables (where they mark the end of a table row, naturally)
  */
-export const lineBreak_traits: InlineElementTraits<"lineBreak"> = {
+export const lineBreak_traits: InlineEltTraits<"lineBreak"> = {
     startChars: [ '\n' ],
     parse(It) {
         It.pop();

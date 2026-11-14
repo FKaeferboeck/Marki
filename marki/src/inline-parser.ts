@@ -4,7 +4,7 @@ import { parseHTML_entities } from "./inline/html-entity.js";
 import { MarkdownParser } from "./markdown-parser.js";
 import { AnyInline, Delimiter_nestable, ExtensionInlineElementType, IncludeFileContext, InlineContent, InlineElement, InlineElementType, InlinePos, MarkdownParserContext, Pos } from "./markdown-types.js";
 import { PositionOps } from "./position-ops.js";
-import { DelimFollowerTraits, DelimFollowerTraitsExtended, InlineElementTraits, InlineElementTraitsExtended } from "./traits.js";
+import { DelimFollowerTraits, InlineEltTraits } from "./traits.js";
 import { BlockContentIterator } from "./util.js";
 
 
@@ -25,7 +25,7 @@ export interface InlineParser<K     extends InlineElementType = ExtensionInlineE
     getDelimitedContent(D: Delimiter_nestable): InlineContent; // for use in parseFollowingDelim()
 
     B: Elt;
-    traits: InlineElementTraitsExtended<K, Elt, Extra> | DelimFollowerTraitsExtended<K, Elt, Extra>;
+    traits: InlineEltTraits<K, Elt, Extra> | DelimFollowerTraits<K, Elt, Extra>;
 }
 
 
@@ -37,7 +37,7 @@ implements InlineParser<K, Elt, Extra>
     type: K;
     buf?: InlineContent;
 
-    constructor(ctx: ParsingContext, traits: InlineElementTraitsExtended<K, Elt, Extra> | DelimFollowerTraitsExtended<K, Elt, Extra>) {
+    constructor(ctx: ParsingContext, traits: InlineEltTraits<K, Elt, Extra> | DelimFollowerTraits<K, Elt, Extra>) {
         this.type           = traits.defaultElementInstance.type as K;
         this.MDP            = ctx.MDP;
 		this.globalCtx      = ctx.globalCtx;
@@ -94,7 +94,7 @@ implements InlineParser<K, Elt, Extra>
     globalCtx: MarkdownParserContext;
     localCtx:  MarkdownLocalContext;
     B: Elt;
-    traits: InlineElementTraitsExtended<K, Elt, Extra> | DelimFollowerTraitsExtended<K, Elt, Extra>;
+    traits: InlineEltTraits<K, Elt, Extra> | DelimFollowerTraits<K, Elt, Extra>;
     includeFileCtx: IncludeFileContext;
 }
 

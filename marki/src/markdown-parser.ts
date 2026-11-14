@@ -13,7 +13,7 @@ import { bracket_traits, link_traits } from "./inline/link.js";
 import { rawHTML_traits } from "./inline/raw-html.js";
 import { IncrementalChange_LL, lineContent, linify, LogicalLine, LogicalLine_with_cmt } from "./linify.js";
 import { AnyBlock, Block, BlockBase, BlockType, BlockType_Container, IncludeFileContext, InlineElement, InlineElementType, isBlockWrapper, isContainer, LinkHandler, MarkdownParserContext, MarkiDocument } from "./markdown-types.js";
-import { AnyBlockTraits, BlockTraits, BlockTraits_Container, DelimiterTraits, InlineParserTraitsList, ProcessingStepMode } from "./traits.js";
+import { AnyBlockTraits, BlockTraits_, BlockContainerTraits, DelimiterTraits, InlineParserTraitsList, ProcessingStepMode } from "./traits.js";
 import { blockIterator, LLinfo, startSnippet } from "./util.js";
 
 interface BlockParserProviderItem {
@@ -329,7 +329,7 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 		const T = this.MDPT.blockTraitsList[B.type];
 		if(!T)    throw new Error(`Cannot process content of block "${B.type}"`);
 		if(isContainer(B) || isBlockWrapper(B)) {
-			const T1 = T as BlockTraits_Container<any>;
+			const T1 = T as BlockContainerTraits<any>;
 			let processContent = true;
 			if(T1.contentProcessing)
 				processContent = T1.contentProcessing.call(ctx, B);
@@ -420,7 +420,7 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 	}
 
 	makeParser<K extends BlockType>(type: K, PP: BlockParserProvider) {
-		const traits = this.MDPT.blockTraitsList[type] as BlockTraits<K> | undefined;
+		const traits = this.MDPT.blockTraitsList[type] as BlockTraits_<K> | undefined;
 		if(!traits)
 			throw new Error(`Missing block parser traits for block type "${type}"`)
 		if(traits.creator)
@@ -428,7 +428,7 @@ export class MarkdownParser implements BlockContainer, ParsingContext {
 
 		// No individual parser creator function found -> use the default version
 		if(this.isContainerType(type))
-			return new BlockParser_Container<typeof type>(PP, type, traits as BlockTraits_Container<typeof type>);
+			return new BlockParser_Container<typeof type>(PP, type, traits as BlockContainerTraits<typeof type>);
 		else
 			return new BlockParser_Standard<K>(PP, type, traits);
 	}

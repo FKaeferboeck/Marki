@@ -1,9 +1,9 @@
 import { InlinePos, InlineElement } from "../markdown-types.js";
-import { InlineElementTraits } from "../traits.js";
+import { InlineEltTraits } from "../traits.js";
 import { contentSlice } from "../util.js";
 
 
-export const codeSpan_traits: InlineElementTraits<"codeSpan"> = {
+export const codeSpan_traits: InlineEltTraits<"codeSpan"> = {
     startChars: [ '`' ],
 
     parse(It, B, pos0) {

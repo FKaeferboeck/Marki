@@ -1,4 +1,4 @@
-import { InlineElementTraits } from "../traits.js";
+import { InlineEltTraits } from "../traits.js";
 
 export const backslashEscapeds: Record<string, boolean> = {
     '!': true,  '"': true,  '#': true,  '$': true,  '%': true,  '&': true,  '\'': true,  '(' : true,
@@ -8,7 +8,7 @@ export const backslashEscapeds: Record<string, boolean> = {
 };
 
 
-export const escaped_traits: InlineElementTraits<"escaped"> = {
+export const escaped_traits: InlineEltTraits<"escaped"> = {
     startChars: [ '\\' ],
 
     parse(It, B) {
