@@ -122,8 +122,6 @@ export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits e
 			console.log(`Releasing [${this.type}]`);
 		
 		this.PP.release(this);
-		//this.MDP.getBlockParserProvider(this.traits.)
-		//this.MDP.blockParserProvider.release(this);
 		return starts;
 	}
 
@@ -146,14 +144,6 @@ export class BlockParser_Standard<K extends BlockType = BlockType_Leaf, Traits e
 		if(isSpaceLine(LL))
 			return ret("end");
 
-		const cpfx = this.traits.continuationPrefix;
-		if(cpfx) {
-			if(typeof cpfx === "function")
-				return ret(cpfx(LL, this.B));
-			const rexres = cpfx.exec(LL.content);
-			if(rexres)
-				return ret(rexres[0].length);
-		}
 		return ret(this.traits.allowSoftContinuations ? "soft" : "end");
 	}
 

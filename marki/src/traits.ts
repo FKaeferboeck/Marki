@@ -20,7 +20,8 @@ export type ProcessingStepMode = "structural"    // step adds material to the do
                                | "postParallel"; // steps that should happen after all parallel steps have finished
 
 
-export interface BlockTraits<T extends BlockType = ExtensionBlockType, B extends BlockIndividualData<T> = BlockIndividualData<T>, Extra extends {} = {}> {
+export interface BlockTraits<T extends BlockType = ExtensionBlockType, B extends BlockIndividualData<T> = BlockIndividualData<T>, Extra extends {} = {}>
+{
     blockType: T;
 
     /* This method should return -1 if a block of this type cannot begin in this line.
@@ -38,7 +39,7 @@ export interface BlockTraits<T extends BlockType = ExtensionBlockType, B extends
     finalizeBlockHook?(this: BlockParser<T, BlockTraitsExtended<T, B, Extra>>): void;
 
     /* in case content lines need to be transformed in some way when adding them to the block content */
-    postprocessContentLine?(this: BlockParser<T>, LL: LogicalLine, bct: BlockContinuationType | "start") : LogicalLine_with_cmt;
+    postprocessContentLine?(this: BlockParser<T, BlockTraitsExtended<T, B, Extra>>, LL: LogicalLine, bct: BlockContinuationType | "start") : LogicalLine_with_cmt;
 
     // Optionally a processing step that is performed after block parsing but before inline parsing.
     // It is meant for running DB queries and similar for data stored into the ParsingContext object during parsing.
@@ -46,8 +47,6 @@ export interface BlockTraits<T extends BlockType = ExtensionBlockType, B extends
     // CommonMark doesn't use this feature, it's for extensions.
     processingStep?(this: ParsingContext, doc: MarkiDocument): Promise<void>;
     processingStepMode?: ProcessingStepMode;
-
-    continuationPrefix?: RegExp| ((LL: LogicalLine, B: Block<T>) => number);
     
     allowSoftContinuations: boolean;
     canBeSoftContinuation?: boolean; // default true
@@ -61,6 +60,7 @@ export interface BlockTraits<T extends BlockType = ExtensionBlockType, B extends
     lastIsContent?: boolean; // if a line is continuation type "last" it will still be added to the block content - default false
     canSelfInterrupt?: boolean; // list items do that
     creator?: (PP: BlockParserProvider, type: T) => BlockParser<T>;
+    clone?: () => BlockTraitsExtended<T, B, Extra>;
     defaultBlockInstance: B;
 }
 

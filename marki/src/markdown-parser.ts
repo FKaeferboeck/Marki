@@ -127,7 +127,8 @@ export class MarkdownParserTraits {
 
 	constructor() {
 		this.blockTraitsList = { };
-		this.tryOrder = standardBlockTryOrder.map(bt => (this.blockTraitsList[bt.blockType] = bt).blockType);
+		this.tryOrder = standardBlockTryOrder.map(bt =>
+			 (this.blockTraitsList[bt.blockType] = bt).blockType);
 
 		this.inlineParser_standard = new InlineParserProvider(this);
 		this.inlineParser_minimal  = new InlineParserProvider(this);
@@ -145,6 +146,21 @@ export class MarkdownParserTraits {
 
 		this.globalCtx = { tier2_command_char: '$' } as Tier2_ctx; // If the tier 2 extension isn't hooked in this has no effect
 		this.makeCommentLines = false;
+	}
+
+	/* If a block traits object has configuration options, and we want to handle multiple Markdown dialects in one server,
+	 * each must get its own traits instance so that configurations can be different.
+	 * To achieve this, the instance making the changes can call this function to make a clone of that traits object in the extension setup function.
+	 * By default a shallow copy is made (which is sufficient for configuration data consisting of primitives), but a traits class can also provide
+	 * a more complex clone() function for deep copies.
+	 */
+	getBlockTraits(type: BlockType, clone: boolean = false): AnyBlockTraits {
+		let traits = this.blockTraitsList[type];
+		if(!traits)
+			throw new Error(`Block traits for "${type}" not defined.`);
+		if(clone)
+			traits = this.blockTraitsList[type] = (traits.clone ? traits.clone() : { ... traits });
+		return traits;
 	}
 
 	inlineParser_standard: InlineParserProvider;
@@ -506,7 +522,7 @@ export function processLine(this: MarkdownParser, PP: ParseState, LL: LogicalLin
 			blockStopHandler(curParser.B, LLD_last.next);
 			return { tryOrderName,  container,  retry: LLD_last.next! as LogicalLine,  curParser: null,  generator: null,  includeFileContext }; // will start a new block in the current line
 		}
-	case "last":
+	case "last": // current block ends after this line, this is its last line
 		curParser.acceptLine(LL, bct, 0);
 		curParser.finish();
 		blockStopHandler(curParser.B, LL.next);
