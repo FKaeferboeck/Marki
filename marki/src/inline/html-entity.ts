@@ -2,8 +2,6 @@ import { PositionOps } from "../position-ops.js";
 import { AnyInline, InlineElement } from "../markdown-types.js";
 import { InlineEltTraits } from "../traits.js";
 import entityList from '../htmlEntities.js'
-import { ParsingContext } from "src/block-parser.js";
-
 
 const rex = /^&(?:#\d{1,7};|#[xX][\dA-Fa-f]{1,6};|[A-Za-z][A-Za-z\d]{0,32};)/; // 32 is the length of the longest existing HTML entity
 
@@ -42,6 +40,12 @@ export const htmlEntity_traits: InlineEltTraits<"htmlEntity", InlineElement<"htm
     },
 
     customHTMLEntitiesList: { },
+
+    clone() {
+        const newTraits = { ... this };
+        newTraits.customHTMLEntitiesList = { ... newTraits.customHTMLEntitiesList };
+        return newTraits;
+    },
 
     defaultElementInstance: {
         type:      "htmlEntity",
