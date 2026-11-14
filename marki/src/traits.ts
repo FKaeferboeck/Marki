@@ -134,8 +134,9 @@ type InlineElementCustomData<T extends InlineElementType, B extends InlineElemen
 type AfterInlineProcessingStepMode = "parallel" | "postParallel";
 
 
-export interface InlineElementTraits<T extends InlineElementType = ExtensionInlineElementType,
-                                     B extends InlineElement<T> = InlineElement<T>>
+export interface InlineElementTraits<T     extends InlineElementType = ExtensionInlineElementType,
+                                     Elt   extends InlineElement<T> = InlineElement<T>,
+                                     Extra extends {} = {}>
 {
     startChars: string[] | ((this: MarkdownParserTraits) => string[]); // characters where inline element can possibly start — doesn't have to be a sufficient condition
                                                                        // They can be dynamically defined (callback)
@@ -143,7 +144,7 @@ export interface InlineElementTraits<T extends InlineElementType = ExtensionInli
 
     // The implementation can modify startPos to e.g. an earlier position if the inline item wants to backtrack
     // Use this feature with caution! It cannot collide with an already parsed earlier inline item.
-    parse(this: InlineParser<T, B>, It: BlockContentIterator, B: B, startPos: InlinePos): boolean;
+    parse(this: InlineParser<T, Elt, Extra>, It: BlockContentIterator, B: Elt, startPos: InlinePos): boolean;
 
     // Optionally a processing step that is performed after inline parsing but before rendering.
     // It is meant for running DB queries and similar for data stored into the ParsingContext object during parsing.
@@ -153,8 +154,13 @@ export interface InlineElementTraits<T extends InlineElementType = ExtensionInli
     processingStepMode?: AfterInlineProcessingStepMode; // default "parallel"
 
     creator?: (ctx: ParsingContext) => InlineParser<T>;
-    defaultElementInstance: InlineElementCustomData<T, B>;
+    defaultElementInstance: InlineElementCustomData<T, Elt>;
 }
+
+export type InlineElementTraitsExtended<T     extends InlineElementType = ExtensionInlineElementType,
+                                        Elt   extends InlineElement<T> = InlineElement<T>,
+                                        Extra extends {} = {}>
+    = InlineElementTraits<T, Elt, Extra> & Extra;
 
 
 type DelimiterCategory = "emphLoose" | "emphStrict" | "paired";
@@ -172,22 +178,28 @@ export interface DelimiterTraits {
     parseCloser?(It: BlockContentIterator, startPos: InlinePos): string | false;
 }
 
-export interface DelimFollowerTraits<T extends InlineElementType = ExtensionInlineElementType,
-                                     B extends InlineElement<T>  = InlineElement<T>> {
+export interface DelimFollowerTraits<T     extends InlineElementType = ExtensionInlineElementType,
+                                     Elt   extends InlineElement<T>  = InlineElement<T>,
+                                     Extra extends {} = {}> {
     startDelims: string[]; // list of delimiter names; a closing delimiter of this type serves as a start char for this type of inline element
     contentOwner: boolean; // does this delim follower manage the delimited content itself?
 
     // The implementation can modify startPos to e.g. an earlier position if the inline item wants to backtrack
     // Use this feature with caution! It cannot collide with an already parsed earlier inline item.
-    parse(this: InlineParser<T>, B: B, endOfStartDelim: Delimiter_nestable,
+    parse(this: InlineParser<T, Elt, Extra>, B: Elt, endOfStartDelim: Delimiter_nestable,
           It: BlockContentIterator, startPos: InlinePos): boolean;
 
     processingStep?(this: ParsingContext): Promise<void>;
     processingStepMode?: AfterInlineProcessingStepMode; // default "parallel"
 
     creator?: (ctx: ParsingContext) => InlineParser<T>;
-    defaultElementInstance: InlineElementCustomData<T, B>;
+    defaultElementInstance: InlineElementCustomData<T, Elt>;
 }
+
+export type DelimFollowerTraitsExtended<T     extends InlineElementType = ExtensionInlineElementType,
+                                        Elt   extends InlineElement<T> = InlineElement<T>,
+                                        Extra extends {} = {}>
+    = DelimFollowerTraits<T, Elt, Extra> & Extra;
 
 
 export type InlineParserTraitsList = Partial<{

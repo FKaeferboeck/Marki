@@ -4,11 +4,13 @@ import { parseHTML_entities } from "./inline/html-entity.js";
 import { MarkdownParser } from "./markdown-parser.js";
 import { AnyInline, Delimiter_nestable, ExtensionInlineElementType, IncludeFileContext, InlineContent, InlineElement, InlineElementType, InlinePos, MarkdownParserContext, Pos } from "./markdown-types.js";
 import { PositionOps } from "./position-ops.js";
-import { DelimFollowerTraits, InlineElementTraits } from "./traits.js";
+import { DelimFollowerTraits, DelimFollowerTraitsExtended, InlineElementTraits, InlineElementTraitsExtended } from "./traits.js";
 import { BlockContentIterator } from "./util.js";
 
 
-export interface InlineParser<K extends InlineElementType = ExtensionInlineElementType, Elt extends InlineElement<K> = InlineElement<K>>
+export interface InlineParser<K     extends InlineElementType = ExtensionInlineElementType,
+                              Elt   extends InlineElement<K> = InlineElement<K>,
+                              Extra extends {} = {}>
     extends ParsingContext
 {
     type: K;
@@ -23,15 +25,19 @@ export interface InlineParser<K extends InlineElementType = ExtensionInlineEleme
     getDelimitedContent(D: Delimiter_nestable): InlineContent; // for use in parseFollowingDelim()
 
     B: Elt;
-    traits: InlineElementTraits<K> | DelimFollowerTraits<K>;
+    traits: InlineElementTraitsExtended<K, Elt, Extra> | DelimFollowerTraitsExtended<K, Elt, Extra>;
 }
 
 
-export class InlineParser_Standard<K extends InlineElementType = ExtensionInlineElementType, Elt extends InlineElement<K> = InlineElement<K>> {
+export class InlineParser_Standard<K     extends InlineElementType = ExtensionInlineElementType,
+                                   Elt   extends InlineElement<K> = InlineElement<K>,
+                                   Extra extends {} = {}>
+implements InlineParser<K, Elt, Extra>
+{
     type: K;
     buf?: InlineContent;
 
-    constructor(ctx: ParsingContext, traits: InlineElementTraits<K, Elt> | DelimFollowerTraits<K, Elt>) {
+    constructor(ctx: ParsingContext, traits: InlineElementTraitsExtended<K, Elt, Extra> | DelimFollowerTraitsExtended<K, Elt, Extra>) {
         this.type           = traits.defaultElementInstance.type as K;
         this.MDP            = ctx.MDP;
 		this.globalCtx      = ctx.globalCtx;
@@ -42,7 +48,6 @@ export class InlineParser_Standard<K extends InlineElementType = ExtensionInline
         this.B.startPos     = { line: 0,  character: 0 };
         this.B.endPos       = { line: 0,  character: 0 };
     }
-        
 
     parse(It: BlockContentIterator, startCheckpoint: InlinePos, startPos: Pos): false | Elt {
         if(!("startChars" in this.traits)) // this function doesn't handle DelimFollowerTraits
@@ -89,7 +94,7 @@ export class InlineParser_Standard<K extends InlineElementType = ExtensionInline
     globalCtx: MarkdownParserContext;
     localCtx:  MarkdownLocalContext;
     B: Elt;
-    traits: InlineElementTraits<K, Elt> | DelimFollowerTraits<K, Elt>;
+    traits: InlineElementTraitsExtended<K, Elt, Extra> | DelimFollowerTraitsExtended<K, Elt, Extra>;
     includeFileCtx: IncludeFileContext;
 }
 
