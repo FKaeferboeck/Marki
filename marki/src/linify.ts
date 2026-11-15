@@ -274,3 +274,11 @@ export function sliceLine_to(LL: LogicalLine_with_cmt, charEnd: number): Slice<L
         shiftCol: shiftCol(LL),  parent: LL
     };
 }
+
+
+export function sliceLine_fromTo(LL: LogicalLine, colFrom: number, length: number): Slice<LogicalLine> {
+    const LL1 = sliceLine(LL, colFrom);
+    const LL2 = sliceLine_to(LL1, length);
+    LL2.parent = LL;
+    return LL2 as Slice<LogicalLine>;
+}

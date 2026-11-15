@@ -1,5 +1,5 @@
 import { BlockTraits_, BlockTraits, castExtensionBlock } from "../traits.js";
-import { LogicalLine, LogicalLine_text, LogicalLine_with_cmt, standardBlockStart } from "../linify.js";
+import { isSpaceLine, lineContent, LogicalLine, LogicalLine_text, LogicalLine_with_cmt, Slice, sliceLine, sliceLine_fromTo, standardBlockStart } from "../linify.js";
 import { AnyBlock, Block_Extension, ExtensionBlockType, InlineContent } from "../markdown-types.js";
 import { MarkdownParserTraits } from "../markdown-parser.js";
 import { Inserter, MarkdownRendererInstance, MarkdownRendererTraits } from "../renderer/renderer.js";
@@ -18,7 +18,11 @@ export interface TabularColumnFormat {
     hsep?: boolean; // vertical line at the right edge of the column
 }
 
-export type TableCell = { inlineContent: InlineContent; } & CellContent & MarkdownTabularCellStyle;
+export interface TableCell extends MarkdownTabularCellStyle // bottom border
+{
+    LL: Slice<LogicalLine>;
+    inlineContent: InlineContent;
+}
 
 export interface MarkdownTabularRow {
     LL: LogicalLine_text;
@@ -51,13 +55,14 @@ interface GFM_TableTraits_Extra {
     allowHeaderless:       boolean;
     allowMultilineHeaders: boolean;
     arrowAlignmentMarker:  boolean;
+    allowRowContinuations: boolean; // can a table row be split over multiple source lines by using "|\" at the end?
 }
 
 type GFM_TableTraits = BlockTraits<ExtensionBlockType, MarkdownTabular, GFM_TableTraits_Extra>;
 
 
 const rex_delimRow_GFM   = /^\s*\|?\s*(:?-+:?\s*(?:\|?\s*:?-+:?\s*)*)\|?\s*$/;
-const rex_delimRow_arrow = /^\s*\|?\s*(:?-+:?\s*(?:\|?\s*:?-+:?\s*)*|-*(?:<>?|><?)-*)\|?\s*$/;
+const rex_delimRow_arrow = /^\s*\|?\s*(:?-+:?\s*(?:\|?\s*:?-+:?\s*)*|-*(?:<>?|><?)-*)\|?\s*$/; // TODO!! Fix
 
 function isDelimiterRow(this: GFM_TableTraits, LL: LogicalLine): false | TabularColumnFormat[] {
     if (!standardBlockStart(LL))
@@ -67,6 +72,7 @@ function isDelimiterRow(this: GFM_TableTraits, LL: LogicalLine): false | Tabular
     let rexres = (this.arrowAlignmentMarker ? rex_delimRow_arrow : rex_delimRow_GFM).exec(LL.content);
     if (!rexres)
         return false;
+
     return rexres[1].split('|').map(s => {
         s = s.trim();
         const H: TabularColumnFormat = { halign: (s.startsWith(':') ? s.endsWith(':') ? "center" : "left"
@@ -79,38 +85,45 @@ function isDelimiterRow(this: GFM_TableTraits, LL: LogicalLine): false | Tabular
     });
 }
 
-const columnCount = (LL: LogicalLine) => {
-    if (!standardBlockStart(LL))
-        return 0;
-    const s = LL.content.trim();
-    /* We don't count an escaped pipe \|, unless the backslash is itself escaped like \\| */
-    return (s.match(/\\*\|/g) || []).reduce((n, s) => n + (s.length % 2),
-                                            1 - +s.startsWith('|') - +s.endsWith('|'));
-    // ^ If the whole row is "|" this returns 0, which is what we want.
+
+function appendLL(LL: Slice<LogicalLine>, LL1: Slice<LogicalLine>) {
+    let LL0: LogicalLine_with_cmt = LL;
+    while(LL0.next)
+        LL0 = LL0.next;
+    LL0.next = LL1;
 }
 
-interface CellContent { startPos: number;  txt: string; }
-
-function splitRow(LL: LogicalLine, arr_out: (CellContent | string)[]) {
+function splitRow(LL: LogicalLine, row_out: TableCell[]) {
     if (!standardBlockStart(LL))
         return 0;
     const rex = /\s*(\\*\|)\s*/g,  s = LL.content;
     let rexres: RegExpMatchArray | null = null;
     let startPos = 0,  nCells = 0;
+
+    const appendCell = (LL: Slice<LogicalLine>) => {
+        const cell0 = row_out[nCells];
+        if(!cell0)
+            row_out.push({ LL,  inlineContent: [] });
+        else {
+            appendLL(cell0.LL, LL); // TODO!! Harmonize borders etc.
+        }
+        // TODO!! Do something with separator rexres[0]
+        ++nCells;
+    };
+
     while(rexres = rex.exec(s)) {
         if((rexres[1].length % 2) === 0) // even length == odd number of backslashes == escaped pipe
             continue;
-        arr_out.push({ startPos,  txt: s.slice(startPos, rexres.index) },  rexres[0]);
-        ++nCells;
+        const LL1 = sliceLine_fromTo(LL, startPos, rexres.index! - startPos); // TODO!! end pos rexres.index
         startPos = rex.lastIndex;
+        if(nCells == 0 && isSpaceLine(LL1)) // to the left of an initial | there is no cell, but maybe space
+            continue;
+        appendCell(LL1);
     }
-    if(startPos < s.length) {
-        arr_out.push({ startPos,  txt: s.slice(startPos) });
-        ++nCells;
-    }
-    if(arr_out[0] && (arr_out[0] as CellContent).txt.length === 0) {
-        arr_out.shift();
-        --nCells;
+    if(startPos < s.length) { // there's something left after the last delimiter
+        const LL1 = sliceLine(LL, startPos);
+        if(!isSpaceLine(LL1)) // ... and it's not just space
+            appendCell(LL1);
     }
     return nCells;
 }
@@ -120,17 +133,11 @@ type GFM_TableParser = BlockParser<`ext_${string}_${string}`, BlockTraits_<`ext_
 const getTableParsingStage = (P: GFM_TableParser) => (P as GFM_TableParser & { tableParsingStage: TableParsingStage; }).tableParsingStage || "header";
 const setTableParsingStage = (P: GFM_TableParser, stage: TableParsingStage) => { (P as GFM_TableParser & { tableParsingStage: TableParsingStage; }).tableParsingStage = stage; }
 
-
 function inlineProcessTabularSection(ctx: ParsingContext, IPP: InlineParserProvider, S: MarkdownTabularSection) {
     for(const R of S.rows) {
         for(const C of R.cells) {
-            const LL_cell: LogicalLine = {
-                lineIdx: -1,  type: "text",
-                content: C.txt,
-                indent: 0,  prefix: ''
-            };
             const context = new InlineParsingContext(IPP, ctx);
-            context.inlineParseLoop(makeBlockContentIterator(LL_cell), C.inlineContent);
+            context.inlineParseLoop(makeBlockContentIterator(C.LL), C.inlineContent);
             pairUpDelimiters(C.inlineContent);
         }
     }
@@ -181,15 +188,20 @@ export const gfm_table_traits: GFM_TableTraits = {
     },
 
     postprocessContentLine(LL, bct) {
-        const arr: (CellContent | string)[] = [];
-        this.B.nColumns = splitRow(LL, arr);
         const stage = getTableParsingStage(this);
+        console.log(`Postprocess (${stage}) "${lineContent(LL)}".`)
         if(stage === "delimiter" || LL.type !== "text")
             return LL;
         const section = (stage === "header" ? this.B.head : this.B.body);
-        //section.LLs
 
-        const cells = arr.filter(a => typeof a !== "string").map((a): TableCell => ({ ... a,  inlineContent: [] }));
+        const cells: TableCell[] = [];
+        const nCols = splitRow(LL, cells);
+        if(stage === "header") {
+            if(this.B.nColumns === 0)
+                this.B.nColumns = nCols;
+            else if(this.B.nColumns !== nCols)
+                throw new Error("rgergregergerhrtyh")
+        }
         section.rows.push({ LL,  cells });
 
         //console.log(`Table line (${stage}) "${lineContent(LL)}"`, arr);
@@ -213,6 +225,7 @@ export const gfm_table_traits: GFM_TableTraits = {
     allowSoftContinuations: false,
     canBeSoftContinuation: false,
     allowCommentLines: false,
+    allowRowContinuations: false,
 
     allowHeaderless: false,
     allowMultilineHeaders: false,
@@ -244,11 +257,11 @@ function gfm_table_render(this: MarkdownRendererInstance, B: Block_Extension, I:
     for(const R of B.body.rows) {
         I.add('<tr>');
         for(const C of R.cells) {
-            quickRow(this, I, `<th>`, C as TableCell & AnyBlock, undefined, `</th>`);
+            quickRow(this, I, `<td>`, C as TableCell & AnyBlock, undefined, `</td>`);
         }
         I.add('</tr>');
     }
-    I.add('</tbody></table>');
+    I.add('</tbody>\n</table>');
 }
 
 
@@ -263,19 +276,25 @@ const spreadContent = (LL: LogicalLine | undefined) => {
 }
 
 
-const gfmTable_ParagraphStopper: ParagraphStopper = function(LL) {
+const gfmTable_ParagraphStopper: ParagraphStopper = function(LL, isFirst) {
     const tableTraits = this.MDP.MDPT.getBlockTraits(gfm_table_traits.blockType) as GFM_TableTraits;
     const format = isDelimiterRow.call(tableTraits, LL);
     const content = spreadContent(this.B.content);
     if(!format || !content)
         return undefined;
 
+    if(isFirst)
+        return (tableTraits.allowHeaderless ? "reject" : undefined);
+
     let nHeaderLines = 0;
     for(let i = 0;  tableTraits.allowMultilineHeaders || i < 1;  ++i) {
         const LL = content.pop();
         if(!LL)
             break;
-        if(columnCount(LL as LogicalLine) !== format.length) // column count mismatch between header and delimiter row
+        const row: TableCell[] = [];
+        const nHeader = splitRow(LL as LogicalLine, row);
+        console.log(`Header has ${nHeader}, expecting ${format.length}.`);
+        if(nHeader !== format.length) // column count mismatch between header and delimiter row
             break;
         ++nHeaderLines;
     }
