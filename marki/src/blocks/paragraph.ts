@@ -105,6 +105,5 @@ export function addParagraphStopper(MDPT: MarkdownParserTraits, stopper: Paragra
 export function endRejectingLines(P_: BlockParser<"paragraph">, n_lines: number): BlockContinuationType {
     const P = P_ as ParagraphParser;
     P.lines_to_reject = n_lines;
-    console.log('Rejecting paragraph of', P.B.logical_line_extent)
     return (n_lines >= P.B.logical_line_extent ? "reject" : "end");
 }

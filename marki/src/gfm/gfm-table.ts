@@ -96,7 +96,7 @@ function appendLL(LL: Slice<LogicalLine>, LL1: Slice<LogicalLine>) {
 function splitRow(LL: LogicalLine, row_out: TableCell[]) {
     if (!standardBlockStart(LL))
         return 0;
-    const rex = /\s*(\\*\|)\s*/g,  s = LL.content;
+    const rex = /\s*(\\*\|)\s*/g,  s = LL.content,  nPfx = LL.prefix.length;
     let rexres: RegExpMatchArray | null = null;
     let startPos = 0,  nCells = 0;
 
@@ -114,14 +114,14 @@ function splitRow(LL: LogicalLine, row_out: TableCell[]) {
     while(rexres = rex.exec(s)) {
         if((rexres[1].length % 2) === 0) // even length == odd number of backslashes == escaped pipe
             continue;
-        const LL1 = sliceLine_fromTo(LL, startPos, rexres.index! - startPos); // TODO!! end pos rexres.index
+        const LL1 = sliceLine_fromTo(LL, nPfx + startPos, rexres.index! - startPos); // TODO!! end pos rexres.index
         startPos = rex.lastIndex;
         if(nCells == 0 && isSpaceLine(LL1)) // to the left of an initial | there is no cell, but maybe space
             continue;
         appendCell(LL1);
     }
     if(startPos < s.length) { // there's something left after the last delimiter
-        const LL1 = sliceLine(LL, startPos);
+        const LL1 = sliceLine(LL, nPfx + startPos);
         if(!isSpaceLine(LL1)) // ... and it's not just space
             appendCell(LL1);
     }
@@ -170,7 +170,6 @@ export const gfm_table_traits: GFM_TableTraits = {
             return "soft";
 
         if(this.B.format.length > 0) { // after delimiter row -> is content row
-            // TODO!!
             setTableParsingStage(this, "body");
             return "soft";
         }
@@ -189,7 +188,6 @@ export const gfm_table_traits: GFM_TableTraits = {
 
     postprocessContentLine(LL, bct) {
         const stage = getTableParsingStage(this);
-        console.log(`Postprocess (${stage}) "${lineContent(LL)}".`)
         if(stage === "delimiter" || LL.type !== "text")
             return LL;
         const section = (stage === "header" ? this.B.head : this.B.body);
@@ -202,17 +200,20 @@ export const gfm_table_traits: GFM_TableTraits = {
             else if(this.B.nColumns !== nCols)
                 throw new Error("rgergregergerhrtyh")
         }
+
+        // body row
+        while(cells.length > this.B.nColumns)
+            cells.pop();
+        while(cells.length < this.B.nColumns)
+            cells.push({ LL: sliceLine(LL, LL.prefix.length + LL.content.length) /* empty slice */,  inlineContent: [] });
         section.rows.push({ LL,  cells });
 
-        //console.log(`Table line (${stage}) "${lineContent(LL)}"`, arr);
-        //return trimEndSpace(LL) as LogicalLine;
         return LL;
     },
 
     inlineProcessing(B) {
         if(!castExtensionBlock(B, gfm_table_traits))
             return;
-
 
         /*const IPP = this.MDP.MDPT.customInlineParserProviders[tabular_type];
         if(!IPP)    return;*/
@@ -253,15 +254,18 @@ function gfm_table_render(this: MarkdownRendererInstance, B: Block_Extension, I:
     }
     I.add('</thead>');
 
-    I.add('<tbody>'); // No line break befor <tr> !!
-    for(const R of B.body.rows) {
-        I.add('<tr>');
-        for(const C of R.cells) {
-            quickRow(this, I, `<td>`, C as TableCell & AnyBlock, undefined, `</td>`);
+    if(B.body.rows.length > 0) {
+        I.add('<tbody>'); // No line break befor <tr> !!
+        for(const R of B.body.rows) {
+            I.add('<tr>');
+            for(const C of R.cells) {
+                quickRow(this, I, `<td>`, C as TableCell & AnyBlock, undefined, `</td>`);
+            }
+            I.add('</tr>');
         }
-        I.add('</tr>');
+        I.add('</tbody>');
     }
-    I.add('</tbody>\n</table>');
+    I.add('</table>');
 }
 
 
@@ -276,7 +280,10 @@ const spreadContent = (LL: LogicalLine | undefined) => {
 }
 
 
-const gfmTable_ParagraphStopper: ParagraphStopper = function(LL, isFirst) {
+const gfmTable_ParagraphStopper: ParagraphStopper = function(LL, isFirst, isSoftContainerContinuation) {
+    if(isSoftContainerContinuation)
+        return undefined;
+
     const tableTraits = this.MDP.MDPT.getBlockTraits(gfm_table_traits.blockType) as GFM_TableTraits;
     const format = isDelimiterRow.call(tableTraits, LL);
     const content = spreadContent(this.B.content);
@@ -293,7 +300,6 @@ const gfmTable_ParagraphStopper: ParagraphStopper = function(LL, isFirst) {
             break;
         const row: TableCell[] = [];
         const nHeader = splitRow(LL as LogicalLine, row);
-        console.log(`Header has ${nHeader}, expecting ${format.length}.`);
         if(nHeader !== format.length) // column count mismatch between header and delimiter row
             break;
         ++nHeaderLines;
