@@ -3,7 +3,18 @@ import { InlineEltTraits } from "../traits.js";
 import { contentSlice } from "../util.js";
 
 
-export const codeSpan_traits: InlineEltTraits<"codeSpan"> = {
+export interface InlineEltTraits_Extra {
+    /* Normally inside a code span there is no backslash escaping at all.
+     * But GFM tables need it because inside cells ALL pipe characters must be escaped or they would be interpreted as column separators.
+     * To achieve this in a consistent way we make this behaviour a traits option in codeSpan which the GFM table element can then
+     * select for its content parser.
+     */
+    escapedPipes: boolean; // Default false
+}
+
+export type CodeSpanTraits = InlineEltTraits<"codeSpan", InlineElement<"codeSpan">, InlineEltTraits_Extra>;
+
+export const codeSpan_traits: CodeSpanTraits = {
     startChars: [ '`' ],
 
     parse(It, B, pos0) {
@@ -26,9 +37,13 @@ export const codeSpan_traits: InlineEltTraits<"codeSpan"> = {
                 break;
             case '`':
                 ++non_space;
-                if(++marker_out_length === marker_in_length && It.peek() !== '`')
-                    return extractCodeSpan(B, pos0, It.newPos(), marker_in_length,
-                                           space_in && space_out && non_space != marker_in_length ? "spaced" : "normal");
+                if(++marker_out_length === marker_in_length && It.peek() !== '`') {
+                    extractCodeSpan(B, pos0, It.newPos(), marker_in_length,
+                                    space_in && space_out && non_space != marker_in_length ? "spaced" : "normal");
+                    if(this.traits.escapedPipes)
+                        B.content = B.content.replace(/\\\|/g, '|');
+                    return true;
+                }
                 break;
             case false: // block ended in unclosed code span
                 return false;
@@ -41,6 +56,8 @@ export const codeSpan_traits: InlineEltTraits<"codeSpan"> = {
             s = It.pop();
         }
     },
+
+    escapedPipes: false,
 
     defaultElementInstance: {
         type:    "codeSpan",

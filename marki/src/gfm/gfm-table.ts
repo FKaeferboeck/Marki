@@ -9,6 +9,7 @@ import { InlineParserProvider, InlineParsingContext } from "src/inline-parsing-c
 import { makeBlockContentIterator } from "src/util.js";
 import { pairUpDelimiters } from "src/delimiter-processing.js";
 import { quickRow } from "src/renderer/util.js";
+import { codeSpan_traits, CodeSpanTraits } from "src/inline/code-span.js";
 
 export type TabularHalign = null | "left" | "right" | "center" | "justify";
 const halign_finder: Record<string, TabularHalign> = { '<': "left",  '>': "right",  '><': "center",  '<>': "justify" };
@@ -111,16 +112,20 @@ function splitRow(LL: LogicalLine, row_out: TableCell[]) {
         ++nCells;
     };
 
+    let firstFind = true;
     while(rexres = rex.exec(s)) {
-        if((rexres[1].length % 2) === 0) // even length == odd number of backslashes == escaped pipe
+        const nMatch = rexres[1].length;
+        if((nMatch % 2) === 0) // even length == odd number of backslashes == escaped pipe
             continue;
-        const LL1 = sliceLine_fromTo(LL, nPfx + startPos, rexres.index! - startPos); // TODO!! end pos rexres.index
+        const LL1 = sliceLine_fromTo(LL, nPfx + startPos, rexres.index! - startPos + nMatch - 1);
         startPos = rex.lastIndex;
-        if(nCells == 0 && isSpaceLine(LL1)) // to the left of an initial | there is no cell, but maybe space
+        const skipLeading = (firstFind && isSpaceLine(LL1)); // to the left of an initial | there is no cell, but maybe space
+        firstFind = false;
+        if(skipLeading)
             continue;
         appendCell(LL1);
     }
-    if(startPos < s.length) { // there's something left after the last delimiter
+    if(startPos < s.length) { // there's something remaining after the last delimiter
         const LL1 = sliceLine(LL, nPfx + startPos);
         if(!isSpaceLine(LL1)) // ... and it's not just space
             appendCell(LL1);
@@ -215,9 +220,9 @@ export const gfm_table_traits: GFM_TableTraits = {
         if(!castExtensionBlock(B, gfm_table_traits))
             return;
 
-        /*const IPP = this.MDP.MDPT.customInlineParserProviders[tabular_type];
-        if(!IPP)    return;*/
-        const IPP = this.MDP.MDPT.inlineParser_standard
+        const IPP = this.MDP.MDPT.customInlineParserProviders[gfm_table_traits.blockType];
+        if(!IPP)
+            return;
 
         inlineProcessTabularSection(this, IPP, B.head);
         inlineProcessTabularSection(this, IPP, B.body);
@@ -311,9 +316,12 @@ const gfmTable_ParagraphStopper: ParagraphStopper = function(LL, isFirst, isSoft
 
 
 export function register_gfm_table(MDPT: MarkdownParserTraits, MDRT?: MarkdownRendererTraits) {
-    //MDPT.inlineParser_standard.traits[name_gfm_autolink] = gfm_autolink_traits;
     MDPT.addExtensionBlocks(gfm_table_traits, "before", "sectionHeader_setext");
     if(MDRT)
         MDRT.blockHandler[gfm_table_traits.blockType] = gfm_table_render;
     addParagraphStopper(MDPT, gfmTable_ParagraphStopper);
+
+    const table_cell_parser = new InlineParserProvider(MDPT, MDPT.inlineParser_standard);
+    (table_cell_parser.traits["codeSpan"] = { ... codeSpan_traits }).escapedPipes = true;
+    MDPT.customInlineParserProviders[gfm_table_traits.blockType] = table_cell_parser;
 }

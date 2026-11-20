@@ -68,46 +68,59 @@ export function doTest(idx: number | string, input: string, myParserResult: stri
 describe('CFM table', () => {
     /*doTest( 1, 'prehead\nprehead2\n |  head *yes* | head `col2`| \n|---|--\nbody 1\n',
                '<p>prehead\nprehead2</p>\nT{H:head <em>yes</em>,head <code>col2</code>;body 1}\n');*/
-
+    // Just a simple table
+    doTest( 1, '|H1a|H1b\n|-|-|\n|B1a|B1b|\n|B2a|B2b|',
+               'T{H:H1a,H1b;B1a,B1b;B2a,B2b}\n');
     
+    // Table cells (header and body) can be empty
+    doTest( 2, '||H1b\n|-|-|\n|B1a||\n|  |B2b|',
+               'T{H:,H1b;B1a,;,B2b}\n');
+    
+    // There is regular inline processing in table cells; | can occur through backslash escaping
+    doTest( 3, '|H1a|H1 *italic* b\n|-|-|\n|B1a|B\\|1\\\\\\|b\\\\|\n|B2a|B2b|',
+               'T{H:H1a,H1 <em>italic</em> b;B1a,B|1\\|b\\;B2a,B2b}\n');
+    
+    // Pipes must be escaped even in preformatted content because column splitting is done before inline parsing
+    doTest( 4, '|H1a|H1b\n|-|-|\n|`B1|a`|B1b|\n|`B2\\|a`|B2b|',
+               'T{H:H1a,H1b;`B1,a`;<code>B2|a</code>,B2b}\n');
     
     // GFM tables do not allow multiple header lines
-    doTest( 1, '|h1|\n|h2|\n|-|\n|b1|',
+    doTest( 5, '|h1|\n|h2|\n|-|\n|b1|',
                '<p>|h1|</p>\nT{H:h2;b1}\n');
 
     // GFM tables do not allow multi-line rows
-    doTest( 2, '|H1a|H1b\n|-|-\n|b1|\\\n|b2|',
+    doTest( 6, '|H1a|H1b\n|-|-\n|b1|\\\n|b2|',
                'T{H:H1a,H1b;b1,\\;b2,}\n');
 
     // A GFM table can interrupt a paragraph
-    doTest( 3, 'P\nH1\n|-|\n|B1|',
+    doTest( 7, 'P\nH1\n|-|\n|B1|',
                '<p>P</p>\nT{H:H1;B1}\n');
 
     // .. but not other soft-continued block content
-    doTest( 4, '* L1\nL2\nH1\n|-|\n|B1|',
+    doTest( 8, '* L1\nL2\nH1\n|-|\n|B1|',
                '<ul>\n<li>L1\nL2\nH1\n|-|\n|B1|</li>\n</ul>\n');
 
     // Leading and trailing |s can be ommitted from the delimiter line, but if ther is only one column, interpretation as a SETEXT header will take precedence.
-    doTest( 5, '|H1|\n----\n|B1|',
+    doTest( 9, '|H1|\n----\n|B1|',
                '<h2>|H1|</h2>\n<p>|B1|</p>\n');
 
     // There can be space surrounding cell content, including in the delimiter row
-    doTest( 6, '| H1 |\n|  ----  |  \n| B1 |',
+    doTest(10, '| H1 |\n|  ----  |  \n| B1 |',
                'T{H:H1;B1}\n');
     
     // Differences in surrounding |s are fine though.
-    doTest( 7, ' |H1a|H1b|H1c|  \n--|--|--\n|B1a|B1b|B1c|',
+    doTest(11, ' |H1a|H1b|H1c|  \n--|--|--\n|B1a|B1b|B1c|',
                'T{H:H1a,H1b,H1c;B1a,B1b,B1c}\n');
     
     // Headerless tables do not exist in CFM.
-    doTest( 8, '--|--|--\n|B1a|B1b|B1c|',
+    doTest(12, '--|--|--\n|B1a|B1b|B1c|',
                '<p>--|--|--\n|B1a|B1b|B1c|</p>\n');
 
     // Tables without body are allowed.
-    doTest( 9, '|H1a|H1b|H1c|\n--|--|--',
+    doTest(13, '|H1a|H1b|H1c|\n--|--|--',
                'T{H:H1a,H1b,H1c}\n');
     
     // Deviating numbers of columns in body rows are trimmed away or padded with empty cells, respectively.
-    doTest(10, '|H1a|H1b|\n--|--\n |B1a|B1b|B1c|\n B2a',
+    doTest(14, '|H1a|H1b|\n--|--\n |B1a|B1b|B1c|\n B2a',
                'T{H:H1a,H1b;B1a,B1b;B2a,}\n');
 });
