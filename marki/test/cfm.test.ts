@@ -77,8 +77,6 @@ export function doTest(idx: number | string, input: string, myParserResult: stri
 
 
 describe('CFM table', () => {
-    /*doTest( 1, 'prehead\nprehead2\n |  head *yes* | head `col2`| \n|---|--\nbody 1\n',
-               '<p>prehead\nprehead2</p>\nT{H:head <em>yes</em>,head <code>col2</code>;body 1}\n');*/
     // Just a simple table
     doTest( 1, '|H1a|H1b\n|-|-|\n|B1a|B1b|\n|B2a|B2b|',
                'T{H:H1a,H1b;B1a,B1b;B2a,B2b}\n');
@@ -142,4 +140,23 @@ describe('CFM table', () => {
     // hard block starts end a table
     doTest(16, '|H1a|H1b|\n|-|-|\n|B1a|B1b|\n> Quote',
                'T{H:H1a,H1b;B1a,B1b}\n<blockquote>\n<p>Quote</p>\n</blockquote>\n');
+});
+
+
+describe('GFM task list item', () => {
+    doTest(279, '- [ ] foo\n- [x] bar',
+                '<ul>\n<li><input disabled="" type="checkbox"> foo</li>\n<li><input checked="" disabled="" type="checkbox"> bar</li>\n</ul>\n');
+
+    /* Behind the checkbox marker there has to be whitespace AND some paragraph content.
+     * The whitespace is swallowed by the task list item (i.e. it won't cause the following content to be an indented code block)
+     * and is passed through as-is.
+     */
+    doTest(279.1, '- [ ] \n- [ ]foo\n- [x]\t  bar',
+                  '<ul>\n<li>[ ] </li>\n<li>[ ]foo</li>\n<li><input checked="" disabled="" type="checkbox">[\\t]  bar</li>\n</ul>\n');
+
+    doTest(280, '- [x] foo\n  - [ ] bar\n  - [x] baz\n- [ ] bim',
+                '<ul>\n<li><input checked="" disabled="" type="checkbox"> foo\n' + 
+                '<ul>\n<li><input disabled="" type="checkbox"> bar</li>\n<li><input checked="" disabled="" type="checkbox"> baz</li>\n' + 
+                '</ul>\n</li>\n<li><input disabled="" type="checkbox"> bim</li>\n</ul>\n');
+
 });

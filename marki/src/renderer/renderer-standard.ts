@@ -24,7 +24,7 @@ export function emphasisTag(direction: "open" | "close", weight: number) {
 const emph_renderer = (I: Inserter, direction: "open" | "close", _type: string, weight: number) => I.add(emphasisTag(direction, weight));
 
 const listItemOpener = (B: Block_Container<"listItem">) =>
-    (typeof B.github_checkbox !== "boolean" ? '<li>' : `<li><input type="checkbox"${B.github_checkbox ? ' checked' : ''} disabled>`);
+    (typeof B.GFM_checkbox !== "boolean" ? '<li>' : `<li><input${B.GFM_checkbox ? ' checked=""' : ''} disabled="" type="checkbox">${B.GFM_checkbox_prefix_space}`);
 
 
 export const inlineHandler_normal: InlineRenderHandler = {

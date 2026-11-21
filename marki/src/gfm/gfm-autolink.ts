@@ -1,5 +1,5 @@
 import { ExtensionInlineElementType, InlineElement, InlineElementBase } from "../markdown-types.js";
-import { InlineElementTraits } from "../traits.js";
+import { InlineEltTraits_ } from "../traits.js";
 import { BlockContentIterator } from "../util.js";
 import { MarkdownParserTraits } from "../markdown-parser.js";
 import { Inserter, MarkdownRendererTraits } from "../renderer/renderer.js";
@@ -16,7 +16,7 @@ interface GFM_Autolink {
 }
 
 
-export const gfm_autolink_traits: InlineElementTraits<name_gfm_autolink_t, GFM_Autolink & InlineElement<name_gfm_autolink_t>> = {
+export const gfm_autolink_traits: InlineEltTraits_<name_gfm_autolink_t, GFM_Autolink & InlineElement<name_gfm_autolink_t>> = {
     startChars: [ 'h', 'm', 'w', 'x', '@' ],
 
     parse(It, B) {

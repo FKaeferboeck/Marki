@@ -21,7 +21,8 @@ export const checkboxListItem_active = (MDP: MarkdownParser) => ((MDP.globalCtx 
 export interface ListItem {
     marker:           "*" | "-" | "+" | "." | ")";
     marker_number?:   number;
-    github_checkbox?: boolean; // if feature is active
+    GFM_checkbox?:              boolean; // if feature is active
+    GFM_checkbox_prefix_space?: string;  //
     indent:           number;
     isLooseItem:      boolean;
     parentList:       List | undefined;
@@ -66,19 +67,21 @@ export const listItem_traits = makeBlockContainerTraits("listItem", {
             space = 1;
 
         let offs = rexres[1].length + space;
+        B.indent = LL.indent + offs;
+
         if(markerType === "unordered" && checkboxListItem_active(this.MDP) &&
-           (rexres = /^.[ \t]+\[([ \tx]+)\]/.exec(LL.content)))
+           (rexres = /^.[ \t]+\[([ \tx]+)\](\s+)(?=\S)/.exec(LL.content)))
         {
             const checked = rexres[1].split('').reduce((p, c) => p + +(c === 'x'), 0);
             if (checked <= 1) {
-                offs += 2 + rexres[1].length;
-                B.github_checkbox = Boolean(checked);
+                B.GFM_checkbox_prefix_space = rexres[2];
+                offs += 2 + rexres[1].length + B.GFM_checkbox_prefix_space.length;
+                B.GFM_checkbox = Boolean(checked);
             }
         }
 
-        B.indent = LL.indent + offs;
         this.setCheckpoint(LL);
-        return B.indent;
+        return LL.indent + offs;
     },
     
     continuesHere(LL) {
