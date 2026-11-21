@@ -1,15 +1,15 @@
 import { BlockTraits_, BlockTraits, castExtensionBlock } from "../traits.js";
-import { isSpaceLine, lineContent, LogicalLine, LogicalLine_text, LogicalLine_with_cmt, Slice, sliceLine, sliceLine_fromTo, standardBlockStart } from "../linify.js";
+import { isSpaceLine, LogicalLine, LogicalLine_text, LogicalLine_with_cmt, Slice, sliceLine, sliceLine_fromTo, standardBlockStart } from "../linify.js";
 import { AnyBlock, Block_Extension, ExtensionBlockType, InlineContent } from "../markdown-types.js";
 import { MarkdownParserTraits } from "../markdown-parser.js";
 import { Inserter, MarkdownRendererInstance, MarkdownRendererTraits } from "../renderer/renderer.js";
 import { addParagraphStopper, endRejectingLines, ParagraphStopper } from "../blocks/paragraph.js";
-import { BlockParser, ParsingContext } from "src/block-parser.js";
-import { InlineParserProvider, InlineParsingContext } from "src/inline-parsing-context.js";
-import { makeBlockContentIterator } from "src/util.js";
-import { pairUpDelimiters } from "src/delimiter-processing.js";
-import { quickRow } from "src/renderer/util.js";
-import { codeSpan_traits, CodeSpanTraits } from "src/inline/code-span.js";
+import { BlockParser, ParsingContext } from "../block-parser.js";
+import { InlineParserProvider, InlineParsingContext } from "../inline-parsing-context.js";
+import { makeBlockContentIterator } from "../util.js";
+import { pairUpDelimiters } from "../delimiter-processing.js";
+import { quickRow } from "../renderer/util.js";
+import { codeSpan_traits } from "../inline/code-span.js";
 
 export type TabularHalign = null | "left" | "right" | "center" | "justify";
 const halign_finder: Record<string, TabularHalign> = { '<': "left",  '>': "right",  '><': "center",  '<>': "justify" };
@@ -163,14 +163,7 @@ export const gfm_table_traits: GFM_TableTraits = {
         if(LL.type !== "text")
             return "end";
 
-        /* The following property is only set when that line was previously recognized as a soft container continuation, and the paragraph it was in was then rejected.
-         * Since in that scenario we might have accepted a setext end line as a paragraph continuation, when we reparse it as a setext header we want it to remain as such,
-         * so that the setext header doesn't end earlier than we expect it to.
-         * Example:
-         *      > paragraph content start
-         *      =========================        <- would be setext end line but is accepted as paragraph continuation instead because it softly continues a block quote
-         *      > -----------------------        <- here the paragraph gets rejected and reparsed as setext header => that's where that setext header should end and not in the previous line
-         */
+        // See paragraph.ts for an explanation of this property:
         if(LL.isSoftContainerContinuation)
             return "soft";
 
@@ -251,10 +244,13 @@ function gfm_table_render(this: MarkdownRendererInstance, B: Block_Extension, I:
         return;
     I.add('<table>').add('<thead>');
     for(const R of B.head.rows) {
+        B.format[0].halign
         I.add('<tr>');
-        for(const C of R.cells) {
-            quickRow(this, I, `<th>`, C as TableCell & AnyBlock, undefined, `</th>`);
-        }
+        R.cells.forEach((C, i) => {
+            const halign = B.format[i].halign;
+            quickRow(this, I, halign ? `<th align="${halign}">` : `<th>`,
+                     C as TableCell & AnyBlock, undefined, `</th>`);
+        });
         I.add('</tr>');
     }
     I.add('</thead>');
@@ -263,9 +259,11 @@ function gfm_table_render(this: MarkdownRendererInstance, B: Block_Extension, I:
         I.add('<tbody>'); // No line break befor <tr> !!
         for(const R of B.body.rows) {
             I.add('<tr>');
-            for(const C of R.cells) {
-                quickRow(this, I, `<td>`, C as TableCell & AnyBlock, undefined, `</td>`);
-            }
+            R.cells.forEach((C, i) => {
+                const halign = B.format[i].halign;
+                quickRow(this, I, halign ? `<td align="${halign}">` : `<td>`,
+                         C as TableCell & AnyBlock, undefined, `</td>`);
+            });
             I.add('</tr>');
         }
         I.add('</tbody>');

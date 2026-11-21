@@ -16,11 +16,23 @@ const renderer = new MarkdownRendererInstance(parser);
 
 const clearify = (s: string) => s.replace(/\t/g, '[\\t]');
 
+type Format = undefined | "left" | "right" | "center";
+const formats: Record<string, Format> = { r: 'right',  l: 'left',  c: 'center' };
 function tableTest(s: string) {
+    let format: Format[] = [];
+    const doRow = (row: string, eltName: string) =>
+        row.split(',').map((s, i) => `<${eltName}${format[i]?` align="${format[i]}"`:''}>${s}</${eltName}>`).join('\n');
+
     return s.replace(/T{.*}/g, table => {
-        const rows = table.slice(2, table.length - 1).split(';').map(row =>
-            (row.startsWith('H:') ? { header: true,   txt: `<tr>\n<th>${row.slice(2).replace(/,/g, '</th>\n<th>')}</th>\n</tr>` }
-                                  : { header: false,  txt: `<tr>\n<td>${row.replace(/,/g, '</td>\n<td>')}</td>\n</tr>` }));
+        const rows = table.slice(2, table.length - 1).split(';')
+            .filter(row => {
+                if(!row.startsWith('A:'))
+                    return true;
+                format = row.slice(2).split('').map(c => formats[c]);
+                return false;
+            })        
+            .map(row => (row.startsWith('H:') ? { header: true,   txt: `<tr>\n${doRow(row.slice(2), 'th')}\n</tr>` }
+                                              : { header: false,  txt: `<tr>\n${doRow(row, 'td')}\n</tr>` }));
         let h: boolean | undefined;
         const arr: string[] = [ '<table>' ];
         for(const row of rows) {
@@ -64,7 +76,6 @@ export function doTest(idx: number | string, input: string, myParserResult: stri
 
 
 
-
 describe('CFM table', () => {
     /*doTest( 1, 'prehead\nprehead2\n |  head *yes* | head `col2`| \n|---|--\nbody 1\n',
                '<p>prehead\nprehead2</p>\nT{H:head <em>yes</em>,head <code>col2</code>;body 1}\n');*/
@@ -81,8 +92,8 @@ describe('CFM table', () => {
                'T{H:H1a,H1 <em>italic</em> b;B1a,B|1\\|b\\;B2a,B2b}\n');
     
     // Pipes must be escaped even in preformatted content because column splitting is done before inline parsing
-    doTest( 4, '|H1a|H1b\n|-|-|\n|`B1|a`|B1b|\n|`B2\\|a`|B2b|',
-               'T{H:H1a,H1b;`B1,a`;<code>B2|a</code>,B2b}\n');
+    doTest( 4, '`Q\\|Q`\n\n|H1a|H1b\n|-|-|\n|`B1|a`|B1b|\n|`B2\\|a`|B2b|',
+               '<p><code>Q\\|Q</code></p>\nT{H:H1a,H1b;`B1,a`;<code>B2|a</code>,B2b}\n');
     
     // GFM tables do not allow multiple header lines
     doTest( 5, '|h1|\n|h2|\n|-|\n|b1|',
@@ -123,4 +134,12 @@ describe('CFM table', () => {
     // Deviating numbers of columns in body rows are trimmed away or padded with empty cells, respectively.
     doTest(14, '|H1a|H1b|\n--|--\n |B1a|B1b|B1c|\n B2a',
                'T{H:H1a,H1b;B1a,B1b;B2a,}\n');
+
+    // horizontal cell alignment
+    doTest(15, '|H1a|H1b|H1c|\n-:|:-|:-:\n|B1a|B1b|B1c|',
+               'T{A:rlc;H:H1a,H1b,H1c;B1a,B1b,B1c}\n');
+    
+    // hard block starts end a table
+    doTest(16, '|H1a|H1b|\n|-|-|\n|B1a|B1b|\n> Quote',
+               'T{H:H1a,H1b;B1a,B1b}\n<blockquote>\n<p>Quote</p>\n</blockquote>\n');
 });

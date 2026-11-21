@@ -1,7 +1,7 @@
 import { BlockParser, BlockParser_Standard } from "../block-parser.js";
-import { BlockContinuationType, BlockTraits, castExtensionBlock, makeBlockTraits } from "../traits.js";
+import { BlockContinuationType, BlockTraits } from "../traits.js";
 import { setext_end_line } from "./sectionHeader_setext.js";
-import { lineContent, LogicalLine, LogicalLine_with_cmt } from "../linify.js";
+import { LogicalLine, LogicalLine_with_cmt } from "../linify.js";
 import { MarkdownParserTraits } from "../markdown-parser.js";
 import { BlockIndividualData } from "src/markdown-types.js";
 
@@ -11,7 +11,7 @@ export interface Paragraph { };
 export type ParagraphStopper =
     (this: BlockParser<"paragraph">, LL: LogicalLine, isFristLineOfParagrapg: boolean, isSoftContainerContinuation: boolean) => BlockContinuationType | undefined;
 
-interface ParagraphTraits_Extra {
+export interface ParagraphTraits_Extra {
     paragraphStoppers: ParagraphStopper[];
 }
 

@@ -18,7 +18,7 @@ var commonmark_writer = new commonmark.HtmlRenderer();
 
 const clearify = (s: string) => s.replace(/\t/g, '[\\t]');
 
-export function doTest(idx: number | string, input: string, myParserResult?: string) {
+export function doTest(idx: number | string, input: string, myParserResult?: string, log?: boolean) {
     test('' + idx, async () => {
         const doc: MarkiDocument = {
             URL: `Marki-UnitTest-${idx}.sdsmd`,
@@ -35,8 +35,8 @@ export function doTest(idx: number | string, input: string, myParserResult?: str
         await parser_withCommentLines.processDocument(doc);
         const my_result_custom = clearify(renderer.renderAsString(doc.blocks));
 
-        /*if(idx === "308a")
-            console.log(linify(input, true));*/
+        if(log)
+            console.log(`Result test ${idx}: [${my_result_custom}]`);
 
         const commonmark_parsed = commonmark_reader.parse(input);
         const commonmark_result = clearify(commonmark_writer.render(commonmark_parsed) as string);

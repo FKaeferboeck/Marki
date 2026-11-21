@@ -42,6 +42,7 @@ export const codeSpan_traits: CodeSpanTraits = {
                                     space_in && space_out && non_space != marker_in_length ? "spaced" : "normal");
                     if(this.traits.escapedPipes)
                         B.content = B.content.replace(/\\\|/g, '|');
+                    // ^ This is a bit of a hack. In the future we'll want "proper" inline processing here, which might be useful for VS Code Markdown extensions and similar.
                     return true;
                 }
                 break;
