@@ -3,6 +3,7 @@ import { InlineEltTraits_ } from "../traits.js";
 import { BlockContentIterator } from "../util.js";
 import { MarkdownParserTraits } from "../markdown-parser.js";
 import { Inserter, MarkdownRendererTraits } from "../renderer/renderer.js";
+import { escapeXML } from "../renderer/util.js";
 
 export const name_gfm_autolink = "ext_gfm_autolink" as ExtensionInlineElementType;
 type name_gfm_autolink_t = typeof name_gfm_autolink;
@@ -19,8 +20,9 @@ interface GFM_Autolink {
 export const gfm_autolink_traits: InlineEltTraits_<name_gfm_autolink_t, GFM_Autolink & InlineElement<name_gfm_autolink_t>> = {
     startChars: [ 'h', 'm', 'w', 'x', '@' ],
 
-    parse(It, B) {
+    parse(It, B, P0_) {
         const c0 = It.peek();
+        let P0 = { ... P0_  };
         if(c0 === '@') {
             // '@' appears in the middle of an email address, so we rewind to find the beginning
             let c: string | false = false;
@@ -31,12 +33,14 @@ export const gfm_autolink_traits: InlineEltTraits_<name_gfm_autolink_t, GFM_Auto
             }
             if(!found)
                 return false;
+            P0 = It.newPos();
         }
         // TODO!! check preconditions!
 
+        let rexres: false | RegExpMatchArray = false;
         switch(c0) {
         case 'h':
-            let rexres = It.regexInLine(/^https?:\/\//);
+            rexres = It.regexInLine(/^https?:\/\//);
             if(!rexres)
                 return false;
             if(!takeURL(It, B))
@@ -45,6 +49,8 @@ export const gfm_autolink_traits: InlineEltTraits_<name_gfm_autolink_t, GFM_Auto
             return true;
 
         case 'w':
+            if(!It.startsWith('www.', false))
+                return false;
             return takeURL(It, B);
 
         case 'm':
@@ -61,7 +67,10 @@ export const gfm_autolink_traits: InlineEltTraits_<name_gfm_autolink_t, GFM_Auto
             return true;
 
         case '@':
-            return takeEmail(It, B);
+            if(!takeEmail(It, B))
+                return false;
+            P0_.char_idx = P0.char_idx;
+            return true;
 
         default:
             return false; // unreachable because of the startChars condition
@@ -77,15 +86,12 @@ export const gfm_autolink_traits: InlineEltTraits_<name_gfm_autolink_t, GFM_Auto
 
 
 function takeURL(It: BlockContentIterator, B: GFM_Autolink) {
-    if(It.peek() !== 'w')
-        return false;
-
-    let rexres = It.regexInLine(/^www(\.[\w\-]+)+([^\s<]*)/);
+    let rexres = It.regexInLine(/^([\w\-]+(?:\.[\w\-]+)+)([^\s<]*)/);
     if(!rexres)
         return false;
 
     // no underscore is allowed in the last two segments:
-    const segments = rexres[1].slice(1).split('.'); // by the regex there is at least one non-null segment
+    const segments = rexres[1].split('.'); // by the regex there is at least one non-null segment
     const n = segments.length;
     if(segments[n - 1].indexOf('_') >= 0 || (n > 1 && segments[n - 2].indexOf('_') >= 0))
         return false;
@@ -113,7 +119,9 @@ function takeURL(It: BlockContentIterator, B: GFM_Autolink) {
         }
     }
 
-    // TODO!! rewind!
+    while(rewind-- > 0)
+        It.unpop();
+    B.URI = url;
     return true;
 }
 
@@ -145,13 +153,13 @@ function gfm_autolink_render(elt: InlineElementBase<`ext_${string}_${string}`>, 
     case "https":
         prefix_display = prefix = X.scheme + '://';    break;
     }
-    const URI = `${X.URI}${X.xmpp_resource || ''}`;
+    const URI = escapeXML(`${X.URI}${X.xmpp_resource || ''}`);
     I.add(`<a href="${prefix}${URI}">${prefix_display}${URI}</a>`);
 }
 
 
-export function register_gfm_autolink(MDPT: MarkdownParserTraits, MDR?: MarkdownRendererTraits) {
+export function register_gfm_autolink(MDPT: MarkdownParserTraits, MDRT?: MarkdownRendererTraits) {
     MDPT.inlineParser_standard.traits[name_gfm_autolink] = gfm_autolink_traits;
-    if(MDR)
-        MDR.elementHandlers_plain[name_gfm_autolink] = gfm_autolink_render;
+    if(MDRT)
+        MDRT.elementHandlers[name_gfm_autolink] = gfm_autolink_render;
 }

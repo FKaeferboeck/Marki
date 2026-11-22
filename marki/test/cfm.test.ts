@@ -54,7 +54,7 @@ function tableTest(s: string) {
 
 
 
-export function doTest(idx: number | string, input: string, myParserResult: string) {
+export function doTest(idx: number | string, input: string, myParserResult: string | string[]) {
     test('' + idx, async () => {
         const doc: MarkiDocument = {
             URL: `Marki-UnitTest-${idx}.sdsmd`,
@@ -68,6 +68,8 @@ export function doTest(idx: number | string, input: string, myParserResult: stri
         await parser.processDocument(doc);
 
         const my_result_custom = clearify(renderer.renderAsString(doc.blocks));
+        if(typeof myParserResult !== "string")
+            myParserResult = myParserResult.join('\n') + '\n';
         const expected_result = tableTest(myParserResult);
 
         expect(my_result_custom).toEqual(expected_result);
@@ -173,4 +175,53 @@ describe('GFM strikethrough', () => {
                   '<p>This will ~~~not~~~ strike.</p>\n');
     doTest(493.1, 'But \\~~~this\\~~~ will. But \\\\~~~not~~ this.',
                   '<p>But ~<del>this~</del> will. But \\~~~not~~ this.</p>\n');
+});
+
+
+describe('GFM autolink', () => {
+    doTest(622, 'www.commonmark.org',
+                '<p><a href="http://www.commonmark.org">www.commonmark.org</a></p>\n');
+    doTest(623, 'Visit www.commonmark.org/help for more information.',
+                '<p>Visit <a href="http://www.commonmark.org/help">www.commonmark.org/help</a> for more information.</p>\n');
+    doTest(624, 'Visit www.commonmark.org.\n\nVisit www.commonmark.org/a.b.', [
+                '<p>Visit <a href="http://www.commonmark.org">www.commonmark.org</a>.</p>',
+                '<p>Visit <a href="http://www.commonmark.org/a.b">www.commonmark.org/a.b</a>.</p>' ]);
+    doTest(625, 'www.google.com/search?q=Markup+(business)\n\nwww.google.com/search?q=Markup+(business)))\n\n(www.google.com/search?q=Markup+(business))\n\n(www.google.com/search?q=Markup+(business)', [
+                '<p><a href="http://www.google.com/search?q=Markup+(business)">www.google.com/search?q=Markup+(business)</a></p>',
+                '<p><a href="http://www.google.com/search?q=Markup+(business)">www.google.com/search?q=Markup+(business)</a>))</p>',
+                '<p>(<a href="http://www.google.com/search?q=Markup+(business)">www.google.com/search?q=Markup+(business)</a>)</p>',
+                '<p>(<a href="http://www.google.com/search?q=Markup+(business)">www.google.com/search?q=Markup+(business)</a></p>' ]);
+    doTest(626, 'www.google.com/search?q=(business))+ok',
+                '<p><a href="http://www.google.com/search?q=(business))+ok">www.google.com/search?q=(business))+ok</a></p>\n');
+    doTest(627, 'www.google.com/search?q=commonmark&hl=en\n\nwww.google.com/search?q=commonmark&hl;', [
+                '<p><a href="http://www.google.com/search?q=commonmark&amp;hl=en">www.google.com/search?q=commonmark&amp;hl=en</a></p>',
+                '<p><a href="http://www.google.com/search?q=commonmark">www.google.com/search?q=commonmark</a>&amp;hl;</p>' ]);
+    doTest(628, 'www.commonmark.org/he<lp',
+                '<p><a href="http://www.commonmark.org/he">www.commonmark.org/he</a>&lt;lp</p>\n');
+    doTest(629, 'http://commonmark.org\n\n(Visit https://encrypted.google.com/search?q=Markup+(business))', [
+                '<p><a href="http://commonmark.org">http://commonmark.org</a></p>',
+                '<p>(Visit <a href="https://encrypted.google.com/search?q=Markup+(business)">https://encrypted.google.com/search?q=Markup+(business)</a>)</p>' ]);
+    doTest(630, 'foo@bar.baz',
+                '<p><a href="mailto:foo@bar.baz">foo@bar.baz</a></p>\n');
+    doTest(631, 'hello@mail+xyz.example isn\'t valid, but hello+xyz@mail.example is.',
+                '<p>hello@mail+xyz.example isn\'t valid, but <a href="mailto:hello+xyz@mail.example">hello+xyz@mail.example</a> is.</p>\n');
+    doTest(632, 'a.b-c_d@a.b\n\na.b-c_d@a.b.\n\na.b-c_d@a.b-\n\na.b-c_d@a.b_', [
+                '<p><a href="mailto:a.b-c_d@a.b">a.b-c_d@a.b</a></p>',
+                '<p><a href="mailto:a.b-c_d@a.b">a.b-c_d@a.b</a>.</p>',
+                '<p>a.b-c_d@a.b-</p>',
+                '<p>a.b-c_d@a.b_</p>' ]);
+    doTest(633, 'mailto:foo@bar.baz\n\nmailto:a.b-c_d@a.b\n\nmailto:a.b-c_d@a.b.\n\nmailto:a.b-c_d@a.b/\n\nmailto:a.b-c_d@a.b-\n\nmailto:a.b-c_d@a.b_\n\nxmpp:foo@bar.baz\n\nxmpp:foo@bar.baz.', [
+                '<p><a href="mailto:foo@bar.baz">mailto:foo@bar.baz</a></p>',
+                '<p><a href="mailto:a.b-c_d@a.b">mailto:a.b-c_d@a.b</a></p>',
+                '<p><a href="mailto:a.b-c_d@a.b">mailto:a.b-c_d@a.b</a>.</p>',
+                '<p><a href="mailto:a.b-c_d@a.b">mailto:a.b-c_d@a.b</a>/</p>',
+                '<p>mailto:a.b-c_d@a.b-</p>',
+                '<p>mailto:a.b-c_d@a.b_</p>',
+                '<p><a href="xmpp:foo@bar.baz">xmpp:foo@bar.baz</a></p>',
+                '<p><a href="xmpp:foo@bar.baz">xmpp:foo@bar.baz</a>.</p>' ]);
+    doTest(634, 'xmpp:foo@bar.baz/txt\n\nxmpp:foo@bar.baz/txt@bin\n\nxmpp:foo@bar.baz/txt@bin.com', [
+                '<p><a href="xmpp:foo@bar.baz/txt">xmpp:foo@bar.baz/txt</a></p>',
+                '<p><a href="xmpp:foo@bar.baz/txt@bin">xmpp:foo@bar.baz/txt@bin</a></p>',
+                '<p><a href="xmpp:foo@bar.baz/txt@bin.com">xmpp:foo@bar.baz/txt@bin.com</a></p>' ]);
+    doTest(635, 'xmpp:foo@bar.baz/txt/bin', '<p><a href="xmpp:foo@bar.baz/txt">xmpp:foo@bar.baz/txt</a>/bin</p>\n');
 });

@@ -21,5 +21,5 @@ export function extendGFM(MDPT: MarkdownParserTraits, MDRT? : MarkdownRendererTr
     set_checkboxListItem_active(MDPT, true);
     register_gfm_table    (MDPT, MDRT);
     register_strikethrough(MDPT, MDRT);
-    //register_gfm_autolink (MDPT, MDRT)
+    register_gfm_autolink (MDPT, MDRT)
 }
