@@ -66,7 +66,6 @@ export function doTest(idx: number | string, input: string, myParserResult: stri
         }
 
         await parser.processDocument(doc);
-
         const my_result_custom = clearify(renderer.renderAsString(doc.blocks));
         if(typeof myParserResult !== "string")
             myParserResult = myParserResult.join('\n') + '\n';
@@ -224,4 +223,17 @@ describe('GFM autolink', () => {
                 '<p><a href="xmpp:foo@bar.baz/txt@bin">xmpp:foo@bar.baz/txt@bin</a></p>',
                 '<p><a href="xmpp:foo@bar.baz/txt@bin.com">xmpp:foo@bar.baz/txt@bin.com</a></p>' ]);
     doTest(635, 'xmpp:foo@bar.baz/txt/bin', '<p><a href="xmpp:foo@bar.baz/txt">xmpp:foo@bar.baz/txt</a>/bin</p>\n');
+});
+
+
+describe('GFM HTML filter', () => {
+    doTest(657, '<strong> <title> <style> <em>\n\n<blockquote>\n  <xmp> is disallowed.  <XMP> is also disallowed.\n</blockquote>', [
+                '<p><strong> &lt;title> &lt;style> <em></p>',
+                '<blockquote>',
+                '  &lt;xmp> is disallowed.  &lt;XMP> is also disallowed.',
+                '</blockquote>' ]);
+    
+    // Also has to work for HTML inline content
+    doTest(657.1, 'Document <title>title</Title>',
+                  '<p>Document &lt;title>title&lt;/Title></p>\n');
 });

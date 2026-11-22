@@ -2,6 +2,7 @@ import { set_checkboxListItem_active } from "../blocks/listItem.js";
 import { MarkdownParserTraits } from "../markdown-parser.js";
 import { MarkdownRendererTraits } from "../renderer/renderer.js";
 import { register_gfm_autolink } from "./gfm-autolink.js";
+import { register_gfm_html_filter } from "./gfm-html-filter.js";
 import { register_gfm_table } from "./gfm-table.js";
 import { register_strikethrough } from "./strikethrough.js";
 
@@ -19,7 +20,8 @@ import { register_strikethrough } from "./strikethrough.js";
 
 export function extendGFM(MDPT: MarkdownParserTraits, MDRT? : MarkdownRendererTraits) {
     set_checkboxListItem_active(MDPT, true);
-    register_gfm_table    (MDPT, MDRT);
-    register_strikethrough(MDPT, MDRT);
-    register_gfm_autolink (MDPT, MDRT)
+    register_gfm_table      (MDPT, MDRT);
+    register_strikethrough  (MDPT, MDRT);
+    register_gfm_autolink   (MDPT, MDRT);
+    register_gfm_html_filter(MDPT, MDRT);
 }
