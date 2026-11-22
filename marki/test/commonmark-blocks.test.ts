@@ -264,6 +264,7 @@ describe('HTML blocks', () => {
     doTest(161, '<div></div>\n``` c\nint x = 33;\n```'); // Everything until the next blank line or end of document gets included in the HTML block
     doTest(162, '<a href="foo">\n*bar*\n</a>'); // To start an HTML block with a tag that is not in the list of block-level tags in (6), you must put the tag by itself on the first line (and it must be complete)
     doTest(163, '<Warning>\n*bar*\n</Warning>'); // In type 7 blocks, the tag name can be anything
+    doTest(163.1, 'Document <title>title</title>'); // Not a HTML block, there is normal text at the beginning
     doTest(164, '<i class="foo">\n*bar*\n</i>');
     doTest(165, '</ins>\n*bar*');
     doTest(166, '<del>\n*foo*\n</del>');     // as HTML block

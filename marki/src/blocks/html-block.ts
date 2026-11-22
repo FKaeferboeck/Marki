@@ -59,7 +59,7 @@ export const htmlBlock_traits = makeBlockTraits("htmlBlock", {
         }
 
         let rexres: RegExpMatchArray | null = null;
-        if((rexres = /<\/?([A-Za-z]+)(?=[ \t>]|\/>|$)/.exec(LL.content)) && case6elements[rexres[1].toLowerCase()]) {
+        if((rexres = /^<\/?([A-Za-z]+)(?=[ \t>]|\/>|$)/.exec(LL.content)) && case6elements[rexres[1].toLowerCase()]) {
             B.htmlType = "knownElement";
             return 0;
         }
