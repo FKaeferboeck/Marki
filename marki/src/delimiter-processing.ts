@@ -89,14 +89,14 @@ export function makeDelimiter(It: BlockContentIterator, delim: string, expected_
             delim,  endDelimStartChar: expected_end_delim,
             isOpener: true,  active: true,
             startPos,  endPos
-        };
+        }; // Delimiter_nestable
     else
         return {
             type: '?',
             delim,
             remaining: expected_end_delim,
             startPos,  endPos
-        };
+        }; // Delimiter_emph
 }
 
 

@@ -134,6 +134,9 @@ export interface BlockContentIterator {
     // It can also point to the beginning of a line, then that line's prefix is returned.
     getPrefixSpace(): string;
 
+    // false if the current character isn't (c) or if the preceding character is also a (c), which isn't backslash-escaped
+    isFirstOfSame(c: string): boolean;
+
     stateInfo(): string;
 }
 
@@ -469,6 +472,17 @@ export function makeBlockContentIterator(LL: LogicalLine, singleLine: boolean = 
             if(LL1.type === "comment")
                 return '';
             return (LL1.prefix || '');
+        },
+
+        isFirstOfSame(c: string) {
+            if(curPart[char_idx] !== c)
+                return false;
+            if(char_idx === 0 || curPart[char_idx - 1] !== c)
+                return true;
+            let nBackslash = 0;
+            for(let i = char_idx - 2;  i >= 0 && curPart[i] === '\\'; --i)
+                ++nBackslash;
+            return ((nBackslash % 2) === 1);
         },
 
         stateInfo() { return `[Line ${H.idx} "${H.type}" ${H.type === "comment" ? `(${H.cmt_subrow}) ` : ''}char ${char_idx}]`; }

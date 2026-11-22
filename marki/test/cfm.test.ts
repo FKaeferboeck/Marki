@@ -158,5 +158,19 @@ describe('GFM task list item', () => {
                 '<ul>\n<li><input checked="" disabled="" type="checkbox"> foo\n' + 
                 '<ul>\n<li><input disabled="" type="checkbox"> bar</li>\n<li><input checked="" disabled="" type="checkbox"> baz</li>\n' + 
                 '</ul>\n</li>\n<li><input disabled="" type="checkbox"> bim</li>\n</ul>\n');
+});
 
+
+describe('GFM strikethrough', () => {
+    doTest(491,   '~~Hi~~ Hello, ~there~ world!',
+                  '<p><del>Hi</del> Hello, <del>there</del> world!</p>\n');
+    doTest(491.1, '~~Outside, also ~~inside~~ nested~~', '<p><del>Outside, also <del>inside</del> nested</del></p>\n');
+    doTest(491.2, '~~Outside, also ~~inside~~ ~~', '<p>~~Outside, also <del>inside</del> ~~</p>\n');
+    doTest(491.3, '~~Outside, also ~~inside~~~', '<p>~~Outside, also ~~inside~~~</p>\n');
+    doTest(492,   'This ~~has a\n\nnew paragraph~~.',
+                  '<p>This ~~has a</p>\n<p>new paragraph~~.</p>\n');
+    doTest(493,   'This will ~~~not~~~ strike.',
+                  '<p>This will ~~~not~~~ strike.</p>\n');
+    doTest(493.1, 'But \\~~~this\\~~~ will. But \\\\~~~not~~ this.',
+                  '<p>But ~<del>this~</del> will. But \\~~~not~~ this.</p>\n');
 });
