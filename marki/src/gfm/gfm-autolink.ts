@@ -1,14 +1,12 @@
-import { ExtensionInlineElementType, InlineElement, InlineElementBase } from "../markdown-types.js";
-import { InlineEltTraits_ } from "../traits.js";
+import { ExtensionInlineElementType, ExtInlEltType, InlineElement, InlineElementBase } from "../markdown-types.js";
+import { ExtInlEltTraits } from "../traits.js";
 import { BlockContentIterator } from "../util.js";
 import { MarkdownParserTraits } from "../markdown-parser.js";
 import { Inserter, MarkdownRendererTraits } from "../renderer/renderer.js";
 import { escapeXML } from "../renderer/util.js";
 
-export const name_gfm_autolink = "ext_gfm_autolink" as ExtensionInlineElementType;
-type name_gfm_autolink_t = typeof name_gfm_autolink;
+export const name_gfm_autolink: ExtInlEltType = "ext_gfm_autolink" as ExtensionInlineElementType;
 
-//const rexEmailAutolink = /^<([a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*)>/;
 
 interface GFM_Autolink {
     scheme: "http" | "https" | "mailto" | "xmpp" | "email" | null;
@@ -17,7 +15,7 @@ interface GFM_Autolink {
 }
 
 
-export const gfm_autolink_traits: InlineEltTraits_<name_gfm_autolink_t, GFM_Autolink & InlineElement<name_gfm_autolink_t>> = {
+export const gfm_autolink_traits: ExtInlEltTraits<GFM_Autolink> = {
     startChars: [ 'h', 'm', 'w', 'x', '@' ],
 
     parse(It, B, P0_) {
@@ -141,7 +139,7 @@ function takeEmail(It: BlockContentIterator, B: GFM_Autolink) {
 
 
 function gfm_autolink_render(elt: InlineElementBase<`ext_${string}_${string}`>, I: Inserter) {
-    const X = elt as GFM_Autolink & InlineElement<name_gfm_autolink_t>;
+    const X = elt as GFM_Autolink & InlineElement<ExtInlEltType>;
     let prefix = 'http://',  prefix_display = '';
     switch(X.scheme) {
     case "email":

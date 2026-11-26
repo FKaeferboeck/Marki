@@ -3,7 +3,7 @@ import { InlineParser } from "./inline-parser.js";
 import { InlineParserProvider, InlineParsingContext } from "./inline-parsing-context.js";
 import { LogicalLine, LogicalLine_with_cmt } from "./linify.js";
 import { BlockParserProvider, MarkdownParserTraits } from "./markdown-parser.js";
-import { BlockType, ExtensionBlockType, BlockType_Container, Block, InlineElementType, ExtensionInlineElementType, InlineElement, InlinePos, BlockIndividualData, Delimiter, Delimiter_nestable, Block_Extension, AnyBlock, InlineElementBase, Block_Container_Extension, MarkiDocument } from "./markdown-types.js";
+import { BlockType, ExtensionBlockType, BlockType_Container, Block, InlineElementType, ExtensionInlineElementType, InlineElement, InlinePos, BlockIndividualData, Delimiter, Delimiter_nestable, Block_Extension, AnyBlock, InlineElementBase, Block_Container_Extension, MarkiDocument, ExtInlEltType } from "./markdown-types.js";
 import { BlockContentIterator } from "./util.js";
 
 
@@ -165,6 +165,9 @@ export type InlineEltTraits<T     extends InlineElementType = ExtensionInlineEle
                             Extra extends {} = {}>
     = InlineEltTraits_<T, Elt, Extra> & Extra;
 
+export type ExtInlEltTraits<Elt   extends {} = {}, Extra extends {} = {}>
+    = InlineEltTraits_<ExtensionInlineElementType, Elt & InlineElement<ExtensionInlineElementType>, Extra> & Extra;
+
 
 type DelimiterCategory = "emphLoose" | "emphStrict" | "paired";
 
@@ -207,9 +210,12 @@ export type DelimFollowerTraits<T     extends InlineElementType = ExtensionInlin
 
 
 export type InlineParserTraitsList = Partial<{
-    [K in InlineElementType]:  (InlineEltTraits_    <K, InlineElement<K>, any> |
-                                DelimFollowerTraits_<K, InlineElement<K>, any>);
+    [K in InlineElementType]:  (InlineEltTraits_<K, any, any> | DelimFollowerTraits_<K, any, any>);
 }>;
 
 export const isDelimFollowerTraits = <K extends InlineElementType>(t: InlineEltTraits_<K> | DelimFollowerTraits_<K>): t is DelimFollowerTraits_<K> =>
     ("startDelims" in t);
+
+export const castExtInlElt =
+    <Elt>(elt: InlineElement<ExtInlEltType>, traits: InlineEltTraits_<ExtInlEltType, Elt & InlineElement<ExtInlEltType>, any>): elt is Elt & InlineElement<ExtInlEltType> =>
+        elt.type === traits.defaultElementInstance.type;

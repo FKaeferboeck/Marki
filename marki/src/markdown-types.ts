@@ -194,6 +194,7 @@ export interface InlineElementMap {
 }
 
 export type ExtensionInlineElementType = `ext_${ExtensionNamespace}_${string}`;
+export type ExtInlEltType = ExtensionInlineElementType; // synonym for brevity
 export type InlineElementType = keyof InlineElementMap | ExtensionInlineElementType;
 
 

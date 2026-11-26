@@ -194,7 +194,7 @@ function inlineParse_try(this: InlineParsingContext, t: InlineElementType | Deli
                 return true;
             }
         } else
-            elt = P.parse(It, checkpoint1, startPos);
+            elt = P.parseInlineElt(It, checkpoint1, startPos);
     } else { // it's a delimiter
         elt = parseDelimiter(this, It, checkpoint1, t, openDelim);
         if(!elt)

@@ -2,6 +2,7 @@ import { PositionOps } from "../position-ops.js";
 import { AnyInline, InlineElement } from "../markdown-types.js";
 import { InlineEltTraits } from "../traits.js";
 import entityList from '../htmlEntities.js'
+import { MarkdownParserTraits } from "src/markdown-parser.js";
 
 const rex = /^&(?:#\d{1,7};|#[xX][\dA-Fa-f]{1,6};|[A-Za-z][A-Za-z\d]{0,32};)/; // 32 is the length of the longest existing HTML entity
 
@@ -20,7 +21,7 @@ function processHTML_entity(entity: RegExpMatchArray, B: InlineElement<"htmlEnti
 
 
 
-interface HTMLEntity_Traits_Extra {
+export interface HTMLEntity_Traits_Extra {
     /* Perhaps your Markdown dialect wants to add some custom HTML entities.
      * This could easily be done with an additional inline element type using the same starting char (&),
      * but adding it as a built-in feature in "htmlEntity" doesn't hurt and is perhaps more convenient.
@@ -28,7 +29,9 @@ interface HTMLEntity_Traits_Extra {
     customHTMLEntitiesList: Record<string, string>;
 }
 
-export const htmlEntity_traits: InlineEltTraits<"htmlEntity", InlineElement<"htmlEntity">, HTMLEntity_Traits_Extra> = {
+export type HTMLEntity_Traits = InlineEltTraits<"htmlEntity", InlineElement<"htmlEntity">, HTMLEntity_Traits_Extra>;
+
+export const htmlEntity_traits: HTMLEntity_Traits = {
     startChars: [ '&' ],
 
     parse(It, B) {
@@ -55,6 +58,8 @@ export const htmlEntity_traits: InlineEltTraits<"htmlEntity", InlineElement<"htm
     }
 };
 
+
+export const getCustomHTMLEntitiesList = (MDPT: MarkdownParserTraits) => (MDPT.inlineParser_standard.traits.htmlEntity as HTMLEntity_Traits).customHTMLEntitiesList;
 
 
 export function parseHTML_entities(s: string, buf: AnyInline[]) {

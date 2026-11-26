@@ -1,9 +1,9 @@
-import { InlineHandler } from "src/renderer/inline-renderer.js";
+import { InlineHandler } from "../renderer/inline-renderer.js";
 import { MarkdownParserTraits } from "../markdown-parser.js";
 import { Inserter, MarkdownRendererInstance, MarkdownRendererTraits } from "../renderer/renderer.js";
-import { Block_Leaf } from "src/markdown-types.js";
-import { LogicalLine_with_cmt, shiftCol, lineContent } from "src/linify.js";
-import { actualizeTab } from "src/renderer/util.js";
+import { Block_Leaf } from "../markdown-types.js";
+import { LogicalLine_with_cmt, shiftCol, lineContent } from "../linify.js";
+import { actualizeTab } from "../renderer/util.js";
 
 
 /* The treatment of this extension feature feels a bit careless, but it is careless in the specification as well. */

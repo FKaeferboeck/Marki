@@ -17,7 +17,7 @@ export interface InlineParser<K     extends InlineElementType = ExtensionInlineE
 
     // guarantee: if an element is successfully parsed, It will afterwards point behind it
     //            if it cannot be parsed here, It will be at the same start position it was in before (though the checkpoint may have been changed)
-    parse(It: BlockContentIterator, startCheckpoint: InlinePos, startPos: Pos): Elt | false;
+    parseInlineElt(It: BlockContentIterator, startCheckpoint: InlinePos, startPos: Pos): Elt | false;
 
     parseFollowingDelim(D: Delimiter_nestable, It: BlockContentIterator, startCheckpoint: InlinePos): false | InlineElement<K>;
 
@@ -49,7 +49,7 @@ implements InlineParser<K, Elt, Extra>
         this.B.endPos       = { line: 0,  character: 0 };
     }
 
-    parse(It: BlockContentIterator, startCheckpoint: InlinePos, startPos: Pos): false | Elt {
+    parseInlineElt(It: BlockContentIterator, startCheckpoint: InlinePos, startPos: Pos): false | Elt {
         if(!("startChars" in this.traits)) // this function doesn't handle DelimFollowerTraits
             return false;
         const found = this.traits.parse.call(this, It, this.B, startCheckpoint);
