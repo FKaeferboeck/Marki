@@ -208,6 +208,9 @@ export type DelimFollowerTraits<T     extends InlineElementType = ExtensionInlin
                                 Extra extends {} = {}>
     = DelimFollowerTraits_<T, Elt, Extra> & Extra;
 
+export type ExtDelimFollowerTraits<Elt   extends {} = {}, Extra extends {} = {}>
+    = DelimFollowerTraits_<ExtensionInlineElementType, Elt & InlineElement<ExtensionInlineElementType>, Extra> & Extra;
+
 
 export type InlineParserTraitsList = Partial<{
     [K in InlineElementType]:  (InlineEltTraits_<K, any, any> | DelimFollowerTraits_<K, any, any>);
@@ -216,6 +219,8 @@ export type InlineParserTraitsList = Partial<{
 export const isDelimFollowerTraits = <K extends InlineElementType>(t: InlineEltTraits_<K> | DelimFollowerTraits_<K>): t is DelimFollowerTraits_<K> =>
     ("startDelims" in t);
 
+export type AnyExtInlEltTraits<Elt> = InlineEltTraits_    <ExtInlEltType, Elt & InlineElement<ExtInlEltType>, any> |
+                                      DelimFollowerTraits_<ExtInlEltType, Elt & InlineElement<ExtInlEltType>, any>;
 export const castExtInlElt =
-    <Elt>(elt: InlineElement<ExtInlEltType>, traits: InlineEltTraits_<ExtInlEltType, Elt & InlineElement<ExtInlEltType>, any>): elt is Elt & InlineElement<ExtInlEltType> =>
+    <Elt>(elt: InlineElement<ExtInlEltType>, traits: AnyExtInlEltTraits<Elt>): elt is Elt & InlineElement<ExtInlEltType> =>
         elt.type === traits.defaultElementInstance.type;
